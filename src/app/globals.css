@@ -1,26 +1,177 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ==========================================================================
+   Identidad de Casino Atlántico Manatí
+
+   Los azules salen del logo (la ficha con el mandala) para que el sitio se
+   sienta del casino y no una plantilla. El dorado queda reservado para dinero:
+   montos de jackpot, el premio de $25 y el botón de girar. Si el dorado se usa
+   para cualquier otra cosa deja de significar "premio".
+   ========================================================================== */
+
+@theme {
+  /* Marca */
+  --color-noche: #0a2547; /* fondo principal, noche de casino */
+  --color-noche-2: #0d3160; /* superficies elevadas */
+  --color-marca: #1b4f9c; /* azul del logo */
+  --color-cian: #2ba9e0; /* cian del logo, acentos y enlaces */
+  --color-dorado: #f2b33d; /* SOLO dinero y premios */
+  --color-dorado-2: #ffd479;
+  --color-gana: #34d399;
+  --color-pierde: #f87171;
+  --color-crema: #f7f4ee;
+
+  /* Superficies */
+  --color-linea: rgb(255 255 255 / 0.1);
+  --color-tenue: rgb(247 244 238 / 0.62);
+
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1rem;
+
+  --shadow-premio: 0 0 0 1px rgb(242 179 61 / 0.35), 0 18px 50px -12px rgb(242 179 61 / 0.35);
+  --shadow-alza: 0 20px 45px -20px rgb(0 0 0 / 0.75);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* --------------------------------------------------------------------------
+   Base
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+   El sitio es de tema oscuro fijo, a propósito: es un casino, y la mitad del
+   tráfico llega de noche desde Facebook. No se hereda el tema del sistema.
+   -------------------------------------------------------------------------- */
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-noche);
+  color: var(--color-crema);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Halos suaves para que el fondo no sea un azul plano. */
+  background-image:
+    radial-gradient(65rem 65rem at 15% -10%, rgb(27 79 156 / 0.5), transparent 60%),
+    radial-gradient(45rem 45rem at 95% 0%, rgb(43 169 224 / 0.22), transparent 55%);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* Los montos de dinero SIEMPRE con cifras tabulares: sin esto, las columnas de
+   jackpots bailan de ancho al refrescarse y se ve barato. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-cian);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   Utilidades compartidas
+   -------------------------------------------------------------------------- */
+
+@utility contenedor {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 76rem;
+  padding-inline: 1.25rem;
+}
+
+@utility tarjeta {
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.03));
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(8px);
+}
+
+@utility texto-dorado {
+  background: linear-gradient(100deg, var(--color-dorado-2), var(--color-dorado));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Animaciones
+   -------------------------------------------------------------------------- */
+
+@keyframes brillo {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes flotar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulso-premio {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(242 179 61 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgb(242 179 61 / 0);
+  }
+}
+
+.anim-brillo {
+  animation: brillo 2.6s ease-in-out infinite;
+}
+.anim-flotar {
+  animation: flotar 3.5s ease-in-out infinite;
+}
+.anim-entrar {
+  animation: entrar 0.5s ease-out both;
+}
+.anim-pulso-premio {
+  animation: pulso-premio 2s ease-out infinite;
+}
+
+/* Respeta a quien pidió menos movimiento. Los rolos igual aterrizan donde
+   tienen que aterrizar; simplemente dejan de girar de forma llamativa. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

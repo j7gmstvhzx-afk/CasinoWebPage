@@ -1,0 +1,98 @@
+/**
+ * Los 78 municipios de Puerto Rico.
+ *
+ * Los ids DEBEN coincidir con supabase/migrations/0003_seed.sql. Se listan aquí
+ * también para que el formulario no tenga que pedirlos al servidor antes de
+ * poder mostrarse.
+ *
+ * Es un desplegable y no un campo de texto a propósito: escrito a mano, la base
+ * termina con "Manatí", "manati", "MANATI" y "manatí pr" como cuatro pueblos
+ * distintos, y la segmentación por pueblo — que es justo para lo que sirve este
+ * dato — deja de servir.
+ */
+export const MUNICIPIOS: readonly { id: number; nombre: string }[] = [
+  { id: 1, nombre: 'Adjuntas' },
+  { id: 2, nombre: 'Aguada' },
+  { id: 3, nombre: 'Aguadilla' },
+  { id: 4, nombre: 'Aguas Buenas' },
+  { id: 5, nombre: 'Aibonito' },
+  { id: 6, nombre: 'Añasco' },
+  { id: 7, nombre: 'Arecibo' },
+  { id: 8, nombre: 'Arroyo' },
+  { id: 9, nombre: 'Barceloneta' },
+  { id: 10, nombre: 'Barranquitas' },
+  { id: 11, nombre: 'Bayamón' },
+  { id: 12, nombre: 'Cabo Rojo' },
+  { id: 13, nombre: 'Caguas' },
+  { id: 14, nombre: 'Camuy' },
+  { id: 15, nombre: 'Canóvanas' },
+  { id: 16, nombre: 'Carolina' },
+  { id: 17, nombre: 'Cataño' },
+  { id: 18, nombre: 'Cayey' },
+  { id: 19, nombre: 'Ceiba' },
+  { id: 20, nombre: 'Ciales' },
+  { id: 21, nombre: 'Cidra' },
+  { id: 22, nombre: 'Coamo' },
+  { id: 23, nombre: 'Comerío' },
+  { id: 24, nombre: 'Corozal' },
+  { id: 25, nombre: 'Culebra' },
+  { id: 26, nombre: 'Dorado' },
+  { id: 27, nombre: 'Fajardo' },
+  { id: 28, nombre: 'Florida' },
+  { id: 29, nombre: 'Guánica' },
+  { id: 30, nombre: 'Guayama' },
+  { id: 31, nombre: 'Guayanilla' },
+  { id: 32, nombre: 'Guaynabo' },
+  { id: 33, nombre: 'Gurabo' },
+  { id: 34, nombre: 'Hatillo' },
+  { id: 35, nombre: 'Hormigueros' },
+  { id: 36, nombre: 'Humacao' },
+  { id: 37, nombre: 'Isabela' },
+  { id: 38, nombre: 'Jayuya' },
+  { id: 39, nombre: 'Juana Díaz' },
+  { id: 40, nombre: 'Juncos' },
+  { id: 41, nombre: 'Lajas' },
+  { id: 42, nombre: 'Lares' },
+  { id: 43, nombre: 'Las Marías' },
+  { id: 44, nombre: 'Las Piedras' },
+  { id: 45, nombre: 'Loíza' },
+  { id: 46, nombre: 'Luquillo' },
+  { id: 47, nombre: 'Manatí' },
+  { id: 48, nombre: 'Maricao' },
+  { id: 49, nombre: 'Maunabo' },
+  { id: 50, nombre: 'Mayagüez' },
+  { id: 51, nombre: 'Moca' },
+  { id: 52, nombre: 'Morovis' },
+  { id: 53, nombre: 'Naguabo' },
+  { id: 54, nombre: 'Naranjito' },
+  { id: 55, nombre: 'Orocovis' },
+  { id: 56, nombre: 'Patillas' },
+  { id: 57, nombre: 'Peñuelas' },
+  { id: 58, nombre: 'Ponce' },
+  { id: 59, nombre: 'Quebradillas' },
+  { id: 60, nombre: 'Rincón' },
+  { id: 61, nombre: 'Río Grande' },
+  { id: 62, nombre: 'Sabana Grande' },
+  { id: 63, nombre: 'Salinas' },
+  { id: 64, nombre: 'San Germán' },
+  { id: 65, nombre: 'San Juan' },
+  { id: 66, nombre: 'San Lorenzo' },
+  { id: 67, nombre: 'San Sebastián' },
+  { id: 68, nombre: 'Santa Isabel' },
+  { id: 69, nombre: 'Toa Alta' },
+  { id: 70, nombre: 'Toa Baja' },
+  { id: 71, nombre: 'Trujillo Alto' },
+  { id: 72, nombre: 'Utuado' },
+  { id: 73, nombre: 'Vega Alta' },
+  { id: 74, nombre: 'Vega Baja' },
+  { id: 75, nombre: 'Vieques' },
+  { id: 76, nombre: 'Villalba' },
+  { id: 77, nombre: 'Yabucoa' },
+  { id: 78, nombre: 'Yauco' },
+];
+
+/** Manatí primero: es donde vive la mayoría de quien visita este casino. */
+export const MUNICIPIOS_ORDENADOS = [
+  ...MUNICIPIOS.filter((m) => m.nombre === 'Manatí'),
+  ...MUNICIPIOS.filter((m) => m.nombre !== 'Manatí'),
+];
