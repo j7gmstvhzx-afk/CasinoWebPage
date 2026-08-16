@@ -24,15 +24,12 @@ const CLAVE_VISTO = 'cam:promo-vista';
 export function PromoLauncher() {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
-  const [montado, setMontado] = useState(false);
   const dialogo = useRef<HTMLDivElement>(null);
   const activoPrevio = useRef<HTMLElement | null>(null);
 
   const enAdmin = pathname.startsWith('/admin');
   const enPremio = pathname.startsWith('/premio');
   const oculto = enAdmin || enPremio;
-
-  useEffect(() => setMontado(true), []);
 
   // Apertura automática, una vez al día.
   useEffect(() => {
@@ -108,7 +105,10 @@ export function PromoLauncher() {
     };
   }, [abierto, cerrar]);
 
-  if (!montado || oculto) return null;
+  // No hace falta una bandera de "ya montó": lo primero que se pinta (el botón
+  // flotante) es idéntico en servidor y cliente. Lo único que depende del
+  // navegador es localStorage, y eso vive dentro de un efecto.
+  if (oculto) return null;
 
   return (
     <>

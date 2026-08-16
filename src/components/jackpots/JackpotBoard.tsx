@@ -106,8 +106,16 @@ function FilaJackpot({ j, destacado }: { j: JackpotVista; destacado: boolean }) 
         >
           {j.nombre}
         </p>
-        <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
-          Banco {j.banco}
+        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
+          <span>Banco {j.banco}</span>
+          {/* El monto es de una actualización anterior. Se dice, en vez de
+              enseñarlo como si fuera de hoy: el cliente maneja hasta Manatí
+              por este número. */}
+          {j.desactualizado && (
+            <span className="normal-case tracking-normal text-tenue/70">
+              · sin actualizar hoy
+            </span>
+          )}
         </p>
       </div>
 
@@ -142,32 +150,44 @@ function FilaJackpot({ j, destacado }: { j: JackpotVista; destacado: boolean }) 
  *
  * Es puro adorno, pero es el adorno que hace que un tablero de números se
  * sienta un salón vivo. Se salta entero si la persona pidió menos movimiento.
+ *
+ * La animación escribe al DOM directamente por ref, sin estado de React. Con
+ * `setState` por frame, cada una de las 19 filas provocaba ~60 renders por
+ * segundo durante casi un segundo — más de mil renders para dibujar un número
+ * que sube. Además el valor se pinta ya correcto en el servidor, así que quien
+ * llegue con JavaScript deshabilitado ve el monto igual.
  */
 function MontoAnimado({ centavos, className }: { centavos: number; className?: string }) {
-  const [valor, setValor] = useState(centavos);
-  const raf = useRef<number>(0);
+  const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setValor(centavos);
-      return;
-    }
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const desde = 0;
     const duracion = 900;
     const inicio = performance.now();
+    let raf = 0;
 
     const paso = (t: number) => {
       const p = Math.min(1, (t - inicio) / duracion);
-      // easeOutCubic: rápido al principio, frena al final
-      const e = 1 - Math.pow(1 - p, 3);
-      setValor(Math.round(desde + (centavos - desde) * e));
-      if (p < 1) raf.current = requestAnimationFrame(paso);
+      const e = 1 - Math.pow(1 - p, 3); // easeOutCubic: rápido y frena al final
+      el.textContent = money(Math.round(centavos * e));
+      if (p < 1) raf = requestAnimationFrame(paso);
     };
 
-    raf.current = requestAnimationFrame(paso);
-    return () => cancelAnimationFrame(raf.current);
+    raf = requestAnimationFrame(paso);
+    return () => {
+      cancelAnimationFrame(raf);
+      // Al desmontar o cambiar de monto, se deja el valor final: si el efecto
+      // se corta a mitad de la cuenta, la fila se quedaría con un número falso.
+      el.textContent = money(centavos);
+    };
   }, [centavos]);
 
-  return <span className={className}>{money(valor)}</span>;
+  return (
+    <span ref={ref} className={className}>
+      {money(centavos)}
+    </span>
+  );
 }

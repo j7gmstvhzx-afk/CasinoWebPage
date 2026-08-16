@@ -13,14 +13,30 @@ export function Header() {
 
   useEffect(() => {
     const onScroll = () => setDesplazado(window.scrollY > 8);
-    onScroll();
+    // La lectura inicial va en un frame aparte y no en el cuerpo del efecto.
+    // Llamarla de forma síncrona ahí encadena un render extra en cada montaje;
+    // hace falta igual para la navegación con "atrás", que restaura el scroll.
+    const id = requestAnimationFrame(onScroll);
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener('scroll', onScroll);
+    };
   }, []);
 
   // Cerrar el menú al navegar: sin esto, en celular queda el panel abierto
   // encima de la página nueva.
-  useEffect(() => setAbierto(false), [pathname]);
+  //
+  // Va durante el render y no en un efecto. Es el patrón que recomienda React
+  // para ajustar estado cuando cambia una prop: React descarta el render a
+  // medias y vuelve a empezar con el valor nuevo, sin llegar a pintar el estado
+  // viejo. Con un efecto, el menú se vería abierto sobre la página nueva
+  // durante un frame antes de cerrarse.
+  const [rutaPrevia, setRutaPrevia] = useState(pathname);
+  if (pathname !== rutaPrevia) {
+    setRutaPrevia(pathname);
+    setAbierto(false);
+  }
 
   const activo = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);

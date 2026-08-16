@@ -20,8 +20,23 @@ export function moneyShort(cents: number | bigint | string | null | undefined): 
   return `$${n.toLocaleString('en-US')}`;
 }
 
-const dt = (opts: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat('es-PR', { timeZone: PR_TIMEZONE, ...opts });
+/**
+ * Normaliza los espacios que mete Intl.
+ *
+ * Node y el navegador traen versiones distintas de ICU, y una pone U+202F
+ * (espacio angosto sin quiebre) antes de "p. m." donde la otra pone un espacio
+ * normal. El texto se ve idéntico, pero React lo detecta como discrepancia de
+ * hidratación, descarta el subárbol y lo vuelve a pintar en el cliente.
+ *
+ * Cuesta más encontrarlo que arreglarlo: en el mensaje de error las dos cadenas
+ * salen exactamente iguales.
+ */
+const espacios = (s: string) => s.replace(/[\u202f\u00a0]/g, ' ');
+
+const dt = (opts: Intl.DateTimeFormatOptions) => {
+  const f = new Intl.DateTimeFormat('es-PR', { timeZone: PR_TIMEZONE, ...opts });
+  return { format: (d: Date) => espacios(f.format(d)) };
+};
 
 /** "16 de agosto de 2026" */
 export const longDate = (d: Date | string) =>

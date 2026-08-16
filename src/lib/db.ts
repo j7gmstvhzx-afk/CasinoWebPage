@@ -24,7 +24,6 @@ import postgres from 'postgres';
 type Sql = ReturnType<typeof postgres>;
 
 declare global {
-  // eslint-disable-next-line no-var
   var __camSql: Sql | undefined;
 }
 

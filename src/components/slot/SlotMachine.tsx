@@ -67,11 +67,11 @@ export function SlotMachine({
   deshabilitado?: boolean;
   mensajeDeshabilitado?: string;
 }) {
-  const tiras = [
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-  ];
+  // Un solo ref que guarda los tres elementos. Con un arreglo de useRef creado
+  // en el cuerpo del componente, cada render fabricaba un arreglo nuevo y el
+  // compilador de React —  con razón —  lo marcaba como estado mutado tras el
+  // render.
+  const tiras = useRef<(HTMLDivElement | null)[]>([null, null, null]);
   const animaciones = useRef<(Animation | null)[]>([null, null, null]);
   const temporizadores = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -90,8 +90,8 @@ export function SlotMachine({
 
   /** Fase 1: giro libre en bucle. Empieza al instante, sin esperar al servidor. */
   const girarLibre = useCallback(() => {
-    tiras.forEach((ref, i) => {
-      const el = ref.current;
+    tiras.current.forEach((_, i) => {
+      const el = tiras.current[i];
       if (!el) return;
       el.style.transition = 'none';
       el.style.transform = 'translate3d(0,0,0)';
@@ -100,12 +100,12 @@ export function SlotMachine({
         { duration: SPIN_CYCLE_MS, iterations: Infinity, easing: 'linear' },
       );
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   /** Fase 2: frenar el rolo `i` hasta que el símbolo `simbolo` quede a la vista. */
   const aterrizar = useCallback((i: number, simbolo: number) => {
-    const el = tiras[i].current;
+    const el = tiras.current[i];
     if (!el) return;
 
     // Se lee la posición ANTES de cancelar: al cancelar, el elemento vuelve a su
@@ -134,17 +134,17 @@ export function SlotMachine({
       el.removeEventListener('transitionend', normalizar);
     };
     el.addEventListener('transitionend', normalizar);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const posicionInstantanea = useCallback((i: number, simbolo: number) => {
-    const el = tiras[i].current;
+    const el = tiras.current[i];
     if (!el) return;
     animaciones.current[i]?.cancel();
     animaciones.current[i] = null;
     el.style.transition = 'none';
     el.style.transform = `translate3d(0,${-(simbolo * ITEM_H)}px,0)`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const tirar = useCallback(async () => {
@@ -165,7 +165,7 @@ export function SlotMachine({
       limpiar();
       // Se dejan los rolos donde estaban en vez de forzar una combinación:
       // inventar símbolos después de un fallo confundiría al cliente.
-      tiras.forEach((ref, i) => posicionInstantanea(i, visibles[i]));
+      tiras.current.forEach((_, i) => posicionInstantanea(i, visibles[i]));
       setFase('listo');
       setError(e instanceof Error ? e.message : 'No pudimos completar tu tirada.');
       return;
@@ -228,7 +228,12 @@ export function SlotMachine({
               className="relative overflow-hidden rounded-2xl border border-linea bg-noche/80"
               style={{ height: ITEM_H, width: ITEM_H }}
             >
-              <div ref={tiras[i]} className="will-change-transform">
+              <div
+                ref={(el) => {
+                  tiras.current[i] = el;
+                }}
+                className="will-change-transform"
+              >
                 {/* Tira: los símbolos repetidos REPEAT veces. Se puede avanzar
                     cualquier múltiplo de una vuelta sin que se note el corte. */}
                 {Array.from({ length: REPEAT * SYMBOLS.length }, (_, n) => (

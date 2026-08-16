@@ -13,12 +13,8 @@ export const metadata: Metadata = {
     'número de banco para que las encuentres al llegar.',
 };
 
-/** Se considera "recién llegada" durante 30 días. */
-const DIAS_NUEVA = 30;
-
 export default async function PaginaMaquinasNuevas() {
   const maquinas = await seguro(() => getMaquinasNuevas(48), []);
-  const ahora = Date.now();
 
   return (
     <>
@@ -33,15 +29,12 @@ export default async function PaginaMaquinasNuevas() {
         ) : (
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {maquinas.map((m) => {
-              const dias = Math.floor(
-                (ahora - new Date(m.arrived_on).getTime()) / 86_400_000,
-              );
               return (
                 <li key={m.id} className="tarjeta overflow-hidden">
                   <Marco imagen={m.image_path} alt={m.name} />
                   <div className="p-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      {dias <= DIAS_NUEVA && (
+                      {m.es_nueva && (
                         <span className="rounded-full bg-cian/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cian">
                           Nueva
                         </span>
