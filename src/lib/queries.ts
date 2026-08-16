@@ -244,6 +244,36 @@ export async function getEventos(limite = 60): Promise<Evento[]> {
   `;
 }
 
+export type PromoPopup = {
+  id: string;
+  title: string;
+  body: string | null;
+  image_path: string | null;
+  starts_on: string | null;
+  ends_on: string | null;
+};
+
+/**
+ * Promociones que salen en el pop-up de entrada.
+ *
+ * Solo las marcadas a mano por el personal, publicadas y vigentes hoy. Se
+ * limita a 4 aunque marquen más: el visitante tiene que pasar por todas antes
+ * de llegar a la tragamonedas, y a partir de cuatro pantallas la gente cierra
+ * en vez de leer — se perdería justo lo que se quería enseñar.
+ */
+export async function getPromocionesPopup(): Promise<PromoPopup[]> {
+  return sql<PromoPopup[]>`
+    select id, title, body, image_path, starts_on, ends_on
+      from app.events
+     where show_in_popup
+       and published
+       and (starts_on is null or starts_on <= app.gaming_date(now()))
+       and (ends_on   is null or ends_on   >= app.gaming_date(now()))
+     order by sort_order, created_at desc
+     limit 4
+  `;
+}
+
 export type ItemGaleria = {
   id: string;
   image_path: string;

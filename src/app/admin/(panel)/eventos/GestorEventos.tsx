@@ -13,6 +13,7 @@ export type EventoAdmin = {
   starts_on: string | null;
   ends_on: string | null;
   published: boolean;
+  show_in_popup: boolean;
   sort_order: number;
 };
 
@@ -22,6 +23,7 @@ type Borrador = {
   image_path: string | null;
   starts_on: string;
   ends_on: string;
+  show_in_popup: boolean;
   sort_order: number;
 };
 
@@ -31,6 +33,7 @@ const vacio = (): Borrador => ({
   image_path: null,
   starts_on: '',
   ends_on: '',
+  show_in_popup: false,
   sort_order: 0,
 });
 
@@ -40,6 +43,7 @@ const aBorrador = (e: EventoAdmin): Borrador => ({
   image_path: e.image_path,
   starts_on: e.starts_on?.slice(0, 10) ?? '',
   ends_on: e.ends_on?.slice(0, 10) ?? '',
+  show_in_popup: e.show_in_popup,
   sort_order: e.sort_order,
 });
 
@@ -88,6 +92,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
       // para las permanentes.
       starts_on: borrador.starts_on || null,
       ends_on: borrador.ends_on || null,
+      show_in_popup: borrador.show_in_popup,
       sort_order: borrador.sort_order,
     };
 
@@ -184,6 +189,28 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                 Al pasar la fecha de fin, la promoción desaparece sola de la
                 página. Si la dejas en blanco, se queda hasta que la quites.
               </p>
+
+              {/* Lo que decide si el arte se le enseña a TODO el que entra. */}
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-dorado/40 bg-dorado/5 p-4">
+                <input
+                  type="checkbox"
+                  checked={borrador.show_in_popup}
+                  onChange={(e) =>
+                    setBorrador({ ...borrador, show_in_popup: e.target.checked })
+                  }
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-white/5 accent-dorado"
+                />
+                <span className="text-sm">
+                  <span className="font-semibold text-dorado">
+                    Mostrar al entrar a la página
+                  </span>
+                  <span className="mt-1 block text-tenue">
+                    El visitante ve este arte antes de poder usar la
+                    tragamonedas. Marca solo una o dos: si son muchas, la gente
+                    cierra en vez de leerlas.
+                  </span>
+                </span>
+              </label>
             </div>
 
             <div>
@@ -259,6 +286,12 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                     {e.published ? 'Publicada' : 'Oculta'}
                   </span>
                 </div>
+
+                {e.show_in_popup && (
+                  <p className="mt-2 inline-block rounded-full border border-dorado/40 bg-dorado/10 px-2.5 py-0.5 text-[10px] font-semibold text-dorado">
+                    ★ Sale al entrar
+                  </p>
+                )}
 
                 {(e.starts_on || e.ends_on) && (
                   <p className="mt-1.5 text-xs text-cian">

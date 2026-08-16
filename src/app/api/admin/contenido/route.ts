@@ -30,6 +30,8 @@ const ESQUEMAS = {
     starts_on: fechaOpcional,
     ends_on: fechaOpcional,
     published: z.boolean().optional(),
+    // Sale en el pop-up de entrada, antes de la tragamonedas.
+    show_in_popup: z.boolean().optional(),
     sort_order: z.number().int().min(0).max(999).optional(),
   }),
   maquinas: z.object({

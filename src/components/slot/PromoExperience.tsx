@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { SlotMachine, type SpinOutcome } from './SlotMachine';
+import { VistaPromos, type PromoPopup } from './VistaPromos';
 import { MUNICIPIOS_ORDENADOS } from '@/lib/municipios';
 import { maskPhoneInput } from '@/lib/phone';
 import { formatVoucherCode } from '@/lib/voucher';
@@ -17,6 +18,7 @@ type Estado =
 
 type EstadoServidor = {
   registrado: boolean;
+  promos?: PromoPopup[];
   nombre?: string;
   tiroHoy?: boolean;
   reels?: number[] | null;
@@ -30,11 +32,27 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   const [enviando, setEnviando] = useState(false);
   const [errorForm, setErrorForm] = useState<string | null>(null);
 
+  // Las promociones del día van DELANTE de todo lo demás. Se guardan aparte del
+  // resto del estado para no tener que duplicar cada paso en dos versiones
+  // (con promo pendiente y sin ella).
+  const [promos, setPromos] = useState<PromoPopup[]>([]);
+  const [promosVistas, setPromosVistas] = useState(true);
+
   const [nombre, setNombre] = useState('');
   const [celular, setCelular] = useState('');
   const [pueblo, setPueblo] = useState('');
   const [acepta, setAcepta] = useState(false);
   const [trampa, setTrampa] = useState('');
+
+  // Las dos instancias (modal y portada) viven a la vez. Cuando una termina de
+  // enseñar las promociones, avisa por este evento para que la otra no las
+  // repita: guardar en localStorage no basta, porque la otra ya leyó su estado
+  // al montarse y no se entera del cambio.
+  useEffect(() => {
+    const alVerlas = () => setPromosVistas(true);
+    window.addEventListener(EVENTO_PROMOS, alVerlas);
+    return () => window.removeEventListener(EVENTO_PROMOS, alVerlas);
+  }, []);
 
   // Al abrir se pregunta el estado sin consumir la tirada del día.
   useEffect(() => {
@@ -43,6 +61,9 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
       .then((r) => r.json())
       .then((d: EstadoServidor & { ok: boolean }) => {
         if (!vivo) return;
+        const conPromos = d.promos ?? [];
+        setPromos(conPromos);
+        setPromosVistas(conPromos.length === 0 || yaVioPromosHoy());
         if (!d.ok || !d.registrado) return setEstado({ paso: 'registro' });
         if (d.tiroHoy && d.reels && d.resultado) {
           return setEstado({
@@ -111,6 +132,19 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
       <div className="flex min-h-[22rem] items-center justify-center">
         <div className="h-9 w-9 animate-spin rounded-full border-2 border-linea border-t-dorado" />
       </div>
+    );
+  }
+
+  // Antes de la máquina, el arte de las promociones del día.
+  if (!promosVistas && promos.length > 0) {
+    return (
+      <VistaPromos
+        promos={promos}
+        onTerminar={() => {
+          marcarPromosVistas();
+          setPromosVistas(true);
+        }}
+      />
     );
   }
 
@@ -422,4 +456,38 @@ function Confeti() {
       `}</style>
     </div>
   );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Memoria de "ya vio las promociones hoy".
+ *
+ * Hace falta porque este componente se usa en DOS sitios a la vez: el modal de
+ * entrada y la máquina embebida en la portada. Sin esto, al cerrar el modal la
+ * persona se topaba con el mismo arte otra vez y tenía que pasarlo de nuevo
+ * para poder tirar — justo el tipo de fricción que hace que cierren la página.
+ *
+ * Se guarda la fecha, no un simple "sí": mañana hay que volver a enseñarlas.
+ */
+const CLAVE_PROMOS = 'cam:promos-vistas';
+const EVENTO_PROMOS = 'cam:promos-vistas';
+
+function yaVioPromosHoy(): boolean {
+  try {
+    return window.localStorage.getItem(CLAVE_PROMOS) === new Date().toDateString();
+  } catch {
+    // Modo privado de Safari puede lanzar. Se enseñan otra vez, que es el lado
+    // seguro del error: es mejor repetir una promoción que no enseñarla.
+    return false;
+  }
+}
+
+function marcarPromosVistas(): void {
+  try {
+    window.localStorage.setItem(CLAVE_PROMOS, new Date().toDateString());
+  } catch {
+    /* sin almacenamiento: se volverán a mostrar */
+  }
+  window.dispatchEvent(new Event(EVENTO_PROMOS));
 }

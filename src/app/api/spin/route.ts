@@ -14,6 +14,7 @@ import {
   DEVICE_COOKIE,
 } from '@/lib/session';
 import { nextMidnightPr } from '@/lib/format';
+import { getPromocionesPopup, seguro } from '@/lib/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,8 +50,14 @@ const error = (codigo: string, mensaje: string, status = 400) =>
  */
 export async function GET() {
   const { playerId } = await getSession();
+
+  // Las promociones del pop-up viajan en esta misma respuesta en vez de en una
+  // llamada aparte: el modal ya hace esta petición al abrirse, y una segunda
+  // haría parpadear la pantalla entre el arte y el estado del jugador.
+  const promos = await seguro(getPromocionesPopup, []);
+
   if (!playerId) {
-    return NextResponse.json({ ok: true, registrado: false });
+    return NextResponse.json({ ok: true, registrado: false, promos });
   }
 
   const [fila] = await sql<
@@ -71,11 +78,12 @@ export async function GET() {
      where p.id = ${playerId}
   `;
 
-  if (!fila) return NextResponse.json({ ok: true, registrado: false });
+  if (!fila) return NextResponse.json({ ok: true, registrado: false, promos });
 
   return NextResponse.json({
     ok: true,
     registrado: true,
+    promos,
     nombre: fila.full_name.split(/\s+/)[0],
     tiroHoy: fila.is_winner !== null,
     reels: fila.reels,
