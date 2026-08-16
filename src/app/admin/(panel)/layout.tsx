@@ -23,6 +23,8 @@ export default async function LayoutPanel({ children }: { children: React.ReactN
     { href: '/admin', label: 'Resumen' },
     { href: '/admin/canjear', label: 'Canjear' },
     { href: '/admin/jackpots', label: 'Jackpots' },
+    { href: '/admin/eventos', label: 'Promociones' },
+    { href: '/admin/maquinas-nuevas', label: 'Máquinas nuevas' },
     { href: '/admin/clientes', label: 'Clientes' },
   ];
 

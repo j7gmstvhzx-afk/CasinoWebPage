@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
-import { ImportadorJackpots } from './ImportadorJackpots';
-import { getJackpots, getUltimaActualizacion, seguro } from '@/lib/queries';
+import { PanelJackpots } from './PanelJackpots';
+import {
+  getJackpots,
+  getMaquinasParaEntrada,
+  getUltimaActualizacion,
+  seguro,
+} from '@/lib/queries';
 import { money, relativeUpdate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaAdminJackpots() {
-  const [jackpots, ultima] = await Promise.all([
+  const [jackpots, maquinas, ultima] = await Promise.all([
     seguro(getJackpots, []),
+    seguro(getMaquinasParaEntrada, []),
     seguro(getUltimaActualizacion, null),
   ]);
 
@@ -20,14 +26,13 @@ export default async function PaginaAdminJackpots() {
     <>
       <h1 className="font-display text-3xl font-bold">Jackpots</h1>
       <p className="mt-2 text-tenue">
+        {/* Sin punto al final: en español "p. m." ya lo trae, y quedaba "p. m..". */}
         {ultima
-          ? `Última actualización: ${relativeUpdate(ultima)}.`
+          ? `Última actualización: ${relativeUpdate(ultima)}`
           : 'Todavía no se ha publicado ningún premio.'}
       </p>
 
-      <div className="mt-8">
-        <ImportadorJackpots />
-      </div>
+      <PanelJackpots maquinas={maquinas} />
 
       {jackpots.length > 0 && (
         <>

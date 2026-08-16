@@ -117,6 +117,66 @@ export async function getJackpots(): Promise<JackpotVista[]> {
   });
 }
 
+export type FilaEntrada = {
+  id: string;
+  nombre: string;
+  banco: number;
+  centavosHoy: number | null;
+  centavosPrevio: number | null;
+};
+
+/**
+ * Máquinas activas para la pantalla de entrada manual.
+ *
+ * Van en el MISMO orden que el tablero público — de mayor a menor — para que lo
+ * que el empleado tiene delante cuadre con lo que el cliente ve. Si aquí
+ * salieran alfabéticas y allá por monto, comprobar un dato obligaría a saltar
+ * de un lado a otro.
+ */
+export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
+  const filas = await sql<
+    {
+      id: string;
+      name: string;
+      bank_number: number;
+      centavos_hoy: string | null;
+      centavos_previo: string | null;
+    }[]
+  >`
+    select m.id, m.name, m.bank_number,
+           hoy.amount_cents  as centavos_hoy,
+           ayer.amount_cents as centavos_previo
+      from app.machines m
+      left join lateral (
+        select r.amount_cents
+          from app.jackpot_readings r
+         where r.machine_id = m.id
+           and app.gaming_date(r.reading_at) = app.gaming_date(now())
+         order by r.reading_at desc
+         limit 1
+      ) hoy on true
+      left join lateral (
+        select r.amount_cents
+          from app.jackpot_readings r
+         where r.machine_id = m.id
+           and app.gaming_date(r.reading_at) < app.gaming_date(now())
+           and r.amount_cents is not null
+         order by r.reading_at desc
+         limit 1
+      ) ayer on true
+     where m.active
+     order by coalesce(hoy.amount_cents, ayer.amount_cents, 0) desc, m.name
+  `;
+
+  return filas.map((f) => ({
+    id: f.id,
+    nombre: f.name,
+    banco: f.bank_number,
+    centavosHoy: f.centavos_hoy === null ? null : Number(f.centavos_hoy),
+    centavosPrevio: f.centavos_previo === null ? null : Number(f.centavos_previo),
+  }));
+}
+
 export async function getUltimaActualizacion(): Promise<string | null> {
   const [fila] = await sql<{ max: string | null }[]>`
     select max(reading_at) as max from app.jackpot_readings where amount_cents is not null

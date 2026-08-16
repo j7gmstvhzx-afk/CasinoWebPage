@@ -135,12 +135,30 @@ async function aplicar(filas: FilaImportada[]) {
     //    no generan lectura: así no se publican, en vez de salir en "$0.00".
     const conMonto = filas.filter((f) => f.centavos !== null);
     if (conMonto.length) {
+      const nombresConMonto = conMonto.map((f) => f.nombre);
+      const bancosConMonto = conMonto.map((f) => f.banco);
+
+      // Se borra la lectura de hoy si ya existía: una por máquina por día.
+      // Subir el archivo dos veces (porque venía un dato mal) corrige en vez de
+      // acumular, y así la flecha de "subió" sigue comparando contra ayer.
+      await tx`
+        delete from app.jackpot_readings r
+         using app.machines m
+         where r.machine_id = m.id
+           and app.gaming_date(r.reading_at) = app.gaming_date(now())
+           and (m.name, m.bank_number) in (
+             select t.name, t.bank_number
+               from unnest(${nombresConMonto}::text[], ${bancosConMonto}::smallint[])
+                 as t(name, bank_number)
+           )
+      `;
+
       await tx`
         insert into app.jackpot_readings (machine_id, amount_cents, reading_at)
         select m.id, t.centavos, now()
           from unnest(
-                 ${conMonto.map((f) => f.nombre)}::text[],
-                 ${conMonto.map((f) => f.banco)}::smallint[],
+                 ${nombresConMonto}::text[],
+                 ${bancosConMonto}::smallint[],
                  ${conMonto.map((f) => f.centavos!)}::bigint[]
                ) as t(name, bank_number, centavos)
           join app.machines m

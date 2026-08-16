@@ -1,52 +1,60 @@
 /**
  * Marca del casino.
  *
- * MARCADOR DE POSICIÓN. Es una reconstrucción de la ficha azul con el mandala
- * del logo real, hecha para no bloquear el desarrollo. Cuando el cliente
- * entregue el logo en alta resolución, se sustituye el <svg> de `ChipMark` por
- * el archivo real (idealmente SVG) y nada más cambia: la tipografía y el
- * espaciado del texto ya están calcados del sitio actual.
+ * Reconstrucción del logo real: ficha azul con seis muescas, mandala de pétalos
+ * y una PICA en el centro, y el texto en tres líneas (CASINO / ATLÁNTICO /
+ * MANATÍ).
+ *
+ * PARA SUSTITUIRLO POR EL ARCHIVO ORIGINAL: pon el logo en `public/logo.svg`
+ * (o .png) y cambia `ChipMark` por una <img src="/logo.svg" />. El texto de
+ * abajo se borra, porque el archivo original ya lo trae. Es un cambio de dos
+ * líneas — todo lo demás del sitio ya usa este componente.
  */
+
+/** Azul del logo. Vive aquí y no en los tokens porque es el color del archivo original. */
+const AZUL = '#4F82B8';
 
 export function ChipMark({ className = 'h-11 w-11' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 64 64" className={className} role="presentation" aria-hidden="true">
-      <defs>
-        <linearGradient id="chip-azul" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2BA9E0" />
-          <stop offset="100%" stopColor="#1B4F9C" />
-        </linearGradient>
-      </defs>
-
-      {/* Cuerpo de la ficha */}
-      <circle cx="32" cy="32" r="30" fill="url(#chip-azul)" />
-      <circle cx="32" cy="32" r="30" fill="none" stroke="#0A2547" strokeWidth="1.5" />
-
-      {/* Los seis bloques del borde */}
+    <svg viewBox="0 0 100 100" className={className} role="presentation" aria-hidden="true">
+      {/* Aro exterior con las seis muescas */}
+      <circle cx="50" cy="50" r="47" fill={AZUL} />
       {[0, 60, 120, 180, 240, 300].map((deg) => (
         <rect
           key={deg}
-          x="29"
-          y="1.5"
-          width="6"
-          height="11"
-          rx="1.5"
-          fill="#F7F4EE"
-          transform={`rotate(${deg} 32 32)`}
+          x="42"
+          y="1"
+          width="16"
+          height="17"
+          rx="1"
+          fill="#F2F4F6"
+          transform={`rotate(${deg} 50 50)`}
         />
       ))}
 
-      <circle cx="32" cy="32" r="21" fill="#F7F4EE" />
-      <circle cx="32" cy="32" r="21" fill="none" stroke="#1B4F9C" strokeWidth="1.2" />
+      {/* Disco interior */}
+      <circle cx="50" cy="50" r="35" fill="#F2F4F6" />
+      <circle cx="50" cy="50" r="31.5" fill="none" stroke={AZUL} strokeWidth="2.5" />
 
-      {/* Mandala */}
-      <g fill="none" stroke="#1B4F9C" strokeWidth="1.6">
-        {[0, 45, 90, 135].map((deg) => (
-          <ellipse key={deg} cx="32" cy="32" rx="15" ry="6" transform={`rotate(${deg} 32 32)`} />
+      {/* Mandala: ocho pétalos con voluta, como el original */}
+      <g fill="none" stroke={AZUL} strokeWidth="1.9" strokeLinecap="round">
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+          <g key={deg} transform={`rotate(${deg} 50 50)`}>
+            {/* Pétalo */}
+            <path d="M50 27.5 C43.5 18.5 46 10.5 50 7.5 C54 10.5 56.5 18.5 50 27.5 Z" />
+            {/* Voluta interior del pétalo */}
+            <path d="M50 22 C47.5 18 48.5 14.5 50.4 13.6 C52 14.8 51.6 17.6 49.7 17.8 C48.7 17.9 48.4 17 48.9 16.4" />
+          </g>
         ))}
       </g>
-      <circle cx="32" cy="32" r="5" fill="#1B4F9C" />
-      <circle cx="32" cy="32" r="2" fill="#F7F4EE" />
+
+      {/* Pica central */}
+      <path
+        d="M50 33 C50 33 39 43 39 50.5 C39 54.6 42 57.2 45.2 57.2 C47 57.2 48.4 56.4 49.2 55.2
+           C48.9 59.4 47.6 62.6 45.6 64.8 L54.4 64.8 C52.4 62.6 51.1 59.4 50.8 55.2
+           C51.6 56.4 53 57.2 54.8 57.2 C58 57.2 61 54.6 61 50.5 C61 43 50 33 50 33 Z"
+        fill={AZUL}
+      />
     </svg>
   );
 }
@@ -54,18 +62,28 @@ export function ChipMark({ className = 'h-11 w-11' }: { className?: string }) {
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-3">
-      <ChipMark className={compact ? 'h-9 w-9' : 'h-11 w-11 sm:h-12 sm:w-12'} />
-      <span className="leading-none">
+      <ChipMark className={compact ? 'h-10 w-10' : 'h-12 w-12 sm:h-14 sm:w-14'} />
+
+      {/* Tres líneas, como el logo original. Sobre fondo oscuro, el negro del
+          archivo pasa a crema y el azul se aclara para que se lea. */}
+      <span className="leading-[0.95]">
         <span
-          className={`block font-display font-semibold tracking-tight ${
+          className={`block font-display font-semibold tracking-tight text-crema ${
             compact ? 'text-lg' : 'text-xl sm:text-2xl'
           }`}
         >
-          CASINO <span className="text-cian">ATLÁNTICO</span>
+          CASINO
         </span>
         <span
-          className={`block font-display tracking-[0.42em] text-tenue ${
-            compact ? 'text-[9px]' : 'text-[10px] sm:text-xs'
+          className={`block font-display font-semibold tracking-tight text-[#7FB0DC] ${
+            compact ? 'text-lg' : 'text-xl sm:text-2xl'
+          }`}
+        >
+          ATLÁNTICO
+        </span>
+        <span
+          className={`block font-display tracking-[0.5em] text-tenue ${
+            compact ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'
           }`}
         >
           MANATÍ
