@@ -52,7 +52,7 @@ export default function PaginaTerminos() {
                 directos.
               </li>
               <li>
-                <strong className="text-crema">No es necesario comprar ni jugar nada</strong>{' '}
+                <strong className="text-tinta">No es necesario comprar ni jugar nada</strong>{' '}
                 para participar. La tirada es gratuita.
               </li>
             </ul>
@@ -66,7 +66,7 @@ export default function PaginaTerminos() {
               </li>
               <li>
                 Cada participante tiene derecho a{' '}
-                <strong className="text-crema">una (1) tirada gratuita por día natural</strong>,
+                <strong className="text-tinta">una (1) tirada gratuita por día natural</strong>,
                 contado en hora de Puerto Rico (AST).
               </li>
               <li>
@@ -84,14 +84,14 @@ export default function PaginaTerminos() {
                 en el área de Servicio al Cliente.
               </li>
               <li>
-                <strong className="text-crema">
+                <strong className="text-tinta">
                   Hay un (1) premio disponible por día natural.
                 </strong>{' '}
                 Una vez adjudicado el premio del día, las tiradas restantes de esa
                 jornada no resultan premiadas.
               </li>
               <li>
-                <strong className="text-crema">
+                <strong className="text-tinta">
                   Un mismo participante puede resultar premiado una (1) sola vez
                   cada treinta (30) días.
                 </strong>
@@ -134,7 +134,7 @@ export default function PaginaTerminos() {
                 sobre promociones y eventos del casino.
               </li>
               <li>
-                <strong className="text-crema">
+                <strong className="text-tinta">
                   No vendemos ni cedemos tus datos a terceros.
                 </strong>
               </li>
@@ -175,7 +175,7 @@ export default function PaginaTerminos() {
 function Bloque({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="font-display text-xl font-bold text-crema">{titulo}</h2>
+      <h2 className="font-display text-xl font-bold text-tinta">{titulo}</h2>
       <div className="mt-3 space-y-3 text-sm leading-relaxed text-tenue">{children}</div>
     </section>
   );

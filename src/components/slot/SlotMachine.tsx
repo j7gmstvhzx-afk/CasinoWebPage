@@ -220,12 +220,12 @@ export function SlotMachine({
   return (
     <div className="flex flex-col items-center">
       {/* Carcasa */}
-      <div className="relative rounded-3xl border border-dorado/30 bg-gradient-to-b from-noche-2 to-noche p-3 shadow-premio sm:p-4">
+      <div className="relative rounded-3xl border border-dorado/30 bg-gradient-to-b from-maquina-2 to-maquina p-3 shadow-premio sm:p-4">
         <div className="flex gap-2 sm:gap-3" aria-live="polite" aria-atomic="true">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="relative overflow-hidden rounded-2xl border border-linea bg-noche/80"
+              className="relative overflow-hidden rounded-2xl border border-linea bg-maquina"
               style={{ height: ITEM_H, width: ITEM_H }}
             >
               <div
@@ -273,7 +273,7 @@ export function SlotMachine({
         type="button"
         onClick={tirar}
         disabled={girando || deshabilitado}
-        className="mt-6 w-full max-w-sm rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-4 font-display text-lg font-bold tracking-wide text-noche shadow-premio transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+        className="mt-6 w-full max-w-sm rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
       >
         {girando ? 'GIRANDO…' : etiquetaBoton}
       </button>

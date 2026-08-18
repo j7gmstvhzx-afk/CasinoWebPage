@@ -4,7 +4,7 @@ import { NAV, SITE, PROMO, fullAddress } from '@/lib/site';
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-linea bg-noche/60">
+    <footer className="mt-24 border-t border-linea bg-superficie">
       <div className="contenedor grid gap-10 py-14 md:grid-cols-3">
         <div>
           <Logo compact />
@@ -15,7 +15,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h2 className="font-display text-sm font-semibold tracking-wide text-crema">
+          <h2 className="font-display text-sm font-semibold tracking-wide text-tinta">
             Visítanos
           </h2>
           <address className="mt-4 space-y-2 text-sm not-italic text-tenue">
@@ -48,7 +48,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h2 className="font-display text-sm font-semibold tracking-wide text-crema">
+          <h2 className="font-display text-sm font-semibold tracking-wide text-tinta">
             Explora
           </h2>
           <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-tenue">
@@ -82,6 +82,16 @@ export function Footer() {
             <span>Juega con responsabilidad.</span>
             <Link className="underline underline-offset-4 hover:text-cian" href="/terminos">
               Términos y condiciones
+            </Link>
+            {/* Entrada al panel del casino. Va aquí abajo, discreta: el cliente
+                no tiene por qué verla en el menú principal, pero el dueño y los
+                empleados necesitan poder llegar sin escribir la dirección de
+                memoria. La contraseña la sigue pidiendo /admin/entrar. */}
+            <Link
+              className="text-tenue/70 underline underline-offset-4 hover:text-cian"
+              href="/admin"
+            >
+              Administración
             </Link>
           </p>
         </div>

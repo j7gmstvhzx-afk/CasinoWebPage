@@ -43,7 +43,7 @@ export function FormularioEntrar() {
           autoFocus
           value={contrasena}
           onChange={(e) => setContrasena(e.target.value)}
-          className="w-full rounded-xl border border-linea bg-white/5 px-4 py-3 text-base focus:border-cian focus:outline-none"
+          className="w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-base focus:border-cian focus:outline-none"
         />
       </div>
 
@@ -56,7 +56,7 @@ export function FormularioEntrar() {
       <button
         type="submit"
         disabled={enviando}
-        className="w-full rounded-xl bg-cian px-6 py-3 font-semibold text-noche disabled:opacity-50"
+        className="w-full rounded-xl bg-cian px-6 py-3 font-semibold text-white disabled:opacity-50"
       >
         {enviando ? 'Entrando…' : 'Entrar'}
       </button>

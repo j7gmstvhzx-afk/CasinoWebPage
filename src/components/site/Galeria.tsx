@@ -63,7 +63,7 @@ export function Galeria({ items }: { items: ItemGaleria[] }) {
 
       {abierto !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-noche/95 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/80 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setAbierto(null);
           }}
@@ -74,7 +74,7 @@ export function Galeria({ items }: { items: ItemGaleria[] }) {
           <button
             type="button"
             onClick={() => setAbierto(null)}
-            className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-linea text-crema"
+            className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-linea text-tinta"
           >
             <span className="sr-only">Cerrar</span>
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -123,7 +123,7 @@ function FlechaVisor({
     <button
       type="button"
       onClick={onClick}
-      className={`absolute top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-linea bg-noche/70 text-crema ${
+      className={`absolute top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-linea bg-fondo/85 text-tinta ${
         izq ? 'left-3 sm:left-6' : 'right-3 sm:right-6'
       }`}
     >

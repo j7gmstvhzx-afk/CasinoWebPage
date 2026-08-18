@@ -38,7 +38,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0A2547',
+  // Color de la barra del navegador en celular. Va con el fondo del sitio: si
+  // se queda el azul oscuro del tema anterior, en Android sale una franja
+  // oscura encima de una página blanca.
+  themeColor: '#ffffff',
 };
 
 /**
@@ -71,7 +74,7 @@ export default function RootLayout({
       <body className="flex min-h-dvh flex-col">
         <a
           href="#contenido"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-cian focus:px-4 focus:py-2 focus:font-medium focus:text-noche"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-cian focus:px-4 focus:py-2 focus:font-medium focus:text-white"
         >
           Saltar al contenido
         </a>

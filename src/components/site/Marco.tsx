@@ -23,7 +23,7 @@ export function Marco({
   if (!imagen) {
     return (
       <div
-        className={`flex ${proporcion} items-center justify-center bg-gradient-to-br from-marca/40 to-noche`}
+        className={`flex ${proporcion} items-center justify-center bg-gradient-to-br from-superficie to-linea`}
       >
         <span className="px-4 text-center font-display text-sm text-tenue">{alt}</span>
       </div>

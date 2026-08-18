@@ -70,7 +70,7 @@ export default async function PaginaClientes() {
             igual en la tablet del mostrador y en cualquier navegador viejo. */}
         <a
           href="/api/admin/clientes/csv"
-          className="rounded-2xl bg-cian px-6 py-3 font-semibold text-noche"
+          className="rounded-2xl bg-cian px-6 py-3 font-semibold text-white"
         >
           Exportar a Excel (CSV)
         </a>
@@ -83,7 +83,7 @@ export default async function PaginaClientes() {
             {porPueblo.map((p) => (
               <li
                 key={p.municipality}
-                className="rounded-full border border-linea bg-white/5 px-4 py-2 text-sm"
+                className="rounded-full border border-linea bg-superficie px-4 py-2 text-sm"
               >
                 {p.municipality}{' '}
                 <span className="ml-1 font-semibold text-cian tabular">{p.n}</span>
@@ -128,7 +128,7 @@ export default async function PaginaClientes() {
         </div>
       )}
 
-      <p className="mt-8 rounded-2xl border border-linea bg-white/5 p-4 text-sm text-tenue">
+      <p className="mt-8 rounded-2xl border border-linea bg-superficie p-4 text-sm text-tenue">
         Estos datos se recogieron con consentimiento para fines de mercadeo. Si un
         cliente pide que lo saquen de la lista, hay que atenderlo — está en los
         términos y condiciones que aceptó.

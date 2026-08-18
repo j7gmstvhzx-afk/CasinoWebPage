@@ -116,7 +116,7 @@ export function PromoLauncher() {
         <button
           type="button"
           onClick={abrir}
-          className="anim-flotar fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-gradient-to-b from-dorado-2 to-dorado px-5 py-3.5 font-display text-sm font-bold text-noche shadow-premio transition-transform hover:scale-105 active:scale-95"
+          className="anim-flotar fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-gradient-to-b from-dorado-3 to-dorado-2 px-5 py-3.5 font-display text-sm font-bold text-tinta shadow-premio transition-transform hover:scale-105 active:scale-95"
         >
           <span aria-hidden="true" className="text-lg leading-none">
             🎰
@@ -127,7 +127,7 @@ export function PromoLauncher() {
 
       {abierto && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-noche/80 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 backdrop-blur-sm sm:items-center"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) cerrar();
           }}
@@ -137,12 +137,12 @@ export function PromoLauncher() {
             role="dialog"
             aria-modal="true"
             aria-label={`Gira y gana ${PROMO.prizeLabel}`}
-            className="anim-entrar relative my-auto w-full max-w-lg rounded-3xl border border-linea bg-noche-2/95 p-6 shadow-alza sm:p-8"
+            className="anim-entrar relative my-auto w-full max-w-lg rounded-3xl border border-linea bg-fondo p-6 shadow-alza sm:p-8"
           >
             <button
               type="button"
               onClick={cerrar}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-linea text-tenue transition-colors hover:text-crema"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-linea text-tenue transition-colors hover:text-tinta"
             >
               <span className="sr-only">Cerrar</span>
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">

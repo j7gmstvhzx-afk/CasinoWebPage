@@ -52,7 +52,7 @@ export function SubirImagen({
           <button
             type="button"
             onClick={() => onCambio(null)}
-            className="absolute right-3 top-3 rounded-full bg-noche/90 px-3 py-1.5 text-xs font-semibold text-crema"
+            className="absolute right-3 top-3 rounded-full bg-fondo/90 px-3 py-1.5 text-xs font-semibold text-tinta"
           >
             Quitar
           </button>

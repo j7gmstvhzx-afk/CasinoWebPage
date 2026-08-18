@@ -145,7 +145,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
                       onFocus={(e) => e.target.select()}
                       placeholder="0.00"
                       aria-label={`Premio de ${m.nombre}, banco ${m.banco}`}
-                      className="w-36 rounded-lg border border-linea bg-white/5 px-3 py-2 text-right tabular focus:border-cian focus:outline-none"
+                      className="w-36 rounded-lg border border-linea bg-superficie px-3 py-2 text-right tabular focus:border-cian focus:outline-none"
                     />
                   </div>
                 </td>
@@ -165,7 +165,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
               onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })}
               placeholder="Nombre de la máquina"
               aria-label="Nombre de la máquina nueva"
-              className="rounded-lg border border-linea bg-white/5 px-3 py-2 focus:border-cian focus:outline-none"
+              className="rounded-lg border border-linea bg-superficie px-3 py-2 focus:border-cian focus:outline-none"
             />
             <input
               value={nueva.banco}
@@ -173,7 +173,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
               placeholder="# de banco"
               inputMode="numeric"
               aria-label="Número de banco"
-              className="rounded-lg border border-linea bg-white/5 px-3 py-2 tabular focus:border-cian focus:outline-none"
+              className="rounded-lg border border-linea bg-superficie px-3 py-2 tabular focus:border-cian focus:outline-none"
             />
             <input
               value={nueva.monto}
@@ -181,7 +181,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
               placeholder="Premio (opcional)"
               inputMode="decimal"
               aria-label="Premio de la máquina nueva"
-              className="rounded-lg border border-linea bg-white/5 px-3 py-2 tabular focus:border-cian focus:outline-none"
+              className="rounded-lg border border-linea bg-superficie px-3 py-2 tabular focus:border-cian focus:outline-none"
             />
           </div>
           <button
@@ -219,7 +219,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
         type="button"
         onClick={guardar}
         disabled={guardando}
-        className="mt-6 w-full rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-4 font-display text-lg font-bold text-noche disabled:opacity-50 sm:w-auto sm:px-12"
+        className="mt-6 w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold text-tinta disabled:opacity-50 sm:w-auto sm:px-12"
       >
         {guardando ? 'Publicando…' : 'Publicar en la página'}
       </button>

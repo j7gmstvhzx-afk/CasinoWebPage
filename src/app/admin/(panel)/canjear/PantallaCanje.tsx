@@ -120,12 +120,12 @@ export function PantallaCanje({
           autoCapitalize="characters"
           spellCheck={false}
           aria-label="Código del cupón"
-          className="w-full rounded-2xl border border-linea bg-white/5 px-5 py-5 text-center font-display text-2xl font-bold tracking-[0.2em] tabular placeholder:text-tenue/40 focus:border-cian focus:outline-none sm:text-3xl"
+          className="w-full rounded-2xl border border-linea bg-superficie px-5 py-5 text-center font-display text-2xl font-bold tracking-[0.2em] tabular placeholder:text-tenue/40 focus:border-cian focus:outline-none sm:text-3xl"
         />
         <button
           type="submit"
           disabled={estado.t === 'buscando'}
-          className="shrink-0 rounded-2xl bg-cian px-8 py-5 font-display text-lg font-bold text-noche disabled:opacity-50"
+          className="shrink-0 rounded-2xl bg-cian px-8 py-5 font-display text-lg font-bold text-white disabled:opacity-50"
         >
           Buscar
         </button>
@@ -211,7 +211,7 @@ function FichaCupon({
 
       {canjeable ? (
         <>
-          <p className="mt-7 rounded-2xl border border-linea bg-white/5 p-4 text-sm text-tenue">
+          <p className="mt-7 rounded-2xl border border-linea bg-superficie p-4 text-sm text-tenue">
             Verifica que la identificación con foto coincida con el nombre antes
             de canjear. Esta acción no se puede deshacer.
           </p>
@@ -219,7 +219,7 @@ function FichaCupon({
             type="button"
             onClick={onCanjear}
             disabled={canjeando}
-            className="mt-4 w-full rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-5 font-display text-xl font-bold text-noche disabled:opacity-50"
+            className="mt-4 w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-5 font-display text-xl font-bold text-tinta disabled:opacity-50"
           >
             {canjeando ? 'Canjeando…' : `CANJEAR ${money(cupon.amount_cents)}`}
           </button>
@@ -263,7 +263,7 @@ function BotonOtro({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="mt-6 w-full rounded-2xl border border-linea px-6 py-3.5 font-medium text-tenue transition-colors hover:text-crema"
+      className="mt-6 w-full rounded-2xl border border-linea px-6 py-3.5 font-medium text-tenue transition-colors hover:text-tinta"
     >
       Buscar otro cupón
     </button>

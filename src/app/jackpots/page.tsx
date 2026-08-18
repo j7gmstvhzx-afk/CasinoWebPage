@@ -31,10 +31,10 @@ export default async function PaginaJackpots() {
         }
       >
         {ultima && (
-          <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-linea bg-white/5 px-4 py-2 text-sm">
+          <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-linea bg-superficie px-4 py-2 text-sm">
             <span className="h-2 w-2 shrink-0 rounded-full bg-gana anim-brillo" />
             <span className="text-tenue">Última actualización:</span>
-            <span className="font-medium text-crema">{relativeUpdate(ultima)}</span>
+            <span className="font-medium text-tinta">{relativeUpdate(ultima)}</span>
           </p>
         )}
       </PageHero>

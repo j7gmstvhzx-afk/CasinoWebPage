@@ -52,7 +52,7 @@ export function VistaPromos({
           className="anim-entrar mx-auto mt-4 max-h-[52vh] w-auto rounded-2xl border border-linea object-contain"
         />
       ) : (
-        <div className="mt-4 flex min-h-[16rem] items-center justify-center rounded-2xl border border-linea bg-gradient-to-br from-marca/40 to-noche p-8">
+        <div className="mt-4 flex min-h-[16rem] items-center justify-center rounded-2xl border border-linea bg-gradient-to-br from-superficie to-linea p-8">
           <p className="font-display text-3xl font-bold">{promo.title}</p>
         </div>
       )}
@@ -80,7 +80,7 @@ export function VistaPromos({
             <span
               key={p.id}
               className={`h-1.5 rounded-full transition-all ${
-                n === i ? 'w-6 bg-dorado' : 'w-1.5 bg-white/25'
+                n === i ? 'w-6 bg-dorado' : 'w-1.5 bg-linea'
               }`}
             />
           ))}
@@ -90,7 +90,7 @@ export function VistaPromos({
       <button
         type="button"
         onClick={() => (ultima ? onTerminar() : setI(i + 1))}
-        className="mt-6 w-full rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-4 font-display text-lg font-bold tracking-wide text-noche shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        className="mt-6 w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99]"
       >
         {ultima ? '🎰 IR A LA TRAGAMONEDAS' : 'SIGUIENTE'}
       </button>
@@ -99,7 +99,7 @@ export function VistaPromos({
         <button
           type="button"
           onClick={() => setI(i - 1)}
-          className="mt-3 text-sm text-tenue underline underline-offset-4 hover:text-crema"
+          className="mt-3 text-sm text-tenue underline underline-offset-4 hover:text-tinta"
         >
           Ver la anterior
         </button>

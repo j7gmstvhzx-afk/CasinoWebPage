@@ -3,59 +3,69 @@
 /* ==========================================================================
    Identidad de Casino Atlántico Manatí
 
-   Los azules salen del logo (la ficha con el mandala) para que el sitio se
-   sienta del casino y no una plantilla. El dorado queda reservado para dinero:
-   montos de jackpot, el premio de $25 y el botón de girar. Si el dorado se usa
-   para cualquier otra cosa deja de significar "premio".
+   El sitio es CLARO y minimalista: fondo blanco, mucho aire, y el color
+   reservado para lo que importa. Los azules salen del logo (la ficha con el
+   mandala). El dorado queda solo para dinero: montos de jackpot, el premio de
+   $25 y el botón de girar. Si el dorado se usa para cualquier otra cosa deja
+   de significar "premio".
+
+   Los nombres de los tokens dicen su función, no su color: así el día que
+   cambie un tono no hay que renombrar media aplicación.
    ========================================================================== */
 
 @theme {
-  /* Marca */
-  --color-noche: #0a2547; /* fondo principal, noche de casino */
-  --color-noche-2: #0d3160; /* superficies elevadas */
-  --color-marca: #1b4f9c; /* azul del logo */
-  --color-cian: #2ba9e0; /* cian del logo, acentos y enlaces */
-  --color-dorado: #f2b33d; /* SOLO dinero y premios */
-  --color-dorado-2: #ffd479;
-  --color-gana: #34d399;
-  --color-pierde: #f87171;
-  --color-crema: #f7f4ee;
-
   /* Superficies */
-  --color-linea: rgb(255 255 255 / 0.1);
-  --color-tenue: rgb(247 244 238 / 0.62);
+  --color-fondo: #ffffff; /* la página */
+  --color-superficie: #f5f8fc; /* tarjetas y bloques elevados */
+  --color-linea: #e4eaf2; /* bordes y separadores */
+
+  /* Texto */
+  --color-tinta: #10294a; /* texto principal: azul muy oscuro, no negro puro */
+  --color-tenue: #5d7189; /* texto secundario. Contraste 4.6:1 sobre blanco */
+
+  /* Marca */
+  --color-marca: #1b4f9c; /* azul del logo */
+  --color-cian: #0b7fb4; /* cian del logo, oscurecido para leerse sobre blanco */
+
+  /* Dinero. Oscurecido respecto al logo: el dorado claro sobre blanco no se lee. */
+  --color-dorado: #b07d13; /* dorado para TEXTO sobre fondo claro */
+  --color-dorado-2: #f2b33d; /* dorado para RELLENOS: botones, fichas, brillos */
+  --color-dorado-3: #ffd479; /* el más claro, para degradados */
+
+  /* La CARCASA de la tragamonedas. Es un objeto oscuro a propósito: sobre una
+     página blanca, una máquina oscura es lo primero que mira el ojo. */
+  --color-maquina: #0a2547;
+  --color-maquina-2: #123a72;
+
+  --color-gana: #0b8a5f;
+  --color-pierde: #c2372f;
 
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
   --radius-card: 1rem;
 
-  --shadow-premio: 0 0 0 1px rgb(242 179 61 / 0.35), 0 18px 50px -12px rgb(242 179 61 / 0.35);
-  --shadow-alza: 0 20px 45px -20px rgb(0 0 0 / 0.75);
+  /* Sombras suaves y de un solo tono: es lo que separa un sitio limpio de uno
+     cargado. Nada de sombras negras duras. */
+  --shadow-suave: 0 1px 2px rgb(16 41 74 / 0.04), 0 8px 24px -12px rgb(16 41 74 / 0.12);
+  --shadow-alza: 0 2px 4px rgb(16 41 74 / 0.05), 0 24px 48px -20px rgb(16 41 74 / 0.22);
+  --shadow-premio: 0 0 0 1px rgb(242 179 61 / 0.5), 0 16px 40px -14px rgb(242 179 61 / 0.55);
 }
 
 /* --------------------------------------------------------------------------
    Base
-
-   El sitio es de tema oscuro fijo, a propósito: es un casino, y la mitad del
-   tráfico llega de noche desde Facebook. No se hereda el tema del sistema.
    -------------------------------------------------------------------------- */
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   scroll-behavior: smooth;
 }
 
 body {
-  background-color: var(--color-noche);
-  color: var(--color-crema);
+  background-color: var(--color-fondo);
+  color: var(--color-tinta);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  /* Halos suaves para que el fondo no sea un azul plano. */
-  background-image:
-    radial-gradient(65rem 65rem at 15% -10%, rgb(27 79 156 / 0.5), transparent 60%),
-    radial-gradient(45rem 45rem at 95% 0%, rgb(43 169 224 / 0.22), transparent 55%);
-  background-attachment: fixed;
 }
 
 h1,
@@ -80,6 +90,10 @@ h4 {
   border-radius: 4px;
 }
 
+::selection {
+  background: rgb(11 127 180 / 0.18);
+}
+
 /* --------------------------------------------------------------------------
    Utilidades compartidas
    -------------------------------------------------------------------------- */
@@ -91,18 +105,30 @@ h4 {
   padding-inline: 1.25rem;
 }
 
+/* Tarjeta minimalista: blanca, borde de un pelo, sombra apenas perceptible. */
 @utility tarjeta {
-  background: linear-gradient(160deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.03));
+  background: var(--color-fondo);
   border: 1px solid var(--color-linea);
   border-radius: var(--radius-card);
-  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-suave);
+}
+
+/* Variante sin sombra, para rejillas densas donde 12 sombras ensucian. */
+@utility tarjeta-plana {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radius-card);
+}
+
+/* Bloque azul de marca: para las zonas donde sí queremos peso visual
+   (el héroe de la tragamonedas, el pie de página). */
+@utility bloque-marca {
+  background: linear-gradient(150deg, #123a72, #0b2a55 60%, #0a2547);
+  color: #f7f9fc;
 }
 
 @utility texto-dorado {
-  background: linear-gradient(100deg, var(--color-dorado-2), var(--color-dorado));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--color-dorado);
 }
 
 /* --------------------------------------------------------------------------

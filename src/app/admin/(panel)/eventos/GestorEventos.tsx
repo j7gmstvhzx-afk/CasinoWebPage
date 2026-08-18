@@ -129,7 +129,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
         <button
           type="button"
           onClick={abrirNuevo}
-          className="mt-6 rounded-2xl bg-cian px-6 py-3 font-semibold text-noche"
+          className="mt-6 rounded-2xl bg-cian px-6 py-3 font-semibold text-white"
         >
           + Nueva promoción
         </button>
@@ -198,7 +198,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                   onChange={(e) =>
                     setBorrador({ ...borrador, show_in_popup: e.target.checked })
                   }
-                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-white/5 accent-dorado"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-superficie accent-dorado"
                 />
                 <span className="text-sm">
                   <span className="font-semibold text-dorado">
@@ -214,7 +214,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
             </div>
 
             <div>
-              <p className="mb-1.5 block text-sm font-medium text-crema">Arte de la promoción</p>
+              <p className="mb-1.5 block text-sm font-medium text-tinta">Arte de la promoción</p>
               <SubirImagen
                 carpeta="eventos"
                 valor={borrador.image_path}
@@ -237,7 +237,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
               type="button"
               onClick={guardar}
               disabled={ocupado}
-              className="rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-3.5 font-display font-bold text-noche disabled:opacity-50"
+              className="rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-3.5 font-display font-bold text-tinta disabled:opacity-50"
             >
               {ocupado ? 'Guardando…' : 'Guardar'}
             </button>
@@ -268,7 +268,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={e.image_path} alt={e.title} className="aspect-[4/5] w-full object-cover" />
               ) : (
-                <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-br from-marca/40 to-noche">
+                <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-br from-superficie to-linea">
                   <span className="px-4 text-center text-sm text-tenue">Sin arte todavía</span>
                 </div>
               )}
@@ -335,7 +335,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
 }
 
 const campo =
-  'w-full rounded-xl border border-linea bg-white/5 px-4 py-3 text-base text-crema ' +
+  'w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-base text-tinta ' +
   'placeholder:text-tenue/60 focus:border-cian focus:outline-none';
 
 function Campo({
@@ -349,7 +349,7 @@ function Campo({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-crema">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-tinta">
         {etiqueta}
       </label>
       {children}

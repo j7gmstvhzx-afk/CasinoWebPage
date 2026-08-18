@@ -9,10 +9,15 @@ import { maskPhoneInput } from '@/lib/phone';
 import { formatVoucherCode } from '@/lib/voucher';
 import { PROMO } from '@/lib/site';
 import { untilLabel } from '@/lib/format';
+import { pedirJson, ERROR_GENERICO } from '@/lib/fetch-json';
+
+/** Las palabras que pidió el dueño para una tirada que no gana. */
+const MENSAJE_PIERDE = 'Esta no es una combinación ganadora, intenta mañana nuevamente.';
 
 type Estado =
   | { paso: 'cargando' }
   | { paso: 'registro' }
+  | { paso: 'entrar' }
   | { paso: 'maquina'; nombre?: string }
   | { paso: 'resultado'; outcome: SpinOutcome; proximaTirada: string };
 
@@ -26,6 +31,35 @@ type EstadoServidor = {
   voucher?: { code: string; expiresAt: string } | null;
   proximaTirada?: string;
 };
+
+/**
+ * Traduce la respuesta de GET /api/spin a lo que hay que enseñar.
+ *
+ * Vive fuera del componente y se usa en DOS sitios: al abrir, y justo después
+ * de entrar con el celular. Antes, entrar saltaba directo a la máquina dando
+ * por hecho que el jugador no había tirado — y a quien ya había tirado hoy le
+ * salía el botón de GIRAR otra vez. El servidor lo rechazaba igual (la tirada
+ * del día es única por jugador), pero enseñar un botón que no va a funcionar es
+ * mentirle al cliente.
+ */
+function estadoDesdeServidor(d: EstadoServidor & { ok?: boolean }): Estado {
+  if (!d.ok || !d.registrado) return { paso: 'registro' };
+
+  if (d.tiroHoy && d.reels && d.resultado) {
+    return {
+      paso: 'resultado',
+      outcome: {
+        reels: d.reels,
+        result: d.resultado,
+        alreadySpunToday: true,
+        voucherCode: d.voucher?.code ?? null,
+      },
+      proximaTirada: d.proximaTirada ?? '',
+    };
+  }
+
+  return { paso: 'maquina', nombre: d.nombre };
+}
 
 export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   const [estado, setEstado] = useState<Estado>({ paso: 'cargando' });
@@ -57,27 +91,14 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   // Al abrir se pregunta el estado sin consumir la tirada del día.
   useEffect(() => {
     let vivo = true;
-    fetch('/api/spin')
-      .then((r) => r.json())
-      .then((d: EstadoServidor & { ok: boolean }) => {
+    pedirJson('/api/spin')
+      .then((d) => d as EstadoServidor & { ok: boolean })
+      .then((d) => {
         if (!vivo) return;
         const conPromos = d.promos ?? [];
         setPromos(conPromos);
         setPromosVistas(conPromos.length === 0 || yaVioPromosHoy());
-        if (!d.ok || !d.registrado) return setEstado({ paso: 'registro' });
-        if (d.tiroHoy && d.reels && d.resultado) {
-          return setEstado({
-            paso: 'resultado',
-            outcome: {
-              reels: d.reels,
-              result: d.resultado,
-              alreadySpunToday: true,
-              voucherCode: d.voucher?.code ?? null,
-            },
-            proximaTirada: d.proximaTirada ?? '',
-          });
-        }
-        setEstado({ paso: 'maquina', nombre: d.nombre });
+        setEstado(estadoDesdeServidor(d));
       })
       .catch(() => vivo && setEstado({ paso: 'registro' }));
     return () => {
@@ -86,7 +107,9 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   }, []);
 
   const enviarTirada = useCallback(async (): Promise<SpinOutcome> => {
-    const res = await fetch('/api/spin', {
+    // pedirJson ya traduce cualquier fallo a un mensaje en español; si la ruta
+    // se cae, aquí NUNCA sube el texto que escribe el navegador.
+    const d = (await pedirJson('/api/spin', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -96,9 +119,13 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
         acepta,
         website: trampa,
       }),
-    });
-    const d = await res.json();
-    if (!d.ok) throw new Error(d.mensaje ?? 'No pudimos completar tu tirada.');
+    })) as {
+      reels: number[];
+      result: 'win' | 'lose';
+      alreadySpunToday: boolean;
+      voucher: { code: string } | null;
+    };
+
     return {
       reels: d.reels,
       result: d.result,
@@ -106,6 +133,42 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
       voucherCode: d.voucher?.code ?? null,
     };
   }, [nombre, celular, pueblo, acepta, trampa]);
+
+  const entrar = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setErrorForm(null);
+      setEnviando(true);
+      try {
+        await pedirJson('/api/entrar', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ celular, nombre: nombre.trim() }),
+        });
+
+        // Ya con la cookie puesta, se vuelve a preguntar el estado: puede que
+        // esta persona ya haya tirado hoy desde otro teléfono.
+        const estadoReal = (await pedirJson('/api/spin')) as EstadoServidor & { ok: boolean };
+        setEstado(estadoDesdeServidor(estadoReal));
+      } catch (err) {
+        setErrorForm(err instanceof Error ? err.message : ERROR_GENERICO);
+      } finally {
+        setEnviando(false);
+      }
+    },
+    [celular, nombre],
+  );
+
+  // Salir hace falta de verdad: en el casino un mismo celular pasa de mano en
+  // mano, y sin esto el segundo cliente vería el nombre del primero.
+  const salir = useCallback(async () => {
+    await pedirJson('/api/entrar', { method: 'DELETE' }).catch(() => null);
+    setNombre('');
+    setCelular('');
+    setPueblo('');
+    setAcepta(false);
+    setEstado({ paso: 'registro' });
+  }, []);
 
   const registrar = useCallback(
     async (e: React.FormEvent) => {
@@ -145,6 +208,74 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
           setPromosVistas(true);
         }}
       />
+    );
+  }
+
+  if (estado.paso === 'entrar') {
+    return (
+      <form onSubmit={entrar} className="anim-entrar">
+        <div className="text-center">
+          <h2 className="font-display text-3xl font-bold">Entra a tu cuenta</h2>
+          <p className="mt-2 text-sm text-tenue">
+            Con los mismos datos que usaste al registrarte.
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <Campo etiqueta="Celular" htmlFor="entrar-celular">
+            <input
+              id="entrar-celular"
+              name="tel"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              required
+              value={celular}
+              onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
+              placeholder="(787) 000-0000"
+              className={`${estiloCampo} tabular`}
+            />
+          </Campo>
+
+          <Campo etiqueta="Nombre completo" htmlFor="entrar-nombre">
+            <input
+              id="entrar-nombre"
+              name="name"
+              autoComplete="name"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej. María Rivera Colón"
+              className={estiloCampo}
+            />
+          </Campo>
+
+          {errorForm && (
+            <p role="alert" className="text-sm text-pierde">
+              {errorForm}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+          >
+            {enviando ? 'ENTRANDO…' : 'ENTRAR'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setErrorForm(null);
+              setEstado({ paso: 'registro' });
+            }}
+            className="w-full text-center text-sm text-tenue underline underline-offset-4 hover:text-tinta"
+          >
+            Todavía no me he registrado
+          </button>
+        </div>
+      </form>
     );
   }
 
@@ -220,7 +351,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
               type="checkbox"
               checked={acepta}
               onChange={(e) => setAcepta(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-white/5 accent-dorado"
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-superficie accent-dorado"
             />
             <span>
               Acepto recibir promociones y los{' '}
@@ -240,7 +371,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-4 font-display text-lg font-bold tracking-wide text-noche shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+            className="w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
           >
             CONTINUAR
           </button>
@@ -248,6 +379,17 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
           <p className="text-center text-xs text-tenue">
             Solo mayores de {PROMO.minAge} años · Una tirada por persona al día
           </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setErrorForm(null);
+              setEstado({ paso: 'entrar' });
+            }}
+            className="w-full text-center text-sm text-cian underline underline-offset-4"
+          >
+            ¿Ya te registraste? Entra aquí
+          </button>
         </div>
       </form>
     );
@@ -256,7 +398,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   if (estado.paso === 'maquina') {
     return (
       <div className="anim-entrar">
-        <Encabezado saludo={estado.nombre} />
+        <Encabezado saludo={estado.nombre} onSalir={salir} />
         <div className="mt-7">
           <SlotMachine
             onSpin={enviarTirada}
@@ -302,16 +444,16 @@ function Resultado({
           Presenta tu cupón en Servicio al Cliente para reclamar tu premio en efectivo.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-dorado/40 bg-noche-2/70 p-5">
+        <div className="mt-6 rounded-2xl border border-dorado/40 bg-fondo p-5">
           <p className="text-xs uppercase tracking-widest text-tenue">Tu código</p>
-          <p className="mt-1.5 font-display text-2xl font-bold tracking-[0.18em] text-crema tabular">
+          <p className="mt-1.5 font-display text-2xl font-bold tracking-[0.18em] text-tinta tabular">
             {formatVoucherCode(outcome.voucherCode)}
           </p>
         </div>
 
         <Link
           href={`/premio/${outcome.voucherCode}`}
-          className="anim-pulso-premio mt-6 block w-full rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-4 font-display text-lg font-bold text-noche"
+          className="anim-pulso-premio mt-6 block w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold text-tinta"
         >
           VER MI CUPÓN
         </Link>
@@ -335,17 +477,17 @@ function Resultado({
 
   return (
     <div className="anim-entrar text-center">
-      <p className="font-display text-3xl font-bold text-crema">
+      <p className="font-display text-3xl font-bold text-tinta">
         {outcome.alreadySpunToday ? 'Ya tiraste hoy' : '¡Casi!'}
       </p>
       <p className="mt-3 text-tenue">
         {outcome.alreadySpunToday
           ? 'Tu próxima tirada gratis está a la vuelta de la esquina.'
-          : 'No fue esta vez. Vuelve mañana para tu próxima tirada gratis.'}
+          : MENSAJE_PIERDE}
       </p>
 
       {proximaTirada && (
-        <p className="mt-5 inline-block rounded-full border border-linea px-4 py-2 text-sm text-crema">
+        <p className="mt-5 inline-block rounded-full border border-linea px-4 py-2 text-sm text-tinta">
           Próxima tirada en{' '}
           <span className="font-semibold text-cian tabular">{untilLabel(proximaTirada)}</span>
         </p>
@@ -379,19 +521,28 @@ function CerrarBoton({ onCerrar }: { onCerrar?: () => void }) {
     <button
       type="button"
       onClick={onCerrar}
-      className="mt-6 text-sm text-tenue underline underline-offset-4 hover:text-crema"
+      className="mt-6 text-sm text-tenue underline underline-offset-4 hover:text-tinta"
     >
       Seguir explorando
     </button>
   );
 }
 
-function Encabezado({ saludo }: { saludo?: string }) {
+function Encabezado({ saludo, onSalir }: { saludo?: string; onSalir?: () => void }) {
   return (
     <div className="text-center">
       {saludo ? (
-        <p className="font-display text-lg text-crema">
-          ¡Hola de nuevo, <span className="text-cian">{saludo}</span>!
+        <p className="font-display text-lg text-tinta">
+          ¡Hola de nuevo, <span className="text-cian">{saludo}</span>!{' '}
+          {onSalir && (
+            <button
+              type="button"
+              onClick={onSalir}
+              className="align-middle text-xs font-normal text-tenue underline underline-offset-2 hover:text-tinta"
+            >
+              (no soy yo)
+            </button>
+          )}
         </p>
       ) : null}
       <h2 className="mt-1 font-display text-3xl font-bold sm:text-4xl">
@@ -415,7 +566,7 @@ function Campo({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-crema">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-tinta">
         {etiqueta}
       </label>
       {children}
@@ -424,7 +575,7 @@ function Campo({
 }
 
 const estiloCampo =
-  'w-full rounded-xl border border-linea bg-white/5 px-4 py-3 text-base text-crema ' +
+  'w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-base text-tinta ' +
   'placeholder:text-tenue/60 focus:border-cian focus:outline-none';
 
 /** Confeti sin dependencias: 40 pedacitos con caída y giro. */

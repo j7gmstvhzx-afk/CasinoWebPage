@@ -98,7 +98,7 @@ export default async function PaginaPremio({
     <div className="contenedor flex justify-center py-12 sm:py-16">
       <div className="w-full max-w-md">
         <div
-          className={`overflow-hidden rounded-3xl border bg-noche-2/90 ${
+          className={`overflow-hidden rounded-3xl border bg-fondo ${
             activo ? 'border-dorado/40 shadow-premio' : 'border-linea opacity-90'
           }`}
         >
@@ -145,7 +145,7 @@ export default async function PaginaPremio({
             </dl>
 
             {activo && (
-              <ul className="mt-7 space-y-2 rounded-2xl border border-linea bg-white/5 p-4 text-left text-sm text-tenue">
+              <ul className="mt-7 space-y-2 rounded-2xl border border-linea bg-superficie p-4 text-left text-sm text-tenue">
                 <li>▸ Presenta esta pantalla en Servicio al Cliente.</li>
                 <li>▸ Requiere identificación con foto.</li>
                 <li>▸ Válido por {PROMO.voucherDays} días desde que lo ganaste.</li>
@@ -172,7 +172,7 @@ function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-linea/60 pb-2">
       <dt className="text-tenue">{etiqueta}</dt>
-      <dd className="text-right font-medium text-crema">{valor}</dd>
+      <dd className="text-right font-medium text-tinta">{valor}</dd>
     </div>
   );
 }

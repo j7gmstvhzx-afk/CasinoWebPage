@@ -36,8 +36,10 @@ export default async function Inicio() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(45rem 30rem at 20% 0%, rgb(43 169 224 / .3), transparent 62%),' +
-              'radial-gradient(40rem 28rem at 88% 15%, rgb(242 179 61 / .16), transparent 58%)',
+              // Muy tenues: sobre blanco, lo que en el tema oscuro era un halo
+              // sutil se convierte en dos manchas de color.
+              'radial-gradient(48rem 30rem at 18% -10%, rgb(43 169 224 / .10), transparent 60%),' +
+              'radial-gradient(40rem 26rem at 90% 0%, rgb(242 179 61 / .09), transparent 58%)',
           }}
         />
 
@@ -61,7 +63,7 @@ export default async function Inicio() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/jackpots"
-                className="rounded-2xl border border-linea bg-white/5 px-6 py-3.5 font-medium transition-colors hover:border-cian hover:text-cian"
+                className="rounded-2xl border border-linea bg-superficie px-6 py-3.5 font-medium transition-colors hover:border-cian hover:text-cian"
               >
                 Ver jackpots de hoy
               </Link>
@@ -82,7 +84,7 @@ export default async function Inicio() {
 
           {/* La máquina va embebida en la portada, no solo en el modal: quien
               cerró el modal tiene que seguir topándose con ella. */}
-          <div className="w-full rounded-3xl border border-linea bg-noche-2/70 p-6 shadow-alza sm:p-8 lg:w-[27rem]">
+          <div className="w-full rounded-3xl border border-linea bg-fondo p-6 shadow-alza sm:p-8 lg:w-[27rem]">
             <PromoExperience />
           </div>
         </div>
@@ -195,7 +197,7 @@ export default async function Inicio() {
           <div>
             <h2 className="font-display text-3xl font-bold">Visítanos</h2>
             <address className="mt-5 space-y-3 not-italic text-tenue">
-              <p className="text-crema">{fullAddress()}</p>
+              <p className="text-tinta">{fullAddress()}</p>
               <p>
                 <a className="hover:text-cian" href={`tel:${SITE.phone}`}>
                   {SITE.phoneDisplay}
@@ -208,7 +210,7 @@ export default async function Inicio() {
                 href={SITE.waze}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="rounded-xl bg-cian px-5 py-2.5 text-sm font-semibold text-noche"
+                className="rounded-xl bg-cian px-5 py-2.5 text-sm font-semibold text-white"
               >
                 Abrir en Waze
               </a>
@@ -230,7 +232,7 @@ export default async function Inicio() {
               { n: '16 h', t: 'Abierto al día' },
               { n: PROMO.prizeLabel, t: 'Premio diario' },
             ].map((s) => (
-              <li key={s.t} className="rounded-2xl border border-linea bg-white/5 p-5 text-center">
+              <li key={s.t} className="rounded-2xl border border-linea bg-superficie p-5 text-center">
                 <p className="font-display text-3xl font-bold text-cian tabular">{s.n}</p>
                 <p className="mt-1 text-xs uppercase tracking-wider text-tenue">{s.t}</p>
               </li>

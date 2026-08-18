@@ -81,7 +81,7 @@ export default async function PaginaResumen() {
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href="/admin/canjear"
-          className="rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-6 py-3.5 font-display font-bold text-noche"
+          className="rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-6 py-3.5 font-display font-bold text-tinta"
         >
           Canjear un cupón
         </Link>

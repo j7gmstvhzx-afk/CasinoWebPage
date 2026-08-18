@@ -19,7 +19,7 @@ export function PanelJackpots({ maquinas }: { maquinas: MaquinaFila[] }) {
       <div
         role="tablist"
         aria-label="Cómo actualizar los premios"
-        className="mt-6 inline-flex rounded-2xl border border-linea bg-white/5 p-1"
+        className="mt-6 inline-flex rounded-2xl border border-linea bg-superficie p-1"
       >
         {(
           [
@@ -34,7 +34,7 @@ export function PanelJackpots({ maquinas }: { maquinas: MaquinaFila[] }) {
             aria-selected={modo === valor}
             onClick={() => setModo(valor)}
             className={`rounded-xl px-5 py-2.5 text-sm font-medium transition-colors ${
-              modo === valor ? 'bg-cian text-noche' : 'text-tenue hover:text-crema'
+              modo === valor ? 'bg-cian text-white' : 'text-tenue hover:text-tinta'
             }`}
           >
             {etiqueta}

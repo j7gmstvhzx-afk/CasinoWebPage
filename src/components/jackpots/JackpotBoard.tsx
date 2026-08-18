@@ -69,7 +69,7 @@ export function JackpotBoard({
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar máquina o número de banco…"
             aria-label="Buscar máquina o número de banco"
-            className="w-full rounded-2xl border border-linea bg-white/5 py-3.5 pl-11 pr-4 text-base text-crema placeholder:text-tenue/60 focus:border-cian focus:outline-none"
+            className="w-full rounded-2xl border border-linea bg-superficie py-3.5 pl-11 pr-4 text-base text-tinta placeholder:text-tenue/60 focus:border-cian focus:outline-none"
           />
         </div>
       </div>

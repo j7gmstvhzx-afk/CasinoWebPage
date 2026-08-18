@@ -104,7 +104,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
             setEditando('nuevo');
             setError(null);
           }}
-          className="mt-6 rounded-2xl bg-cian px-6 py-3 font-semibold text-noche"
+          className="mt-6 rounded-2xl bg-cian px-6 py-3 font-semibold text-white"
         >
           + Añadir máquina nueva
         </button>
@@ -170,7 +170,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
             </div>
 
             <div>
-              <p className="mb-1.5 block text-sm font-medium text-crema">Foto de la máquina</p>
+              <p className="mb-1.5 block text-sm font-medium text-tinta">Foto de la máquina</p>
               <SubirImagen
                 carpeta="maquinas"
                 valor={b.image_path}
@@ -191,7 +191,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
               type="button"
               onClick={guardar}
               disabled={ocupado}
-              className="rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-3.5 font-display font-bold text-noche disabled:opacity-50"
+              className="rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-3.5 font-display font-bold text-tinta disabled:opacity-50"
             >
               {ocupado ? 'Guardando…' : 'Guardar'}
             </button>
@@ -222,7 +222,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.image_path} alt={m.name} className="aspect-[16/10] w-full object-cover" />
               ) : (
-                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-marca/40 to-noche">
+                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-superficie to-linea">
                   <span className="px-4 text-center text-sm text-tenue">Sin foto todavía</span>
                 </div>
               )}
@@ -289,7 +289,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
 }
 
 const campo =
-  'w-full rounded-xl border border-linea bg-white/5 px-4 py-3 text-base text-crema ' +
+  'w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-base text-tinta ' +
   'placeholder:text-tenue/60 focus:border-cian focus:outline-none';
 
 function Campo({
@@ -303,7 +303,7 @@ function Campo({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-crema">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-tinta">
         {etiqueta}
       </label>
       {children}

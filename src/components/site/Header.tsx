@@ -45,7 +45,7 @@ export function Header() {
     <header
       className={`sticky top-0 z-40 transition-colors duration-300 ${
         desplazado || abierto
-          ? 'border-b border-linea bg-noche/90 backdrop-blur-xl'
+          ? 'border-b border-linea bg-fondo/90 backdrop-blur-xl'
           : 'border-b border-transparent'
       }`}
     >
@@ -62,8 +62,8 @@ export function Header() {
               aria-current={activo(item.href) ? 'page' : undefined}
               className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors ${
                 activo(item.href)
-                  ? 'bg-white/10 text-crema'
-                  : 'text-tenue hover:bg-white/5 hover:text-crema'
+                  ? 'bg-marca/10 text-tinta'
+                  : 'text-tenue hover:bg-superficie hover:text-tinta'
               }`}
             >
               {item.label}
@@ -98,7 +98,7 @@ export function Header() {
                   href={item.href}
                   aria-current={activo(item.href) ? 'page' : undefined}
                   className={`block rounded-xl px-4 py-3 text-base font-medium ${
-                    activo(item.href) ? 'bg-white/10 text-crema' : 'text-tenue'
+                    activo(item.href) ? 'bg-marca/10 text-tinta' : 'text-tenue'
                   }`}
                 >
                   {item.label}

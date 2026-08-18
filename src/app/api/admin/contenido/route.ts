@@ -47,6 +47,15 @@ const ESQUEMAS = {
     caption: z.string().trim().max(300).nullable().optional(),
     sort_order: z.number().int().min(0).max(999).optional(),
   }),
+  menu: z.object({
+    section_id: z.number().int().min(1).max(32767),
+    name: z.string().trim().min(2).max(140),
+    description: z.string().trim().max(500).nullable().optional(),
+    // NULL a propósito: es "precio del día", no "gratis".
+    price_cents: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    available: z.boolean().optional(),
+    sort_order: z.number().int().min(0).max(999).optional(),
+  }),
 } as const;
 
 type Tipo = keyof typeof ESQUEMAS;
@@ -55,6 +64,21 @@ const TABLAS: Record<Tipo, string> = {
   eventos: 'events',
   maquinas: 'new_machines',
   galeria: 'gallery_items',
+  menu: 'menu_items',
+};
+
+/**
+ * Qué tablas guardan una imagen.
+ *
+ * Al borrar hay que recuperar `image_path` para limpiar también el archivo del
+ * bucket. Los platos del menú no tienen imagen, y pedir esa columna en un
+ * `returning` reventaría la consulta.
+ */
+const CON_IMAGEN: Record<Tipo, boolean> = {
+  eventos: true,
+  maquinas: true,
+  galeria: true,
+  menu: false,
 };
 
 const esTipo = (t: unknown): t is Tipo => typeof t === 'string' && t in ESQUEMAS;
@@ -131,6 +155,11 @@ export async function DELETE(req: NextRequest) {
   }
 
   const tabla = TABLAS[cuerpo.tipo];
+
+  if (!CON_IMAGEN[cuerpo.tipo]) {
+    await sql`delete from ${sql(`app.${tabla}`)} where id = ${cuerpo.id}::uuid`;
+    return NextResponse.json({ ok: true });
+  }
 
   // Se recupera la ruta de la imagen ANTES de borrar la fila, para poder
   // limpiar el archivo del bucket y no ir dejando basura acumulada.

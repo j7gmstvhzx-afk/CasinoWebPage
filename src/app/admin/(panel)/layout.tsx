@@ -25,6 +25,7 @@ export default async function LayoutPanel({ children }: { children: React.ReactN
     { href: '/admin/jackpots', label: 'Jackpots' },
     { href: '/admin/eventos', label: 'Promociones' },
     { href: '/admin/maquinas-nuevas', label: 'Máquinas nuevas' },
+    { href: '/admin/menu', label: 'Menú' },
     { href: '/admin/clientes', label: 'Clientes' },
   ];
 
@@ -36,7 +37,7 @@ export default async function LayoutPanel({ children }: { children: React.ReactN
             <Link
               key={e.href}
               href={e.href}
-              className="rounded-full px-4 py-2 text-sm font-medium text-tenue transition-colors hover:bg-white/10 hover:text-crema"
+              className="rounded-full px-4 py-2 text-sm font-medium text-tenue transition-colors hover:bg-marca/10 hover:text-tinta"
             >
               {e.label}
             </Link>

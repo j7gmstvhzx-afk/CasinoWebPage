@@ -84,7 +84,7 @@ export function ImportadorJackpots() {
             {estado.t === 'leyendo' ? 'Leyendo el archivo…' : 'Arrastra aquí tu archivo de premios'}
           </p>
           <p className="mt-2 text-sm text-tenue">
-            Sube <strong className="text-crema">Tabla Premios App</strong> tal como
+            Sube <strong className="text-tinta">Tabla Premios App</strong> tal como
             está. No hay que cambiarle nada.
           </p>
 
@@ -92,7 +92,7 @@ export function ImportadorJackpots() {
             type="button"
             onClick={() => entrada.current?.click()}
             disabled={estado.t === 'leyendo'}
-            className="mt-6 rounded-2xl bg-cian px-6 py-3 font-semibold text-noche disabled:opacity-50"
+            className="mt-6 rounded-2xl bg-cian px-6 py-3 font-semibold text-white disabled:opacity-50"
           >
             Escoger archivo
           </button>
@@ -221,7 +221,7 @@ function VistaPrevia({
           type="button"
           onClick={onConfirmar}
           disabled={aplicando}
-          className="flex-1 rounded-2xl bg-gradient-to-b from-dorado-2 to-dorado px-8 py-4 font-display text-lg font-bold text-noche disabled:opacity-50"
+          className="flex-1 rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold text-tinta disabled:opacity-50"
         >
           {aplicando ? 'Publicando…' : 'Publicar en la página'}
         </button>
@@ -240,8 +240,8 @@ function VistaPrevia({
 
 function Dato({ n, t, acento }: { n: number; t: string; acento?: boolean }) {
   return (
-    <li className="rounded-2xl border border-linea bg-white/5 p-4">
-      <p className={`font-display text-3xl font-bold tabular ${acento ? 'text-dorado' : 'text-crema'}`}>
+    <li className="rounded-2xl border border-linea bg-superficie p-4">
+      <p className={`font-display text-3xl font-bold tabular ${acento ? 'text-dorado' : 'text-tinta'}`}>
         {n}
       </p>
       <p className="mt-1 text-xs text-tenue">{t}</p>

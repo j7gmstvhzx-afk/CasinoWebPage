@@ -62,7 +62,7 @@ export default function PaginaContacto() {
                 href={SITE.waze}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="rounded-xl bg-cian px-5 py-3 text-sm font-semibold text-noche"
+                className="rounded-xl bg-cian px-5 py-3 text-sm font-semibold text-white"
               >
                 Abrir en Waze
               </a>
@@ -100,7 +100,7 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
       <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-tenue">
         {etiqueta}
       </dt>
-      <dd className="mt-2 text-crema">{children}</dd>
+      <dd className="mt-2 text-tinta">{children}</dd>
     </div>
   );
 }
