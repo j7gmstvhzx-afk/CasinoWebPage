@@ -43,10 +43,18 @@ export function Galeria({ items }: { items: ItemGaleria[] }) {
   // Le avisa al registro de overlays que este visor está abierto: es el mismo
   // mecanismo que usa el menú móvil del header con el pop-up de promoción,
   // para que ninguno de los dos se monte encima del otro a media interacción.
+  //
+  // La dependencia es el booleano derivado, no `abierto` a secas: `abierto`
+  // es el ÍNDICE de la foto y cambia con cada flecha. Si el efecto dependiera
+  // de él, cada paso de foto en foto apagaría y volvería a prender el
+  // registro sin necesidad, avisándole a cada suscriptor (como el
+  // temporizador del pop-up) de una apertura y cierre que en realidad nunca
+  // pasó.
+  const galeriaAbierta = abierto !== null;
   useEffect(() => {
-    setOverlayActivo('galeria', abierto !== null);
+    setOverlayActivo('galeria', galeriaAbierta);
     return () => setOverlayActivo('galeria', false);
-  }, [abierto]);
+  }, [galeriaAbierta]);
 
   return (
     <>

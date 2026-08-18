@@ -46,9 +46,17 @@ export function PromoLauncher() {
   // se monta encima justo cuando va a tocar. Con el descuento, el total de
   // espera nunca pasa de DEMORA_MS de tiempo sin pausa, sin importar cuántas
   // veces se abra y cierre el otro overlay de por medio.
+  //
+  // NO se corta cuando el remanente llega a 0: `setTimeout(fn, 0)` dispara en
+  // el siguiente tick, así que "ya no queda espera" se traduce en "muéstrate
+  // ya", nunca en "no te muestres más". Con un corte por `restante <= 0`,
+  // suficientes aperturas y cierres rápidos del otro overlay —cada uno
+  // interrumpiendo la cuenta antes de completarla— podían agotar el
+  // remanente sin que el pop-up llegara a dispararse ni una sola vez, y se
+  // quedaba sin mostrarse el resto de la sesión.
   const restanteRef = useRef(DEMORA_MS);
   useEffect(() => {
-    if (oculto || algunOverlayActivo || restanteRef.current <= 0) return;
+    if (oculto || algunOverlayActivo) return;
     let visto: string | null = null;
     try {
       visto = window.localStorage.getItem(CLAVE_VISTO);
@@ -59,7 +67,7 @@ export function PromoLauncher() {
     if (visto === hoy) return;
 
     const inicio = Date.now();
-    const t = setTimeout(() => setAbierto(true), restanteRef.current);
+    const t = setTimeout(() => setAbierto(true), Math.max(0, restanteRef.current));
     return () => {
       clearTimeout(t);
       restanteRef.current = Math.max(0, restanteRef.current - (Date.now() - inicio));
