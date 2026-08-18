@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Logo } from './Logo';
 import { NAV } from '@/lib/site';
-import { setMenuMovilAbierto } from '@/lib/menu-movil';
+import { setOverlayActivo } from '@/lib/overlay-activo';
 
 export function Header() {
   const pathname = usePathname();
@@ -42,12 +42,13 @@ export function Header() {
   const activo = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
 
-  // Le avisa al pop-up de promoción que no se abra solo mientras este menú
-  // esté abierto: los dos son overlays de pantalla completa independientes,
-  // y sin este aviso el pop-up podía montarse encima a mitad de un toque.
+  // Le avisa al registro de overlays que este menú está abierto: los dos son
+  // overlays de pantalla completa independientes, y sin este aviso el pop-up
+  // de promoción (o el visor de la galería) podía montarse encima a mitad de
+  // un toque.
   useEffect(() => {
-    setMenuMovilAbierto(abierto);
-    return () => setMenuMovilAbierto(false);
+    setOverlayActivo('menu-movil', abierto);
+    return () => setOverlayActivo('menu-movil', false);
   }, [abierto]);
 
   // JERARQUÍA DE SUPERPOSICIÓN, fijada aquí a propósito porque ya se rompió
@@ -134,10 +135,17 @@ export function Header() {
       {abierto && (
         <nav id="menu-movil" className="contenedor pb-4 lg:hidden" aria-label="Principal (móvil)">
           <ul className="grid gap-1">
+            {/* onClick cierra el menú en CUALQUIER toque, además del efecto
+                de arriba que lo cierra cuando cambia la ruta. Hacen falta los
+                dos: si el visitante toca el link de la pestaña en la que ya
+                está, el pathname no cambia, el efecto nunca dispara, y el
+                menú se quedaba abierto sin ninguna reacción visible — se
+                sentía como que el toque no hacía nada. */}
             {NAV.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => setAbierto(false)}
                   aria-current={activo(item.href) ? 'page' : undefined}
                   className={`block rounded-xl px-4 py-3 text-base font-medium ${
                     activo(item.href) ? 'bg-marca/10 text-tinta' : 'text-tenue'
@@ -150,6 +158,7 @@ export function Header() {
           </ul>
           <Link
             href="/admin"
+            onClick={() => setAbierto(false)}
             className="mt-3 block border-t border-linea px-4 pt-3 text-sm font-medium text-tenue/70"
           >
             Personal — acceso de empleados

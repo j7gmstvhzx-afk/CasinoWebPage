@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ItemGaleria } from '@/lib/queries';
+import { setOverlayActivo } from '@/lib/overlay-activo';
 
 /**
  * Galería con visor a pantalla completa.
@@ -38,6 +39,14 @@ export function Galeria({ items }: { items: ItemGaleria[] }) {
       document.body.style.overflow = previo;
     };
   }, [abierto, mover]);
+
+  // Le avisa al registro de overlays que este visor está abierto: es el mismo
+  // mecanismo que usa el menú móvil del header con el pop-up de promoción,
+  // para que ninguno de los dos se monte encima del otro a media interacción.
+  useEffect(() => {
+    setOverlayActivo('galeria', abierto !== null);
+    return () => setOverlayActivo('galeria', false);
+  }, [abierto]);
 
   return (
     <>

@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PromoExperience } from './PromoExperience';
 import { PROMO } from '@/lib/site';
-import { useMenuMovilAbierto } from '@/lib/menu-movil';
+import { useAlgunOverlayActivo } from '@/lib/overlay-activo';
 
 /**
  * Lanzador de la promoción.
@@ -31,18 +31,24 @@ export function PromoLauncher() {
   const enAdmin = pathname.startsWith('/admin');
   const enPremio = pathname.startsWith('/premio');
   const oculto = enAdmin || enPremio;
-  const menuMovilAbierto = useMenuMovilAbierto();
+  const algunOverlayActivo = useAlgunOverlayActivo();
 
-  // Apertura automática, una vez al día.
+  // Apertura automática, una vez al día, tras DEMORA_MS de tiempo real
+  // (no reloj de pared) sin que haya otro overlay abierto — el menú móvil del
+  // header o el visor de la galería.
   //
-  // Se detiene mientras el menú móvil del header está abierto: los dos son
-  // overlays de pantalla completa independientes, y si el temporizador
-  // disparara a mitad de esa interacción, este modal se montaría encima justo
-  // cuando el visitante va a tocar un link — el toque se lo comería este
-  // overlay en vez del link, y la página se sentiría congelada sin ningún
-  // error. Al cerrar el menú, el temporizador arranca de nuevo desde cero.
+  // El tiempo que falta se guarda en una ref y se DESCUENTA, nunca se
+  // reinicia. Si el temporizador se reiniciara cada vez que el otro overlay
+  // se cierra (como pasaba antes), el primer ciclo de abrir-y-cerrar el menú
+  // casi nunca alcanza a disparar a media interacción, pero para el segundo
+  // ciclo ya lleva un rato corriendo en silencio — y si el visitante tarda
+  // más de DEMORA_MS en volver a abrir el menú y tocar otro link, este modal
+  // se monta encima justo cuando va a tocar. Con el descuento, el total de
+  // espera nunca pasa de DEMORA_MS de tiempo sin pausa, sin importar cuántas
+  // veces se abra y cierre el otro overlay de por medio.
+  const restanteRef = useRef(DEMORA_MS);
   useEffect(() => {
-    if (oculto || menuMovilAbierto) return;
+    if (oculto || algunOverlayActivo || restanteRef.current <= 0) return;
     let visto: string | null = null;
     try {
       visto = window.localStorage.getItem(CLAVE_VISTO);
@@ -52,9 +58,13 @@ export function PromoLauncher() {
     const hoy = new Date().toDateString();
     if (visto === hoy) return;
 
-    const t = setTimeout(() => setAbierto(true), DEMORA_MS);
-    return () => clearTimeout(t);
-  }, [oculto, menuMovilAbierto]);
+    const inicio = Date.now();
+    const t = setTimeout(() => setAbierto(true), restanteRef.current);
+    return () => {
+      clearTimeout(t);
+      restanteRef.current = Math.max(0, restanteRef.current - (Date.now() - inicio));
+    };
+  }, [oculto, algunOverlayActivo]);
 
   const cerrar = useCallback(() => {
     setAbierto(false);
