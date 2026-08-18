@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { sql } from '@/lib/db';
-import { normalizePhone, PHONE_ERROR_ES } from '@/lib/phone';
+import { registrarJugador } from '@/lib/registro';
 import { losingReels, winningReels } from '@/lib/reels';
 import { generateVoucherCode } from '@/lib/voucher';
 import {
@@ -10,7 +10,6 @@ import {
   getClientIp,
   signToken,
   cookieHeader,
-  SESSION_COOKIE,
   DEVICE_COOKIE,
 } from '@/lib/session';
 import { nextMidnightPr } from '@/lib/format';
@@ -109,52 +108,19 @@ export async function POST(req: NextRequest) {
 
   let playerId = sesion;
 
-  // --- Registro -------------------------------------------------------------
+  // --- Registro al vuelo ----------------------------------------------------
+  // Caso de respaldo: normalmente la cuenta ya se creó en /api/registrar antes
+  // de llegar a la máquina, y aquí solo se tira. Pero si llega una tirada sin
+  // sesión (cookie perdida entre pasos, o un cliente que llama directo), se
+  // registra con los mismos datos y la misma lógica, sin duplicarla.
   if (!playerId) {
-    const { nombre, celular, puebloId, acepta } = parsed.data;
-    if (!nombre || !celular || !puebloId) {
-      return error('REGISTRO_REQUERIDO', 'Completa tu nombre, celular y pueblo.');
+    const r = await registrarJugador(parsed.data, { ip, deviceId: dispositivo });
+    if (!r.ok) return error(r.codigo, r.mensaje, r.status);
+    if (r.bloqueado) {
+      return error('CUENTA_BLOQUEADA', 'Esta cuenta no puede participar. Pasa por Servicio al Cliente.', 403);
     }
-    if (!acepta) {
-      return error('CONSENTIMIENTO_REQUERIDO', 'Debes aceptar los términos para participar.');
-    }
-
-    const tel = normalizePhone(celular);
-    if (!tel.ok) return error('TELEFONO_INVALIDO', PHONE_ERROR_ES[tel.reason]);
-
-    const [permitido] = await sql<{ rate_hit: boolean }[]>`
-      select app.rate_hit('register_ip', ${ip}, interval '1 hour', 12) as rate_hit
-    `;
-    if (!permitido.rate_hit) {
-      return error('DEMASIADOS_INTENTOS', 'Demasiados registros desde esta conexión. Intenta más tarde.', 429);
-    }
-
-    // DO UPDATE, no DO NOTHING: con DO NOTHING un conflicto devuelve cero filas
-    // y RETURNING no da nada, así que haría falta un SELECT extra y un
-    // reintento. Así siempre vuelve la fila.
-    const [jugador] = await sql<{ id: string; blocked_at: string | null }[]>`
-      insert into app.players (phone_e164, full_name, municipality_id, consent_at)
-      values (${tel.e164}, ${nombre}, ${puebloId}, now())
-      on conflict (phone_e164) do update
-        set last_seen_at = now(),
-            full_name    = excluded.full_name,
-            municipality_id = excluded.municipality_id
-      returning id, blocked_at
-    `;
-
-    // Un código de área de fuera de PR no se rechaza — puede ser un turista o
-    // alguien que conserva su número de cuando vivía en Estados Unidos. Se deja
-    // anotado para revisión y ya.
-    if (!tel.isPuertoRico) {
-      await sql`
-        insert into app.risk_events (player_id, device_id, ip_inet, kind, score, detail)
-        values (${jugador.id}, ${dispositivo}, ${ip}, 'area_code_no_pr', 10,
-                ${sql.json({ areaCode: tel.areaCode })})
-      `;
-    }
-
-    playerId = jugador.id;
-    cookiesNuevas.push(cookieHeader(SESSION_COOKIE, await signToken({ pid: playerId })));
+    playerId = r.playerId;
+    cookiesNuevas.push(r.cookieSesion);
   }
 
   // --- Tirada ---------------------------------------------------------------

@@ -181,13 +181,31 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
       if (!pueblo) return setErrorForm('Selecciona tu pueblo.');
       if (!acepta) return setErrorForm('Debes aceptar los términos para participar.');
 
-      // No se dispara la tirada aquí: solo se pasa a la máquina. El cliente
-      // tiene que halar la palanca — es la mitad de la gracia.
+      // La cuenta se GUARDA aquí, no al tirar. Antes solo se pasaba a la máquina
+      // y el registro únicamente quedaba grabado si la persona halaba la palanca;
+      // quien cerraba antes no existía después y no podía "Entrar". La tirada
+      // sigue siendo aparte: halar la palanca en la máquina.
       setEnviando(true);
-      setEstado({ paso: 'maquina', nombre: nombre.trim().split(/\s+/)[0] });
-      setEnviando(false);
+      try {
+        const d = (await pedirJson('/api/registrar', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            nombre: nombre.trim(),
+            celular,
+            puebloId: pueblo ? Number(pueblo) : undefined,
+            acepta,
+            website: trampa,
+          }),
+        })) as { nombre?: string };
+        setEstado({ paso: 'maquina', nombre: d.nombre ?? nombre.trim().split(/\s+/)[0] });
+      } catch (err) {
+        setErrorForm(err instanceof Error ? err.message : ERROR_GENERICO);
+      } finally {
+        setEnviando(false);
+      }
     },
-    [nombre, pueblo, acepta],
+    [nombre, celular, pueblo, acepta, trampa],
   );
 
   if (estado.paso === 'cargando') {
@@ -373,7 +391,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
             disabled={enviando}
             className="w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
           >
-            CONTINUAR
+            {enviando ? 'GUARDANDO…' : 'CONTINUAR'}
           </button>
 
           <p className="text-center text-xs text-tenue">
