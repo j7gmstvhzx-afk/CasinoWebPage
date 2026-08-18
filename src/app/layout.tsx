@@ -78,7 +78,11 @@ export default function RootLayout({
       <body className="flex min-h-dvh flex-col">
         <a
           href="#contenido"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-cian focus:px-4 focus:py-2 focus:font-medium focus:text-white"
+          // z-[60]: por encima incluso del header (z-50). Sin esto, al
+          // enfocar este enlace con Tab el header lo tapaba visualmente —
+          // seguía funcionando por teclado, pero quien navega por teclado
+          // nunca veía dónde estaba el foco.
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-cian focus:px-4 focus:py-2 focus:font-medium focus:text-white"
         >
           Saltar al contenido
         </a>

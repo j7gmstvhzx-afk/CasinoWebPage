@@ -14,6 +14,8 @@ import { money } from '@/lib/format';
  * entretenimiento; con él, es una instrucción.
  */
 
+type Filtro = 'todos' | 'calientes' | 'suben';
+
 export function JackpotBoard({
   jackpots,
   intervaloRefresco = 60_000,
@@ -22,26 +24,37 @@ export function JackpotBoard({
   intervaloRefresco?: number;
 }) {
   const [busqueda, setBusqueda] = useState('');
+  const [filtro, setFiltro] = useState<Filtro>('todos');
   const router = useRouter();
 
+  const calientes = useMemo(() => jackpots.filter((j) => j.caliente).length, [jackpots]);
+  const suben = useMemo(() => jackpots.filter((j) => j.tendencia === 'sube').length, [jackpots]);
+
   const filtrados = useMemo(() => {
+    let lista = jackpots;
+    if (filtro === 'calientes') lista = lista.filter((j) => j.caliente);
+    if (filtro === 'suben') lista = lista.filter((j) => j.tendencia === 'sube');
+
     const q = busqueda.trim().toLowerCase();
-    if (!q) return jackpots;
+    if (!q) return lista;
     // Acepta nombre de máquina O número de banco: escribir "31" encuentra las
     // máquinas del banco 31, que es como la gente busca cuando ya estuvo aquí.
-    return jackpots.filter(
+    return lista.filter(
       (j) => j.nombre.toLowerCase().includes(q) || String(j.banco) === q,
     );
-  }, [jackpots, busqueda]);
+  }, [jackpots, busqueda, filtro]);
 
-  // Los 3 premios más grandes se destacan en un "podio" arriba del tablero;
-  // el resto sigue abajo en la lista de siempre. `jackpots` ya llega ordenado
-  // de mayor a menor desde la consulta.
-  const podio = useMemo(() => filtrados.slice(0, 3), [filtrados]);
-  const resto = useMemo(() => filtrados.slice(3), [filtrados]);
+  // El premio más grande se destaca solo, en una franja propia; el 2° y 3°
+  // van debajo en un podio de dos; el resto sigue en la parrilla de siempre.
+  // Solo tiene sentido con la lista completa: buscando o filtrando, la
+  // persona ya sabe qué está mirando y un podio parcial solo confunde.
+  const mostrarPodio = !busqueda && filtro === 'todos';
+  const primero = mostrarPodio ? filtrados[0] : undefined;
+  const podio2y3 = mostrarPodio ? filtrados.slice(1, 3) : [];
+  const resto = mostrarPodio ? filtrados.slice(3) : filtrados;
   const maxCentavos = useMemo(
-    () => filtrados.reduce((m, j) => Math.max(m, j.centavos), 1),
-    [filtrados],
+    () => jackpots.reduce((m, j) => Math.max(m, j.centavos), 1),
+    [jackpots],
   );
 
   // Refresco silencioso: router.refresh() vuelve a pedir el componente de
@@ -61,7 +74,7 @@ export function JackpotBoard({
 
   return (
     <>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <div className="relative flex-1">
           <svg
             viewBox="0 0 24 24"
@@ -84,29 +97,38 @@ export function JackpotBoard({
         </div>
       </div>
 
+      <div className="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar premios">
+        <Chip activo={filtro === 'todos'} onClick={() => setFiltro('todos')}>
+          Todos · {jackpots.length}
+        </Chip>
+        <Chip activo={filtro === 'calientes'} onClick={() => setFiltro('calientes')} disabled={calientes === 0}>
+          🔥 Calientes · {calientes}
+        </Chip>
+        <Chip activo={filtro === 'suben'} onClick={() => setFiltro('suben')} disabled={suben === 0}>
+          ↑ Subiendo · {suben}
+        </Chip>
+      </div>
+
       {filtrados.length === 0 ? (
         <p className="tarjeta px-6 py-12 text-center text-tenue">
           {jackpots.length === 0
             ? 'Los premios se están actualizando. Vuelve en un rato.'
-            : `No encontramos nada para "${busqueda}".`}
+            : busqueda
+              ? `No encontramos nada para "${busqueda}".`
+              : 'Ninguno cumple con ese filtro ahora mismo.'}
         </p>
-      ) : busqueda ? (
-        // Buscando: lista plana. El podio de los 3 más grandes no tiene
-        // sentido cuando la persona ya sabe qué máquina quiere.
-        <ul className="grid gap-3">
-          {filtrados.map((j) => (
-            <FilaJackpot key={j.id} j={j} max={maxCentavos} />
-          ))}
-        </ul>
       ) : (
         <>
-          {podio.length > 0 && (
-            <ul className="mb-4 grid gap-3 sm:grid-cols-3">
-              {podio.map((j, i) => (
-                <TarjetaPodio key={j.id} j={j} puesto={i + 1} max={maxCentavos} />
+          {primero && <TarjetaHero j={primero} max={maxCentavos} />}
+
+          {podio2y3.length > 0 && (
+            <ul className="mb-4 grid gap-3 sm:grid-cols-2">
+              {podio2y3.map((j, i) => (
+                <TarjetaPodio key={j.id} j={j} puesto={i + 2} max={maxCentavos} />
               ))}
             </ul>
           )}
+
           {resto.length > 0 && (
             <ul className="grid gap-3 sm:grid-cols-2">
               {resto.map((j) => (
@@ -117,6 +139,34 @@ export function JackpotBoard({
         </>
       )}
     </>
+  );
+}
+
+function Chip({
+  activo,
+  disabled,
+  onClick,
+  children,
+}: {
+  activo: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={activo}
+      className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        activo
+          ? 'border-dorado/60 bg-dorado/10 text-dorado'
+          : 'border-linea text-tenue hover:border-tenue hover:text-tinta'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -134,6 +184,61 @@ function BarraRelativa({ centavos, max, className }: { centavos: number; max: nu
   );
 }
 
+/** El premio del día, en su propia franja. Es la primera cifra que alguien ve
+ * al entrar a la página, y tiene que leerse como un titular, no como una fila
+ * más de una lista. */
+function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
+  return (
+    <div className="tarjeta relative mb-4 overflow-hidden border-dorado/50 px-6 py-8 shadow-premio sm:px-10 sm:py-10">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-dorado-3/20 via-transparent to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="anim-brillo pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gradient-to-br from-dorado-3 via-dorado-2 to-dorado opacity-25 blur-3xl"
+      />
+
+      <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-dorado-3 via-dorado-2 to-dorado px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-tinta">
+            🏆 Premio más alto hoy
+          </span>
+          <p className="mt-3 truncate font-display text-2xl font-bold sm:text-3xl">{j.nombre}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
+            <span>Banco {j.banco}</span>
+            {j.desactualizado && (
+              <span className="normal-case tracking-normal text-tenue/70">· sin actualizar hoy</span>
+            )}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          {j.caliente && (
+            <span
+              title="Por encima de su promedio de los últimos 30 días"
+              className="anim-brillo shrink-0 rounded-full border border-dorado/40 bg-dorado/10 px-2.5 py-1 text-xs font-semibold text-dorado"
+            >
+              🔥 CALIENTE
+            </span>
+          )}
+          <MontoAnimado
+            centavos={j.centavos}
+            className="font-display text-4xl font-bold tabular texto-dorado sm:text-6xl"
+          />
+          {j.tendencia === 'sube' && (
+            <span aria-label="Subió desde la última lectura" className="text-2xl text-gana">
+              ↑
+            </span>
+          )}
+        </div>
+      </div>
+
+      <BarraRelativa centavos={j.centavos} max={max} className="relative mt-6 h-2" />
+    </div>
+  );
+}
+
 const MEDALLA = [
   { emoji: '🥇', anillo: 'from-dorado-3 via-dorado-2 to-dorado', halo: 'shadow-premio' },
   { emoji: '🥈', anillo: 'from-slate-200 via-slate-300 to-slate-400', halo: 'shadow-suave' },
@@ -143,11 +248,7 @@ const MEDALLA = [
 function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max: number }) {
   const m = MEDALLA[puesto - 1];
   return (
-    <li
-      className={`tarjeta relative overflow-hidden px-5 py-5 transition-transform hover:-translate-y-0.5 ${m.halo} ${
-        puesto === 1 ? 'border-dorado/50 sm:py-6' : 'border-linea'
-      }`}
-    >
+    <li className={`tarjeta relative overflow-hidden px-5 py-5 transition-transform hover:-translate-y-0.5 ${m.halo}`}>
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br opacity-20 blur-2xl ${m.anillo}`}
@@ -159,13 +260,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
           >
             {m.emoji} #{puesto}
           </span>
-          <p
-            className={`mt-2 truncate font-display font-semibold ${
-              puesto === 1 ? 'text-xl sm:text-2xl' : 'text-lg'
-            }`}
-          >
-            {j.nombre}
-          </p>
+          <p className="mt-2 truncate font-display text-lg font-semibold">{j.nombre}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
             <span>Banco {j.banco}</span>
             {j.desactualizado && (
@@ -184,12 +279,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
       </div>
 
       <div className="relative mt-3 flex items-center gap-2">
-        <MontoAnimado
-          centavos={j.centavos}
-          className={`font-display font-bold tabular texto-dorado ${
-            puesto === 1 ? 'text-3xl sm:text-4xl' : 'text-2xl'
-          }`}
-        />
+        <MontoAnimado centavos={j.centavos} className="font-display text-2xl font-bold tabular texto-dorado" />
         {j.tendencia === 'sube' && (
           <span aria-label="Subió desde la última lectura" className="text-gana">
             ↑

@@ -50,13 +50,21 @@ export function Header() {
     return () => setMenuMovilAbierto(false);
   }, [abierto]);
 
-  // z-50: por ENCIMA del overlay del pop-up de promoción (z-40 en
-  // PromoLauncher), a propósito. El pop-up se abre solo, sin que nadie lo pida,
-  // y si el header quedara por debajo, su propio botón de menú se volvía
-  // untocable en cuanto el pop-up aparecía — el visitante veía el sitio
-  // "congelado" porque su toque caía sobre el overlay, no sobre el botón. Con
-  // el header siempre arriba, el menú del sitio nunca deja de responder, esté
-  // el pop-up abierto o no.
+  // JERARQUÍA DE SUPERPOSICIÓN, fijada aquí a propósito porque ya se rompió
+  // una vez por no estar escrita en ningún sitio:
+  //
+  //   z-[60]  el enlace "Saltar al contenido" del layout — por encima de TODO
+  //   z-50    este header — por encima de cualquier overlay de la página
+  //   z-40    overlays de pantalla completa (pop-up de promoción, visor de
+  //           galería) — por encima del contenido normal, por debajo del header
+  //
+  // La regla de fondo: el header NUNCA puede quedar por debajo de un overlay,
+  // sea cual sea. Cuando el pop-up de promoción compartía el mismo nivel que
+  // el header, su botón de menú se volvía untocable en cuanto el pop-up se
+  // abría solo (algo que pasa constantemente, sin que nadie lo pida) — el
+  // visitante tocaba el menú y no pasaba nada, porque el toque caía sobre el
+  // overlay, no sobre el botón. Cualquier overlay nuevo que se agregue debe
+  // quedar en z-40 o menos, nunca igualar o superar z-50.
   return (
     <header
       className={`sticky top-0 z-50 transition-colors duration-300 ${

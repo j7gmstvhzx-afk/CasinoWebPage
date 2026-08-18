@@ -63,7 +63,11 @@ export function Galeria({ items }: { items: ItemGaleria[] }) {
 
       {abierto !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/80 p-4 backdrop-blur-sm"
+          // z-40, igual que el pop-up de promoción: cualquier overlay de
+          // pantalla completa va POR DEBAJO del header (z-50) a propósito,
+          // para que el menú del sitio nunca deje de responder mientras algo
+          // esté abierto encima de la página.
+          className="fixed inset-0 z-40 flex items-center justify-center bg-tinta/80 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setAbierto(null);
           }}
