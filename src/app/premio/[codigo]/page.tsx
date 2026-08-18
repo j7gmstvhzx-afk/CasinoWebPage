@@ -6,7 +6,7 @@ import { sql } from '@/lib/db';
 import { normalizeVoucherCode, formatVoucherCode } from '@/lib/voucher';
 import { money, dateTime, longDate } from '@/lib/format';
 import { SITE, PROMO } from '@/lib/site';
-import { ChipMark } from '@/components/site/Logo';
+import { Logo } from '@/components/site/Logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,9 +102,13 @@ export default async function PaginaPremio({
             activo ? 'border-dorado/40 shadow-premio' : 'border-linea opacity-90'
           }`}
         >
-          <div className="flex items-center gap-2.5 border-b border-linea px-6 py-4">
-            <ChipMark className="h-7 w-7" />
-            <p className="font-display text-sm font-semibold tracking-wide">{SITE.name}</p>
+          {/* El logo completo, no un recorte de la ficha: el archivo original es
+              un lockup horizontal y cualquier recorte cuadrado corta letras. En
+              un cupón que el cliente enseña en el mostrador, el logo tiene que
+              verse entero. Ya dice el nombre del casino, así que sobra el texto
+              al lado. */}
+          <div className="flex items-center justify-center border-b border-linea px-6 py-4">
+            <Logo compact />
           </div>
 
           <div className="px-6 py-8 text-center">

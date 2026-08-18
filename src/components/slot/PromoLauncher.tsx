@@ -137,12 +137,17 @@ export function PromoLauncher() {
             role="dialog"
             aria-modal="true"
             aria-label={`Gira y gana ${PROMO.prizeLabel}`}
-            className="anim-entrar relative my-auto w-full max-w-lg rounded-3xl border border-linea bg-fondo p-6 shadow-alza sm:p-8"
+            className="anim-entrar relative my-auto w-full max-w-lg rounded-3xl border border-linea bg-fondo p-6 pt-14 shadow-alza sm:p-8 sm:pt-14"
           >
+            {/* z-10 NO es decoración: sin él este botón queda por debajo del
+                contenido del modal, que ocupa todo el ancho, y el navegador le
+                entrega el clic al texto de la promoción en vez de a la X. El
+                visitante no podía cerrar el modal NI usar el menú del sitio.
+                Además `bg-fondo`, para que se lea encima del contenido. */}
             <button
               type="button"
               onClick={cerrar}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-linea text-tenue transition-colors hover:text-tinta"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-linea bg-fondo text-tenue shadow-suave transition-colors hover:border-tenue hover:text-tinta"
             >
               <span className="sr-only">Cerrar</span>
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">

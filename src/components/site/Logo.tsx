@@ -32,30 +32,3 @@ export function Logo({ compact = false }: { compact?: boolean }) {
     />
   );
 }
-
-/**
- * Solo la ficha, recortada del mismo archivo.
- *
- * Para espacios cuadrados donde el lockup completo se vería diminuto: la
- * pastilla flotante de "GANA $25" y los marcadores de posición de imágenes. El
- * recorte se hace con CSS sobre el archivo original — no hay un segundo archivo
- * que mantener sincronizado si algún día cambia el logo.
- */
-export function ChipMark({ className = 'h-11 w-11' }: { className?: string }) {
-  return (
-    <span
-      className={`relative inline-block shrink-0 overflow-hidden ${className}`}
-      role="presentation"
-      aria-hidden="true"
-    >
-      <Image
-        src={logo}
-        alt=""
-        // La ficha ocupa el 24% izquierdo del archivo: se agranda la imagen a
-        // ~4.2 veces la caja y se ancla a la izquierda.
-        className="absolute left-0 top-1/2 h-auto w-[420%] max-w-none -translate-y-1/2"
-        sizes="64px"
-      />
-    </span>
-  );
-}
