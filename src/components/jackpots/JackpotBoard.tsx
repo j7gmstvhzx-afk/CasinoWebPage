@@ -248,7 +248,7 @@ const MEDALLA = [
 function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max: number }) {
   const m = MEDALLA[puesto - 1];
   return (
-    <li className={`tarjeta relative overflow-hidden px-5 py-5 transition-transform hover:-translate-y-0.5 ${m.halo}`}>
+    <li className={`tarjeta relative min-w-0 overflow-hidden px-5 py-5 transition-transform hover:-translate-y-0.5 ${m.halo}`}>
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br opacity-20 blur-2xl ${m.anillo}`}
@@ -294,7 +294,12 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
 
 function FilaJackpot({ j, max }: { j: JackpotVista; max: number }) {
   return (
-    <li className="tarjeta flex items-center justify-between gap-4 px-5 py-4 transition-colors sm:px-6 sm:py-5">
+    // min-w-0 NO es decoración: un ítem de grid tiene `min-width: auto` por
+    // defecto, así que no se puede encoger por debajo del ancho mínimo de su
+    // contenido. Sin esto, en pantallas angostas la fila se sale del track (la
+    // insignia CALIENTE y el monto no encogen) y toda la página queda con
+    // scroll horizontal.
+    <li className="tarjeta flex min-w-0 items-center justify-between gap-4 px-5 py-4 transition-colors sm:px-6 sm:py-5">
       <div className="min-w-0 flex-1">
         <p className="truncate font-display text-base font-semibold sm:text-lg">{j.nombre}</p>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
