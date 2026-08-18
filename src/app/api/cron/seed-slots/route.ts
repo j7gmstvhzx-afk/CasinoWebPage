@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { sql } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -19,12 +20,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: NextRequest) {
   const secreto = process.env.CRON_SECRET;
-  const cabecera = req.headers.get('authorization');
+  const cabecera = req.headers.get('authorization') ?? '';
 
   // Sin esto, cualquiera podría llamar este endpoint. No revelaría el instante
   // ganador (no se devuelve), pero sí permitiría llenar la tabla de días
   // futuros basura.
-  if (!secreto || cabecera !== `Bearer ${secreto}`) {
+  //
+  // Comparación de tiempo constante, igual que la contraseña de admin: un
+  // `!==` normal ramifica byte a byte y filtra por temporización cuánto del
+  // secreto acertó el que llama.
+  if (!secreto || !secretosCoinciden(cabecera, `Bearer ${secreto}`)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
@@ -54,4 +59,12 @@ export async function GET(req: NextRequest) {
     // un secreto filtrado no debe además regalar la respuesta del juego.
     hasta: dias[dias.length - 1]?.gaming_date ?? null,
   });
+}
+
+// Se comparan los SHA-256, no las cadenas: timingSafeEqual exige búferes del
+// mismo largo, y los digests siempre miden 32 bytes pase lo que pase.
+function secretosCoinciden(a: string, b: string): boolean {
+  const da = createHash('sha256').update(a, 'utf8').digest();
+  const db = createHash('sha256').update(b, 'utf8').digest();
+  return timingSafeEqual(da, db);
 }
