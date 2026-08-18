@@ -116,7 +116,18 @@ echo "=== Regla de 30 días ==="
 # Se le fabrica a un perdedor un premio de hace 5 días, se libera el premio de
 # hoy, y se le da otra tirada: no debe poder ganar, aunque sea el único
 # candidato y el instante ganador ya haya pasado.
-COOLED=$("${PSQL[@]}" -c "select id from t_players where n = 2")
+#
+# Se ELIGE un jugador sin premios, no se codifica `n = 2`. El instante ganador
+# se siembra una hora en el pasado, así que gana una de las PRIMERAS tiradas de
+# la secuencia — y `n = 2` resultaba ser el ganador real a menudo. Cuando eso
+# pasaba, fabricarle un segundo premio reventaba contra
+# `wins_no_repeat_within_30d`, el script abortaba por `set -e` y se saltaba las
+# 4 comprobaciones finales, escupiendo un error de restricción que parecía un
+# fallo del producto cuando en realidad era la restricción haciendo su trabajo.
+COOLED=$("${PSQL[@]}" -c "
+  select t.id from t_players t
+   where not exists (select 1 from app.wins w where w.player_id = t.id)
+   order by t.n limit 1")
 "${PSQL[@]}" >/dev/null <<SQL
 -- Tirada y premio de hace 5 días
 with s as (

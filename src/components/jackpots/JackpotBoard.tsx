@@ -200,7 +200,7 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
       />
 
       <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-dorado-3 via-dorado-2 to-dorado px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-tinta">
             🏆 Premio más alto hoy
           </span>
@@ -213,7 +213,13 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        {/* flex-wrap, y NADA de shrink-0 en celular: la tarjeta recorta lo que
+            se salga (overflow-hidden), así que un grupo que no encoge no
+            desborda la página — se le come el pixel. En un iPhone la flecha ↑
+            del premio principal desaparecía entera, y por debajo de ~365px se
+            cortaba el propio monto. Envolviendo, baja de línea en vez de
+            perderse. */}
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto sm:shrink-0 sm:flex-nowrap">
           {j.caliente && (
             <span
               title="Por encima de su promedio de los últimos 30 días"
@@ -299,8 +305,12 @@ function FilaJackpot({ j, max }: { j: JackpotVista; max: number }) {
     // contenido. Sin esto, en pantallas angostas la fila se sale del track (la
     // insignia CALIENTE y el monto no encogen) y toda la página queda con
     // scroll horizontal.
-    <li className="tarjeta flex min-w-0 items-center justify-between gap-4 px-5 py-4 transition-colors sm:px-6 sm:py-5">
-      <div className="min-w-0 flex-1">
+    <li className="tarjeta flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3 px-5 py-4 transition-colors sm:px-6 sm:py-5">
+      {/* basis-40 le da un ancho "deseado" al nombre: cuando el monto y la
+          insignia ya no caben al lado, el grupo de la derecha baja de línea en
+          vez de estrujar el nombre. Antes, "Money In The Bank" se quedaba con
+          46px y salía como "Mon…". */}
+      <div className="min-w-0 flex-1 basis-40">
         <p className="truncate font-display text-base font-semibold sm:text-lg">{j.nombre}</p>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
           <span>Banco {j.banco}</span>
