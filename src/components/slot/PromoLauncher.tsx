@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PromoExperience } from './PromoExperience';
 import { PROMO } from '@/lib/site';
+import { useMenuMovilAbierto } from '@/lib/menu-movil';
 
 /**
  * Lanzador de la promoción.
@@ -30,10 +31,18 @@ export function PromoLauncher() {
   const enAdmin = pathname.startsWith('/admin');
   const enPremio = pathname.startsWith('/premio');
   const oculto = enAdmin || enPremio;
+  const menuMovilAbierto = useMenuMovilAbierto();
 
   // Apertura automática, una vez al día.
+  //
+  // Se detiene mientras el menú móvil del header está abierto: los dos son
+  // overlays de pantalla completa independientes, y si el temporizador
+  // disparara a mitad de esa interacción, este modal se montaría encima justo
+  // cuando el visitante va a tocar un link — el toque se lo comería este
+  // overlay en vez del link, y la página se sentiría congelada sin ningún
+  // error. Al cerrar el menú, el temporizador arranca de nuevo desde cero.
   useEffect(() => {
-    if (oculto) return;
+    if (oculto || menuMovilAbierto) return;
     let visto: string | null = null;
     try {
       visto = window.localStorage.getItem(CLAVE_VISTO);
@@ -45,7 +54,7 @@ export function PromoLauncher() {
 
     const t = setTimeout(() => setAbierto(true), DEMORA_MS);
     return () => clearTimeout(t);
-  }, [oculto]);
+  }, [oculto, menuMovilAbierto]);
 
   const cerrar = useCallback(() => {
     setAbierto(false);

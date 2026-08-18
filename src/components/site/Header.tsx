@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Logo } from './Logo';
 import { NAV } from '@/lib/site';
+import { setMenuMovilAbierto } from '@/lib/menu-movil';
 
 export function Header() {
   const pathname = usePathname();
@@ -41,6 +42,14 @@ export function Header() {
   const activo = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
 
+  // Le avisa al pop-up de promoción que no se abra solo mientras este menú
+  // esté abierto: los dos son overlays de pantalla completa independientes,
+  // y sin este aviso el pop-up podía montarse encima a mitad de un toque.
+  useEffect(() => {
+    setMenuMovilAbierto(abierto);
+    return () => setMenuMovilAbierto(false);
+  }, [abierto]);
+
   return (
     <header
       className={`sticky top-0 z-40 transition-colors duration-300 ${
@@ -70,6 +79,24 @@ export function Header() {
             </Link>
           ))}
         </nav>
+
+        {/* Acceso al panel de empleados, discreto pero A LA VISTA: antes solo
+            vivía en una línea diminuta al fondo del pie de página y ni el
+            propio dueño la encontraba. Aquí, junto al resto de la navegación,
+            se ve en todo momento sin quedar en la cara del cliente. */}
+        <Link
+          href="/admin"
+          className="hidden shrink-0 items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-tenue transition-colors hover:border-cian hover:text-cian lg:inline-flex"
+        >
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+            <path
+              d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Personal
+        </Link>
 
         <button
           type="button"
@@ -106,6 +133,12 @@ export function Header() {
               </li>
             ))}
           </ul>
+          <Link
+            href="/admin"
+            className="mt-3 block border-t border-linea px-4 pt-3 text-sm font-medium text-tenue/70"
+          >
+            Personal — acceso de empleados
+          </Link>
         </nav>
       )}
     </header>

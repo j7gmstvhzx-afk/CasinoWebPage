@@ -70,7 +70,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-PR" className={`${outfit.variable} ${inter.variable}`}>
+    <html
+      lang="es-PR"
+      data-scroll-behavior="smooth"
+      className={`${outfit.variable} ${inter.variable}`}
+    >
       <body className="flex min-h-dvh flex-col">
         <a
           href="#contenido"
