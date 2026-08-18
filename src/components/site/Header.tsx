@@ -50,9 +50,16 @@ export function Header() {
     return () => setMenuMovilAbierto(false);
   }, [abierto]);
 
+  // z-50: por ENCIMA del overlay del pop-up de promoción (z-40 en
+  // PromoLauncher), a propósito. El pop-up se abre solo, sin que nadie lo pida,
+  // y si el header quedara por debajo, su propio botón de menú se volvía
+  // untocable en cuanto el pop-up aparecía — el visitante veía el sitio
+  // "congelado" porque su toque caía sobre el overlay, no sobre el botón. Con
+  // el header siempre arriba, el menú del sitio nunca deja de responder, esté
+  // el pop-up abierto o no.
   return (
     <header
-      className={`sticky top-0 z-40 transition-colors duration-300 ${
+      className={`sticky top-0 z-50 transition-colors duration-300 ${
         desplazado || abierto
           ? 'border-b border-linea bg-fondo/90 backdrop-blur-xl'
           : 'border-b border-transparent'

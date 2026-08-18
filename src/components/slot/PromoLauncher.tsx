@@ -136,7 +136,7 @@ export function PromoLauncher() {
 
       {abierto && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-24 backdrop-blur-sm sm:items-center sm:pt-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) cerrar();
           }}
