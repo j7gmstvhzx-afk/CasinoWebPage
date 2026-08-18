@@ -29,6 +29,54 @@ declare global {
 
 let instancia: Sql | undefined;
 
+/**
+ * Corrige el usuario cuando la cadena apunta al pooler de Supabase.
+ *
+ * El pooler enruta por el NOMBRE DE USUARIO: hay que entrar como
+ * `postgres.<ref-del-proyecto>`, no como `postgres` a secas. Si falta el sufijo,
+ * el pooler no sabe a qué proyecto mandarte y responde
+ * "password authentication failed for user postgres" — un mensaje que apunta a
+ * la contraseña cuando el problema es el usuario. Se han perdido tardes enteras
+ * cambiando contraseñas buenas por culpa de ese texto.
+ *
+ * El `ref` se saca de SUPABASE_URL, que ya está configurada para el almacenamiento.
+ *
+ * Esto NO toca una cadena que ya venga bien (la de un proyecto correcto queda
+ * igual), ni una conexión directa a `db.<ref>.supabase.co`, donde el usuario
+ * `postgres` sí es el correcto.
+ */
+function normalizarCadena(cadena: string): string {
+  let u: URL;
+  try {
+    u = new URL(cadena);
+  } catch {
+    return cadena; // formato raro: se deja como está, que falle con su propio error
+  }
+
+  const esPooler = /\.pooler\.supabase\.com$/i.test(u.hostname);
+  const usuario = decodeURIComponent(u.username);
+  if (!esPooler || usuario !== 'postgres') return cadena;
+
+  const ref = process.env.SUPABASE_URL?.match(
+    /https?:\/\/([a-z0-9]+)\.supabase\.(co|in)/i,
+  )?.[1];
+  if (!ref) {
+    console.error(
+      '[db] La cadena usa el pooler con el usuario "postgres" (le falta el ' +
+        'sufijo del proyecto) y no hay SUPABASE_URL para deducirlo. Corrige ' +
+        'DATABASE_POOL_URL: el usuario debe ser postgres.<ref-del-proyecto>.',
+    );
+    return cadena;
+  }
+
+  u.username = `postgres.${ref}`;
+  console.warn(
+    `[db] DATABASE_POOL_URL venía con el usuario "postgres"; se corrigió a ` +
+      `"postgres.${ref}" para el pooler. Arréglala en Vercel para no depender de esto.`,
+  );
+  return u.toString();
+}
+
 function crear(): Sql {
   if (globalThis.__camSql) return globalThis.__camSql;
 
@@ -41,8 +89,22 @@ function crear(): Sql {
   }
 
   const local = /localhost|127\.0\.0\.1|\/var\/tmp|\/tmp/.test(cadena);
+  const corregida = normalizarCadena(cadena);
 
-  const cliente = postgres(cadena, {
+  // Huella de la conexión, SIN la contraseña. Cuando el sitio sale vacío, la
+  // pregunta siempre es la misma —  ¿a qué base está hablando y como quién? —  y
+  // sin esto hay que adivinarlo desde un error que no lo dice.
+  try {
+    const u = new URL(corregida);
+    console.info(
+      `[db] host=${u.hostname} puerto=${u.port || '(por defecto)'} ` +
+        `usuario=${decodeURIComponent(u.username)} base=${u.pathname.slice(1)}`,
+    );
+  } catch {
+    console.error('[db] DATABASE_POOL_URL no tiene formato de URL válido.');
+  }
+
+  const cliente = postgres(corregida, {
     max: 1,
     prepare: false,
     idle_timeout: 20,
