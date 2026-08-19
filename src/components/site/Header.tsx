@@ -133,7 +133,27 @@ export function Header() {
       </div>
 
       {abierto && (
-        <nav id="menu-movil" className="contenedor pb-4 lg:hidden" aria-label="Principal (móvil)">
+        // ESTE es el fallo que se reportó cinco veces como "toco la pestaña y
+        // no pasa nada", y no era ni z-index ni temporizadores: el panel vive
+        // DENTRO de un header `sticky top-0`, que por definición nunca se
+        // desplaza. Sin altura máxima ni scroll propio, todo lo que caiga por
+        // debajo del borde de la ventana queda FÍSICAMENTE inalcanzable — no
+        // hay gesto que lo traiga a la vista.
+        //
+        // Abierto mide ~494px. En un teléfono en horizontal (que sigue usando
+        // el menú móvil, porque el corte de escritorio es lg=1024px) la
+        // ventana tiene 342-412px de alto: "Menú" y "Contacto" simplemente no
+        // están ahí para tocarlos. Lo mismo pasa en vertical con el texto del
+        // sistema agrandado, que es un ajuste de accesibilidad muy común.
+        //
+        // 100dvh y no 100vh: en móvil la barra del navegador aparece y
+        // desaparece, y vh se queda con la altura grande, dejando el mismo
+        // hueco inalcanzable que se pretende arreglar.
+        <nav
+          id="menu-movil"
+          className="contenedor max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain pb-4 lg:hidden"
+          aria-label="Principal (móvil)"
+        >
           <ul className="grid gap-1">
             {/* onClick cierra el menú en CUALQUIER toque, además del efecto
                 de arriba que lo cierra cuando cambia la ruta. Hacen falta los
