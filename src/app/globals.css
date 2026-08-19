@@ -25,7 +25,10 @@
 
   /* Marca */
   --color-marca: #1b4f9c; /* azul del logo */
-  --color-cian: #0b7fb4; /* cian del logo, oscurecido para leerse sobre blanco */
+  /* Cian del logo, oscurecido para leerse sobre blanco. #0b7fb4 se quedaba en
+     4.46:1 y el mínimo para texto normal es 4.5:1 — fallaba por dos centésimas
+     en enlaces, fechas y el botón de Waze. Un 1% más oscuro y cumple. */
+  --color-cian: #0b7eb2;
 
   /* Dinero. Oscurecido respecto al logo: el dorado claro sobre blanco no se lee. */
   --color-dorado: #b07d13; /* dorado para TEXTO sobre fondo claro */
@@ -37,7 +40,9 @@
   --color-maquina: #0a2547;
   --color-maquina-2: #123a72;
 
-  --color-gana: #0b8a5f;
+  /* 2% más oscuro que #0b8a5f, que daba 4.36:1: la flecha de "subió" del
+     tablero es texto de 16px y pide 4.5:1. */
+  --color-gana: #0b875d;
   --color-pierde: #c2372f;
 
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;

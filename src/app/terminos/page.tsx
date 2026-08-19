@@ -190,9 +190,13 @@ function Aviso() {
     return null;
   }
   return (
-    <div className="rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm text-dorado">
+    // El texto va en `tinta`, no en `dorado`: el dorado de la marca da 3.63:1
+    // sobre blanco, suficiente para un monto grande (piden 3:1) pero NO para
+    // texto de 14px, que pide 4.5:1. El borde y el fondo dorados se quedan, así
+    // que el aviso sigue leyéndose como advertencia sin castigar la lectura.
+    <div className="rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm text-tinta">
       <p className="font-semibold">Borrador — pendiente de revisión legal</p>
-      <p className="mt-1.5 text-dorado/80">
+      <p className="mt-1.5">
         Este texto describe con exactitud lo que el sistema hace, pero debe
         aprobarlo el asesor legal del casino antes de publicarse. Para ocultar
         este aviso, define <code>TERMINOS_APROBADOS=si</code>.

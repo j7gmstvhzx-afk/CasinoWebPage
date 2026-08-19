@@ -51,16 +51,21 @@ export function Footer() {
           <h2 className="font-display text-sm font-semibold tracking-wide text-tinta">
             Explora
           </h2>
-          <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-tenue">
+          {/* `inline-block py-1.5` para que la zona tocable llegue a 24px de
+              alto. El texto de 14px deja enlaces de 17px, por debajo del mínimo
+              que piden las guías de accesibilidad, y en un pie con dos columnas
+              de enlaces pegados eso son toques fallidos en celular. El tamaño
+              del texto no cambia; solo crece el área que responde. */}
+          <ul className="mt-4 grid grid-cols-2 gap-x-4 text-sm text-tenue">
             {NAV.filter((n) => n.href !== '/').map((item) => (
               <li key={item.href}>
-                <Link className="hover:text-cian" href={item.href}>
+                <Link className="inline-block py-1.5 hover:text-cian" href={item.href}>
                   {item.label}
                 </Link>
               </li>
             ))}
             <li>
-              <Link className="hover:text-cian" href="/terminos">
+              <Link className="inline-block py-1.5 hover:text-cian" href="/terminos">
                 Términos
               </Link>
             </li>
@@ -71,7 +76,11 @@ export function Footer() {
       {/* Juego responsable. Va en TODAS las páginas, no escondido en Términos:
           es un casino con licencia y esta línea es parte de operar en serio. */}
       <div className="border-t border-linea">
-        <div className="contenedor flex flex-col gap-3 py-6 text-xs text-tenue sm:flex-row sm:items-center sm:justify-between">
+        {/* pb-28 en celular: el botón flotante "GANA $25" es `fixed` abajo a la
+            derecha y se comía un 31% del enlace "Administración" en TODAS las
+            páginas. Reservando ese alto al final del documento, la última fila
+            del pie sube por encima del botón y vuelve a ser tocable entera. */}
+        <div className="contenedor flex flex-col gap-3 py-6 pb-28 text-xs text-tenue sm:flex-row sm:items-center sm:justify-between sm:pb-6">
           <p>
             © {new Date().getFullYear()} {SITE.name}. Todos los derechos reservados.
           </p>
