@@ -30,7 +30,11 @@ export function PromoLauncher() {
 
   const enAdmin = pathname.startsWith('/admin');
   const enPremio = pathname.startsWith('/premio');
-  const oculto = enAdmin || enPremio;
+  // En /cuenta la persona ya vino a lo mismo que ofrece el pop-up, y ahí es
+  // donde llena el formulario: abrirse encima le tapa el campo que está
+  // escribiendo y le pide por segunda vez lo que ya está haciendo.
+  const enCuenta = pathname.startsWith('/cuenta');
+  const oculto = enAdmin || enPremio || enCuenta;
   const algunOverlayActivo = useAlgunOverlayActivo();
 
   // Apertura automática, una vez al día, tras DEMORA_MS de tiempo real

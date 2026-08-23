@@ -24,8 +24,10 @@
 import { chromium } from 'playwright';
 
 const BASE = process.argv[2] ?? 'http://localhost:3000';
-const CHROMIUM = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const PESTANAS = ['Jackpots', 'Máquinas Nuevas', 'Eventos', 'Galería', 'Menú', 'Contacto'];
+// Sin CHROMIUM_PATH se usa el Chromium que instala Playwright. Antes había una
+// ruta de Linux fija aquí y la prueba no arrancaba fuera de aquel sandbox.
+const CHROMIUM = process.env.CHROMIUM_PATH;
+const PESTANAS = ['Jackpots', 'Máquinas Nuevas', 'Eventos', 'Galería', 'Menú', 'Contacto', 'Mi cuenta'];
 
 let fallos = 0;
 const comprobar = (ok, texto) => {
@@ -46,7 +48,7 @@ async function recibeElClic(locator) {
   );
 }
 
-const navegador = await chromium.launch({ executablePath: CHROMIUM });
+const navegador = await chromium.launch(CHROMIUM ? { executablePath: CHROMIUM } : {});
 
 for (const [nombre, ancho, alto] of [
   ['celular', 390, 844],

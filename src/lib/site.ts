@@ -49,6 +49,10 @@ export const NAV = [
   { href: '/galeria', label: 'Galería' },
   { href: '/menu', label: 'Menú' },
   { href: '/contacto', label: 'Contacto' },
+  // Va en el menú, y no solo dentro del pop-up, porque es la cuenta con la que
+  // se participa en el sorteo: tiene que poder crearse y consultarse sin
+  // depender de que un modal se abra bien.
+  { href: '/cuenta', label: 'Mi cuenta' },
 ] as const;
 
 export const fullAddress = () =>

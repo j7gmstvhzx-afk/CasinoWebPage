@@ -34,6 +34,15 @@ export type SpinOutcome = {
   result: 'win' | 'lose';
   alreadySpunToday: boolean;
   voucherCode: string | null;
+  /**
+   * Cuándo vuelve a tener tirada, en ISO y calculado por el SERVIDOR.
+   *
+   * Viaja con el resultado porque el corte es a medianoche de Puerto Rico, y
+   * eso no se puede deducir en el navegador: el reloj del teléfono puede estar
+   * en otro huso —  un turista, o alguien que viaja —  y la cuenta regresiva
+   * saldría corrida por horas.
+   */
+  proximaTirada: string;
 };
 
 type Fase = 'listo' | 'girando' | 'revelado';

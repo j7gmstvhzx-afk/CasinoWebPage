@@ -4,12 +4,15 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { SlotMachine, type SpinOutcome } from './SlotMachine';
 import { VistaPromos, type PromoPopup } from './VistaPromos';
-import { MUNICIPIOS_ORDENADOS } from '@/lib/municipios';
-import { maskPhoneInput } from '@/lib/phone';
 import { formatVoucherCode } from '@/lib/voucher';
+import {
+  FormularioRegistro,
+  FormularioEntrar,
+  type DatosRegistro,
+} from '@/components/cuenta/formularios';
 import { PROMO } from '@/lib/site';
 import { untilLabel } from '@/lib/format';
-import { pedirJson, ERROR_GENERICO } from '@/lib/fetch-json';
+import { pedirJson } from '@/lib/fetch-json';
 
 /** Las palabras que pidió el dueño para una tirada que no gana. */
 const MENSAJE_PIERDE = 'Esta no es una combinación ganadora, intenta mañana nuevamente.';
@@ -53,6 +56,7 @@ function estadoDesdeServidor(d: EstadoServidor & { ok?: boolean }): Estado {
         result: d.resultado,
         alreadySpunToday: true,
         voucherCode: d.voucher?.code ?? null,
+        proximaTirada: d.proximaTirada ?? '',
       },
       proximaTirada: d.proximaTirada ?? '',
     };
@@ -63,8 +67,6 @@ function estadoDesdeServidor(d: EstadoServidor & { ok?: boolean }): Estado {
 
 export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   const [estado, setEstado] = useState<Estado>({ paso: 'cargando' });
-  const [enviando, setEnviando] = useState(false);
-  const [errorForm, setErrorForm] = useState<string | null>(null);
 
   // Las promociones del día van DELANTE de todo lo demás. Se guardan aparte del
   // resto del estado para no tener que duplicar cada paso en dos versiones
@@ -72,11 +74,11 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
   const [promos, setPromos] = useState<PromoPopup[]>([]);
   const [promosVistas, setPromosVistas] = useState(true);
 
-  const [nombre, setNombre] = useState('');
-  const [celular, setCelular] = useState('');
-  const [pueblo, setPueblo] = useState('');
-  const [acepta, setAcepta] = useState(false);
-  const [trampa, setTrampa] = useState('');
+  // Lo que se escribió al registrarse. Se guarda SOLO para el respaldo de
+  // `enviarTirada`: si la cookie se pierde entre el registro y la tirada, el
+  // servidor puede volver a crear la cuenta con los mismos datos en vez de
+  // rebotar a la persona a un formulario que ya llenó.
+  const [datos, setDatos] = useState<DatosRegistro | null>(null);
 
   // Las dos instancias (modal y portada) viven a la vez. Cuando una termina de
   // enseñar las promociones, avisa por este evento para que la otra no las
@@ -112,18 +114,13 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
     const d = (await pedirJson('/api/spin', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        nombre: nombre.trim(),
-        celular,
-        puebloId: pueblo ? Number(pueblo) : undefined,
-        acepta,
-        website: trampa,
-      }),
+      body: JSON.stringify(datos ?? {}),
     })) as {
       reels: number[];
       result: 'win' | 'lose';
       alreadySpunToday: boolean;
       voucher: { code: string } | null;
+      proximaTirada: string;
     };
 
     return {
@@ -131,82 +128,24 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
       result: d.result,
       alreadySpunToday: d.alreadySpunToday,
       voucherCode: d.voucher?.code ?? null,
+      proximaTirada: d.proximaTirada,
     };
-  }, [nombre, celular, pueblo, acepta, trampa]);
+  }, [datos]);
 
-  const entrar = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setErrorForm(null);
-      setEnviando(true);
-      try {
-        await pedirJson('/api/entrar', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ celular, nombre: nombre.trim() }),
-        });
-
-        // Ya con la cookie puesta, se vuelve a preguntar el estado: puede que
-        // esta persona ya haya tirado hoy desde otro teléfono.
-        const estadoReal = (await pedirJson('/api/spin')) as EstadoServidor & { ok: boolean };
-        setEstado(estadoDesdeServidor(estadoReal));
-      } catch (err) {
-        setErrorForm(err instanceof Error ? err.message : ERROR_GENERICO);
-      } finally {
-        setEnviando(false);
-      }
-    },
-    [celular, nombre],
-  );
+  // Ya con la cookie puesta, se vuelve a preguntar el estado: puede que esta
+  // persona ya haya tirado hoy desde otro teléfono.
+  const trasEntrar = useCallback(async () => {
+    const estadoReal = (await pedirJson('/api/spin')) as EstadoServidor & { ok: boolean };
+    setEstado(estadoDesdeServidor(estadoReal));
+  }, []);
 
   // Salir hace falta de verdad: en el casino un mismo celular pasa de mano en
   // mano, y sin esto el segundo cliente vería el nombre del primero.
   const salir = useCallback(async () => {
     await pedirJson('/api/entrar', { method: 'DELETE' }).catch(() => null);
-    setNombre('');
-    setCelular('');
-    setPueblo('');
-    setAcepta(false);
+    setDatos(null);
     setEstado({ paso: 'registro' });
   }, []);
-
-  const registrar = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setErrorForm(null);
-
-      if (nombre.trim().split(/\s+/).length < 2) {
-        return setErrorForm('Escribe tu nombre y apellido.');
-      }
-      if (!pueblo) return setErrorForm('Selecciona tu pueblo.');
-      if (!acepta) return setErrorForm('Debes aceptar los términos para participar.');
-
-      // La cuenta se GUARDA aquí, no al tirar. Antes solo se pasaba a la máquina
-      // y el registro únicamente quedaba grabado si la persona halaba la palanca;
-      // quien cerraba antes no existía después y no podía "Entrar". La tirada
-      // sigue siendo aparte: halar la palanca en la máquina.
-      setEnviando(true);
-      try {
-        const d = (await pedirJson('/api/registrar', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            nombre: nombre.trim(),
-            celular,
-            puebloId: pueblo ? Number(pueblo) : undefined,
-            acepta,
-            website: trampa,
-          }),
-        })) as { nombre?: string };
-        setEstado({ paso: 'maquina', nombre: d.nombre ?? nombre.trim().split(/\s+/)[0] });
-      } catch (err) {
-        setErrorForm(err instanceof Error ? err.message : ERROR_GENERICO);
-      } finally {
-        setEnviando(false);
-      }
-    },
-    [nombre, celular, pueblo, acepta, trampa],
-  );
 
   if (estado.paso === 'cargando') {
     return (
@@ -231,185 +170,39 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
 
   if (estado.paso === 'entrar') {
     return (
-      <form onSubmit={entrar} className="anim-entrar">
+      <div className="anim-entrar">
         <div className="text-center">
           <h2 className="font-display text-3xl font-bold">Entra a tu cuenta</h2>
           <p className="mt-2 text-sm text-tenue">
             Con los mismos datos que usaste al registrarte.
           </p>
         </div>
-
-        <div className="mt-6 space-y-4">
-          <Campo etiqueta="Celular" htmlFor="entrar-celular">
-            <input
-              id="entrar-celular"
-              name="tel"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              required
-              value={celular}
-              onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
-              placeholder="(787) 000-0000"
-              className={`${estiloCampo} tabular`}
-            />
-          </Campo>
-
-          <Campo etiqueta="Nombre completo" htmlFor="entrar-nombre">
-            <input
-              id="entrar-nombre"
-              name="name"
-              autoComplete="name"
-              required
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej. María Rivera Colón"
-              className={estiloCampo}
-            />
-          </Campo>
-
-          {errorForm && (
-            <p role="alert" className="text-sm text-pierde">
-              {errorForm}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={enviando}
-            className="w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-          >
-            {enviando ? 'ENTRANDO…' : 'ENTRAR'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setErrorForm(null);
-              setEstado({ paso: 'registro' });
-            }}
-            className="w-full text-center text-sm text-tenue underline underline-offset-4 hover:text-tinta"
-          >
-            Todavía no me he registrado
-          </button>
+        <div className="mt-6">
+          <FormularioEntrar
+            ids="pop-entrar"
+            onListo={trasEntrar}
+            alRegistrarse={() => setEstado({ paso: 'registro' })}
+          />
         </div>
-      </form>
+      </div>
     );
   }
 
   if (estado.paso === 'registro') {
     return (
-      <form onSubmit={registrar} className="anim-entrar">
+      <div className="anim-entrar">
         <Encabezado />
-
-        <div className="mt-6 space-y-4">
-          <Campo etiqueta="Nombre completo" htmlFor="nombre">
-            <input
-              id="nombre"
-              name="name"
-              autoComplete="name"
-              required
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej. María Rivera Colón"
-              className={estiloCampo}
-            />
-          </Campo>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo etiqueta="Celular" htmlFor="celular">
-              <input
-                id="celular"
-                name="tel"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                required
-                value={celular}
-                onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
-                placeholder="(787) 000-0000"
-                className={`${estiloCampo} tabular`}
-              />
-            </Campo>
-
-            <Campo etiqueta="Pueblo" htmlFor="pueblo">
-              <select
-                id="pueblo"
-                required
-                value={pueblo}
-                onChange={(e) => setPueblo(e.target.value)}
-                className={estiloCampo}
-              >
-                <option value="">Selecciona…</option>
-                {MUNICIPIOS_ORDENADOS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nombre}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-          </div>
-
-          {/* Trampa para bots: invisible y fuera del orden de tabulación. Una
-              persona nunca la llena; muchos bots llenan todo lo que encuentran. */}
-          <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
-            <label htmlFor="website">No llenar</label>
-            <input
-              id="website"
-              name="website"
-              tabIndex={-1}
-              autoComplete="off"
-              value={trampa}
-              onChange={(e) => setTrampa(e.target.value)}
-            />
-          </div>
-
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-tenue">
-            <input
-              type="checkbox"
-              checked={acepta}
-              onChange={(e) => setAcepta(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-superficie accent-dorado"
-            />
-            <span>
-              Acepto recibir promociones y los{' '}
-              <Link href="/terminos" target="_blank" className="text-cian underline underline-offset-4">
-                términos y condiciones
-              </Link>
-              .
-            </span>
-          </label>
-
-          {errorForm && (
-            <p role="alert" className="text-sm text-pierde">
-              {errorForm}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={enviando}
-            className="w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-          >
-            {enviando ? 'GUARDANDO…' : 'CONTINUAR'}
-          </button>
-
-          <p className="text-center text-xs text-tenue">
-            Solo mayores de {PROMO.minAge} años · Una tirada por persona al día
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              setErrorForm(null);
-              setEstado({ paso: 'entrar' });
+        <div className="mt-6">
+          <FormularioRegistro
+            ids="pop-reg"
+            onListo={(d) => {
+              setDatos(d);
+              setEstado({ paso: 'maquina', nombre: d.nombreCorto });
             }}
-            className="w-full text-center text-sm text-cian underline underline-offset-4"
-          >
-            ¿Ya te registraste? Entra aquí
-          </button>
+            alEntrar={() => setEstado({ paso: 'entrar' })}
+          />
         </div>
-      </form>
+      </div>
     );
   }
 
@@ -421,11 +214,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
           <SlotMachine
             onSpin={enviarTirada}
             onRevealed={(outcome) =>
-              setEstado({
-                paso: 'resultado',
-                outcome,
-                proximaTirada: new Date(new Date().setHours(24, 0, 0, 0)).toISOString(),
-              })
+              setEstado({ paso: 'resultado', outcome, proximaTirada: outcome.proximaTirada })
             }
           />
         </div>
@@ -572,29 +361,6 @@ function Encabezado({ saludo, onSalir }: { saludo?: string; onSalir?: () => void
     </div>
   );
 }
-
-function Campo({
-  etiqueta,
-  htmlFor,
-  children,
-}: {
-  etiqueta: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-tinta">
-        {etiqueta}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-const estiloCampo =
-  'w-full rounded-xl border border-linea bg-superficie px-4 py-3 text-base text-tinta ' +
-  'placeholder:text-tenue/60 focus:border-cian focus:outline-none';
 
 /** Confeti sin dependencias: 40 pedacitos con caída y giro. */
 function Confeti() {
