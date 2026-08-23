@@ -17,6 +17,9 @@ import { getPromocionesPopup, seguro } from '@/lib/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
+// se quedaron colgadas las peticiones en producción.
+export const maxDuration = 15;
 
 const Registro = z.object({
   nombre: z.string().trim().min(3).max(120).optional(),

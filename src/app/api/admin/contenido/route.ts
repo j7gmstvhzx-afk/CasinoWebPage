@@ -3,9 +3,13 @@ import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { borrarImagen } from '@/lib/storage';
+import { refrescarPublico } from '@/lib/revalidar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
+// se quedaron colgadas las peticiones en producción.
+export const maxDuration = 15;
 
 /**
  * Contenido editable por el personal: eventos, máquinas nuevas y galería.
@@ -112,6 +116,7 @@ export async function POST(req: NextRequest) {
     returning id
   `;
 
+  refrescarPublico(cuerpo.tipo);
   return NextResponse.json({ ok: true, id: fila.id });
 }
 
@@ -142,6 +147,7 @@ export async function PATCH(req: NextRequest) {
      where id = ${cuerpo.id}::uuid
   `;
 
+  refrescarPublico(cuerpo.tipo);
   return NextResponse.json({ ok: true });
 }
 
@@ -158,6 +164,7 @@ export async function DELETE(req: NextRequest) {
 
   if (!CON_IMAGEN[cuerpo.tipo]) {
     await sql`delete from ${sql(`app.${tabla}`)} where id = ${cuerpo.id}::uuid`;
+    refrescarPublico(cuerpo.tipo);
     return NextResponse.json({ ok: true });
   }
 
@@ -171,5 +178,6 @@ export async function DELETE(req: NextRequest) {
 
   if (fila?.image_path) await borrarImagen(fila.image_path);
 
+  refrescarPublico(cuerpo.tipo);
   return NextResponse.json({ ok: true });
 }

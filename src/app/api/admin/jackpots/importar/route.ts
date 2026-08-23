@@ -3,9 +3,13 @@ import readXlsxFile from 'read-excel-file/node';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { leerHoja, type FilaImportada } from '@/lib/importar-jackpots';
+import { refrescarPublico } from '@/lib/revalidar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
+// se quedaron colgadas las peticiones en producción.
+export const maxDuration = 60;
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -102,6 +106,7 @@ export async function POST(req: NextRequest) {
   }
 
   await aplicar(lectura.filas);
+  refrescarPublico('jackpots');
   return NextResponse.json({ ok: true, vistaPrevia: false, resumen });
 }
 

@@ -110,6 +110,20 @@ function crear(): Sql {
     idle_timeout: 20,
     connect_timeout: 10,
     ssl: local ? false : 'require',
+    connection: {
+      // El corte del lado del servidor. `seguro()` deja de esperar a los 2.5 s,
+      // pero eso solo suelta a la página: la consulta seguiría corriendo en
+      // Postgres, ocupando la única conexión de esta lambda y trabando a la
+      // siguiente petición que llegue. Con esto la mata Postgres.
+      //
+      // 8 s y no 2.5: aquí también pasan las escrituras de la tirada y del
+      // panel, que no las cubre `seguro()` y que sí pueden tardar más que una
+      // lectura del tablero.
+      statement_timeout: 8_000,
+      // Una transacción abierta y abandonada retiene sus candados. En
+      // `execute_spin` eso bloquearía las tiradas de todo el mundo.
+      idle_in_transaction_session_timeout: 10_000,
+    },
   });
 
   // En desarrollo Next recarga los módulos en cada cambio. Sin esto se abriría

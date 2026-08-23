@@ -290,17 +290,52 @@ export async function getGaleria(limite = 60): Promise<ItemGaleria[]> {
 }
 
 /**
+ * Cuánto se espera por una consulta antes de renunciar a ella.
+ *
+ * Ninguna de estas consultas es pesada: si a los 2.5 s no ha vuelto, no está
+ * "tardando", está trabada, y esperar más no la va a arreglar.
+ */
+export const LIMITE_CONSULTA_MS = 2_500;
+
+/**
  * Envoltura tolerante a fallos para las páginas públicas.
  *
  * Si la base de datos no responde, una sección informativa debe quedarse vacía
  * — no tumbar la página entera. El visitante que venía a ver la dirección y el
  * horario los sigue viendo, que es lo que más se consulta.
+ *
+ * POR QUÉ HAY UN TIEMPO LÍMITE Y NO SOLO UN try/catch
+ * ---------------------------------------------------
+ * Atrapar el error no alcanzaba: una conexión trabada NO lanza nada, se queda
+ * esperando. Sin límite, la petición seguía viva hasta el techo de la función
+ * en Vercel — 300 segundos. En producción eso salió 176 veces, repartido por
+ * todas las pestañas del sitio.
+ *
+ * Y así es como se siente desde el celular: al tocar una pestaña, Next pide el
+ * .rsc de esa ruta; si esa petición se cuelga cinco minutos, la pantalla no
+ * cambia y no aparece ningún error. Es exactamente el "toco la pestaña y no
+ * pasa nada" que se reportó una y otra vez, y por eso ningún arreglo del menú
+ * lo resolvía: el menú nunca tuvo la culpa.
  */
 export async function seguro<T>(fn: () => Promise<T>, respaldo: T): Promise<T> {
+  let temporizador: ReturnType<typeof setTimeout> | undefined;
+
   try {
-    return await fn();
+    return await Promise.race([
+      fn(),
+      new Promise<never>((_, rechazar) => {
+        temporizador = setTimeout(
+          () => rechazar(new Error(`la consulta pasó de ${LIMITE_CONSULTA_MS} ms`)),
+          LIMITE_CONSULTA_MS,
+        );
+      }),
+    ]);
   } catch (e) {
     console.error('[consulta fallida]', e);
     return respaldo;
+  } finally {
+    // Sin esto, el temporizador mantiene vivo el proceso hasta que vence,
+    // incluso cuando la consulta respondió a tiempo.
+    clearTimeout(temporizador);
   }
 }

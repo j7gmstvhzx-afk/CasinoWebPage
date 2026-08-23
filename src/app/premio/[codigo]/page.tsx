@@ -8,7 +8,10 @@ import { money, dateTime, longDate } from '@/lib/format';
 import { SITE, PROMO } from '@/lib/site';
 import { Logo } from '@/components/site/Logo';
 
+// El cupón es de una persona y cambia en el momento en que se canjea: aquí
+// una caché mentiría. Se queda dinámico, pero con techo de función.
 export const dynamic = 'force-dynamic';
+export const maxDuration = 15;
 
 /**
  * Cupón digital — SOLO LECTURA.

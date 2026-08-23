@@ -4,6 +4,9 @@ import { sql } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
+// se quedaron colgadas las peticiones en producción.
+export const maxDuration = 60;
 
 /**
  * Siembra los premios de los próximos días.

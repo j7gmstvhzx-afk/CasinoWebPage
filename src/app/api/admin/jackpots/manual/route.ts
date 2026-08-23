@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
+import { refrescarPublico } from '@/lib/revalidar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
+// se quedaron colgadas las peticiones en producción.
+export const maxDuration = 15;
 
 /**
  * Entrada manual de los montos del día.
@@ -84,5 +88,6 @@ export async function POST(req: NextRequest) {
     return conMonto.length;
   });
 
+  refrescarPublico('jackpots');
   return NextResponse.json({ ok: true, guardados });
 }
