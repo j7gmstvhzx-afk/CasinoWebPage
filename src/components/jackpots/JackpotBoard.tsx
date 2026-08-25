@@ -50,22 +50,44 @@ export function JackpotBoard({
     if (filtro === 'suben') lista = lista.filter((j) => j.tendencia === 'sube');
 
     const q = busqueda.trim().toLowerCase();
-    if (!q) return lista;
-    // Acepta nombre de máquina O número de banco: escribir "31" encuentra las
-    // máquinas del banco 31, que es como la gente busca cuando ya estuvo aquí.
-    return lista.filter(
-      (j) => j.nombre.toLowerCase().includes(q) || String(j.banco) === q,
-    );
+    if (q) {
+      // Acepta nombre de máquina O número de banco: escribir "31" encuentra las
+      // máquinas del banco 31, que es como la gente busca cuando ya estuvo aquí.
+      lista = lista.filter(
+        (j) => j.nombre.toLowerCase().includes(q) || String(j.banco) === q,
+      );
+    }
+
+    // El orden por monto se decide AQUÍ, no se hereda.
+    //
+    // La consulta ya devuelve las filas de mayor a menor, y el tablero llevaba
+    // tiempo dando por bueno ese orden. Pero de eso depende quién sale en el
+    // podio y quién en la parrilla — es decir, qué cifra ve primero el
+    // visitante — y no puede quedar colgando de un `order by` en un archivo
+    // distinto que alguien cambie un día por otro motivo. Ordenar aquí cuesta
+    // nada con veinte máquinas y hace la regla explícita: el más alto arriba,
+    // siempre, lo devuelva como lo devuelva la base.
+    return [...lista].sort((a, b) => b.centavos - a.centavos);
   }, [jackpots, busqueda, filtro]);
 
-  // El premio más grande se destaca solo, en una franja propia; el 2° y 3°
-  // van debajo en un podio de dos; el resto sigue en la parrilla de siempre.
-  // Solo tiene sentido con la lista completa: buscando o filtrando, la
-  // persona ya sabe qué está mirando y un podio parcial solo confunde.
+  // LOS CINCO PREMIOS MÁS ALTOS, EN TRES ESCALONES
+  //
+  //   1.º        solo, en su franja azul, con la cifra más grande de la página
+  //   2.º y 3.º  debajo, en dos tarjetas de igual tamaño
+  //   4.º y 5.º  otra fila de dos, un punto más pequeñas
+  //   resto      la parrilla de siempre
+  //
+  // El tamaño baja en cada escalón a propósito: así el orden de importancia se
+  // lee de un vistazo, sin comparar los números uno por uno. Es la misma
+  // jerarquía de las fichas (oro, plata, bronce, casa) llevada al tamaño.
+  //
+  // Solo tiene sentido con la lista completa: buscando o filtrando, la persona
+  // ya sabe qué está mirando y un podio parcial solo confunde.
   const mostrarPodio = !busqueda && filtro === 'todos';
   const primero = mostrarPodio ? filtrados[0] : undefined;
   const podio2y3 = mostrarPodio ? filtrados.slice(1, 3) : [];
-  const resto = mostrarPodio ? filtrados.slice(3) : filtrados;
+  const cuarto5 = mostrarPodio ? filtrados.slice(3, 5) : [];
+  const resto = mostrarPodio ? filtrados.slice(5) : filtrados;
   const maxCentavos = useMemo(
     () => jackpots.reduce((m, j) => Math.max(m, j.centavos), 1),
     [jackpots],
@@ -156,6 +178,14 @@ export function JackpotBoard({
             </ul>
           )}
 
+          {cuarto5.length > 0 && (
+            <ul className="mb-4 grid gap-3 sm:grid-cols-2">
+              {cuarto5.map((j, i) => (
+                <TarjetaCuarta key={j.id} j={j} puesto={i + 4} max={maxCentavos} />
+              ))}
+            </ul>
+          )}
+
           {resto.length > 0 && (
             <ul className="grid gap-3 sm:grid-cols-2">
               {resto.map((j, i) => (
@@ -164,9 +194,9 @@ export function JackpotBoard({
                   j={j}
                   max={maxCentavos}
                   // El puesto solo se numera con la lista COMPLETA. Filtrando o
-                  // buscando, un "#4" saldría del subconjunto y mentiría sobre
+                  // buscando, un "#6" saldría del subconjunto y mentiría sobre
                   // en qué lugar del salón está ese premio de verdad.
-                  puesto={mostrarPodio ? i + 4 : undefined}
+                  puesto={mostrarPodio ? i + 6 : undefined}
                 />
               ))}
             </ul>
@@ -397,7 +427,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
       </div>
 
       <div className="relative mt-3 flex items-center gap-2">
-        <MontoAnimado centavos={j.centavos} className="font-display text-2xl font-bold tabular texto-dorado" />
+        <MontoAnimado centavos={j.centavos} className="font-display text-3xl font-bold tabular texto-dorado" />
         {j.tendencia === 'sube' && (
           <span aria-label="Subió desde la última lectura" className="text-gana">
             ↑
@@ -406,6 +436,68 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
       </div>
 
       <BarraRelativa centavos={j.centavos} max={max} className="relative mt-3" />
+    </li>
+  );
+}
+
+/**
+ * El 4.º y el 5.º premio.
+ *
+ * Escalón intermedio: tiene la forma de tarjeta del podio —ficha, nombre, monto
+ * debajo y barra— pero un punto más pequeño y sin el halo de color. Así se lee
+ * que siguen siendo premios destacados sin competir con el podio, y a la vez se
+ * distinguen de las filas de la parrilla, que son horizontales.
+ *
+ * La escala completa de los montos, de arriba abajo: 36/60 px el primero,
+ * 30 px el 2.º y 3.º, 24 px el 4.º y 5.º, 20 px el resto. Ninguno baja de
+ * 18.66 px en negrita, que es el umbral a partir del cual el dorado del dinero
+ * cumple el contraste mínimo sobre blanco (3:1 en vez de 4.5:1).
+ */
+function TarjetaCuarta({ j, puesto, max }: { j: JackpotVista; puesto: number; max: number }) {
+  return (
+    <li className="tarjeta relative min-w-0 overflow-hidden px-5 py-4 transition-transform hover:-translate-y-0.5">
+      <div
+        aria-hidden="true"
+        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+      />
+
+      <div className="relative flex items-start gap-3">
+        <FichaPuesto puesto={puesto} clase={`h-9 w-9 text-sm ${FICHA.casa}`} />
+        <span className="sr-only">Puesto {puesto}.</span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 truncate font-display text-base font-semibold sm:text-lg">
+              {j.nombre}
+            </p>
+            {j.caliente && (
+              <span
+                title="Por encima de su promedio de los últimos 30 días"
+                className="anim-brillo shrink-0 rounded-full border border-dorado/40 bg-dorado/10 px-2 py-1 text-xs font-semibold text-tinta"
+              >
+                🔥
+              </span>
+            )}
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-medium uppercase tracking-[0.18em] text-tenue">
+            <span>Banco {j.banco}</span>
+            {j.desactualizado && (
+              <span className="normal-case tracking-normal text-tenue/70">· sin actualizar hoy</span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="relative mt-2.5 flex items-center gap-2">
+        <MontoAnimado centavos={j.centavos} className="font-display text-2xl font-bold tabular texto-dorado" />
+        {j.tendencia === 'sube' && (
+          <span aria-label="Subió desde la última lectura" className="text-gana">
+            ↑
+          </span>
+        )}
+      </div>
+
+      <BarraRelativa centavos={j.centavos} max={max} className="relative mt-2.5" />
     </li>
   );
 }
@@ -476,9 +568,13 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
           </span>
         )}
 
+        {/* text-xl fijo, sin subir a 2xl en pantalla grande: en escritorio
+            igualaba al 4.º y 5.º y rompía la escala. 20px en negrita sigue
+            contando como texto grande, que es lo que el dorado necesita para
+            cumplir el contraste. */}
         <MontoAnimado
           centavos={j.centavos}
-          className="font-display text-xl font-bold tabular text-dorado sm:text-2xl"
+          className="font-display text-xl font-bold tabular text-dorado"
         />
       </div>
     </li>
