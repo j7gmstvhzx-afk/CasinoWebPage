@@ -39,6 +39,74 @@ export default async function Inicio() {
   return (
     <>
       {/* ---------------------------------------------------------------- */}
+      {/* Premios más altos — LO PRIMERO DE LA PÁGINA                        */}
+      {/*                                                                    */}
+      {/* Va por encima de la portada a propósito. El premio progresivo es lo */}
+      {/* que trae gente al salón: el cliente mira la cifra desde su casa y   */}
+      {/* llega sabiendo a qué banco caminar. Debajo del héroe había que      */}
+      {/* hacer scroll para verlo, y en un celular eso son dos pantallas.     */}
+      {/* La promoción de los $25 no pierde nada: se queda justo debajo con   */}
+      {/* su máquina, más el pop-up de entrada y el botón flotante.           */}
+      {/* ---------------------------------------------------------------- */}
+      {destacados.length > 0 && (
+        <section className="contenedor pb-10 pt-8 sm:pb-12 sm:pt-10">
+          <EncabezadoSeccion
+            compacto
+            titulo="Premios más altos ahora"
+            enlace={{ href: '/jackpots', texto: 'Ver todos' }}
+            nota={ultima ? `Actualizado ${relativeUpdate(ultima)}` : undefined}
+          />
+
+          {/* Las mismas fichas del tablero de /jackpots, con el mismo material
+              por puesto. Quien llega a la portada y luego entra al tablero ve
+              la misma pieza: es un solo sitio, no dos pantallas parecidas. */}
+          {/* Dos columnas ya en celular. Apiladas de una en una, las cuatro
+              tarjetas medían 853px contra una ventana de 664: al entrar solo se
+              veían DOS premios y el héroe quedaba a una pantalla y media de
+              distancia. En dos columnas caben los cuatro de un vistazo, que es
+              justo para lo que se subieron aquí arriba. */}
+          <ul className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {destacados.map((j, i) => (
+              <li key={j.id} className="tarjeta relative overflow-hidden p-5">
+                <div
+                  aria-hidden="true"
+                  className="patron-picas pointer-events-none absolute inset-0 opacity-[0.04]"
+                />
+                <div className="relative flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <FichaPuesto
+                      puesto={i + 1}
+                      clase={`h-8 w-8 text-sm ${
+                        i === 0 ? FICHA[1] : i === 1 ? FICHA[2] : i === 2 ? FICHA[3] : FICHA.casa
+                      }`}
+                    />
+                    <p className="min-w-0 font-display text-sm font-semibold leading-tight sm:text-base">
+                      {j.nombre}
+                    </p>
+                  </div>
+                  {j.caliente && (
+                    <span className="anim-brillo shrink-0 text-sm" title="Premio caliente">
+                      🔥
+                    </span>
+                  )}
+                </div>
+                {/* 20px en celular y 24 desde `sm`: en media columna de un
+                    teléfono de 320px, "$12,204.01" a 24px no cabe. 20px en
+                    negrita sigue contando como texto grande, que es lo que el
+                    dorado necesita para cumplir el contraste. */}
+                <p className="relative mt-3 font-display text-xl font-bold tabular text-dorado sm:text-2xl">
+                  {money(j.centavos)}
+                </p>
+                <p className="relative mt-1 text-xs uppercase tracking-[0.18em] text-tenue">
+                  Banco {j.banco}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
       {/* Portada: el premio y la máquina, arriba del todo.                  */}
       {/* La foto de la fachada pasa a un segundo plano a propósito — es      */}
       {/* bonita, pero no es lo que hace que alguien deje su celular.        */}
@@ -127,57 +195,6 @@ export default async function Inicio() {
           className="cinta-ficha absolute inset-x-0 bottom-0 h-[3px] opacity-45"
         />
       </section>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Jackpots calientes                                                */}
-      {/* ---------------------------------------------------------------- */}
-      {destacados.length > 0 && (
-        <section className="contenedor py-14">
-          <EncabezadoSeccion
-            titulo="Premios más altos ahora"
-            enlace={{ href: '/jackpots', texto: 'Ver todos' }}
-            nota={ultima ? `Actualizado ${relativeUpdate(ultima)}` : undefined}
-          />
-
-          {/* Las mismas fichas del tablero de /jackpots, con el mismo material
-              por puesto. Quien llega a la portada y luego entra al tablero ve
-              la misma pieza: es un solo sitio, no dos pantallas parecidas. */}
-          <ul className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {destacados.map((j, i) => (
-              <li key={j.id} className="tarjeta relative overflow-hidden p-5">
-                <div
-                  aria-hidden="true"
-                  className="patron-picas pointer-events-none absolute inset-0 opacity-[0.04]"
-                />
-                <div className="relative flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <FichaPuesto
-                      puesto={i + 1}
-                      clase={`h-8 w-8 text-sm ${
-                        i === 0 ? FICHA[1] : i === 1 ? FICHA[2] : i === 2 ? FICHA[3] : FICHA.casa
-                      }`}
-                    />
-                    <p className="min-w-0 font-display text-base font-semibold leading-tight">
-                      {j.nombre}
-                    </p>
-                  </div>
-                  {j.caliente && (
-                    <span className="anim-brillo shrink-0 text-sm" title="Premio caliente">
-                      🔥
-                    </span>
-                  )}
-                </div>
-                <p className="relative mt-3 font-display text-2xl font-bold text-dorado tabular">
-                  {money(j.centavos)}
-                </p>
-                <p className="relative mt-1 text-xs uppercase tracking-[0.18em] text-tenue">
-                  Banco {j.banco}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {/* ---------------------------------------------------------------- */}
       {/* Máquinas nuevas                                                   */}
@@ -317,15 +334,29 @@ function EncabezadoSeccion({
   titulo,
   enlace,
   nota,
+  compacto,
 }: {
   titulo: string;
   enlace?: { href: string; texto: string };
   nota?: string;
+  /**
+   * Titular más pequeño. Lo usa la sección de premios, que ahora abre la
+   * página: a tamaño completo, en un teléfono el titular con su regla y su nota
+   * se comía 350px antes de la primera cifra — justo lo que se subió aquí para
+   * que se viera de entrada.
+   */
+  compacto?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h2 className="font-display text-3xl font-bold sm:text-4xl">{titulo}</h2>
+        <h2
+          className={`font-display font-bold ${
+            compacto ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'
+          }`}
+        >
+          {titulo}
+        </h2>
         {/* Un trocito del canto de la ficha bajo cada título. Es lo mínimo que
             hace falta para que un encabezado se lea como parte de un sistema y
             no como texto grande suelto. */}
