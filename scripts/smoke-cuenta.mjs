@@ -23,6 +23,12 @@ const BASE = process.argv[2] ?? 'http://localhost:3000';
 // 555-01XX está reservado para ficción y el validador lo rechaza a propósito,
 // así que un número "de prueba" de los de toda la vida no sirve aquí.
 const CELULAR = process.env.CELULAR_PRUEBA ?? '7872360147';
+// Igual que en smoke-nav.mjs. Las dos pruebas de humo se lanzan juntas y no
+// tenía sentido que una aceptara CHROMIUM_PATH y la otra no: en cualquier
+// entorno donde el Chromium no esté donde Playwright lo busca por defecto —el
+// contenedor de CI, sin ir más lejos— esta se caía antes de la primera
+// comprobación con un error de "Executable doesn't exist".
+const CHROMIUM = process.env.CHROMIUM_PATH;
 const NOMBRE = 'Prueba Automatica';
 
 let fallos = 0;
@@ -51,7 +57,7 @@ async function recibeElClic(locator) {
 }
 
 async function main() {
-  const navegador = await chromium.launch();
+  const navegador = await chromium.launch(CHROMIUM ? { executablePath: CHROMIUM } : {});
   const contexto = await navegador.newContext();
   const pagina = await contexto.newPage();
 

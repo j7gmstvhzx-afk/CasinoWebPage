@@ -78,6 +78,76 @@ export function PromoLauncher() {
     };
   }, [oculto, algunOverlayActivo]);
 
+  // El botón flotante se APARTA cuando estaría robando un toque.
+  //
+  // Es `fixed`, así que lo que tape no depende de dónde esté en el HTML sino de
+  // dónde quede el scroll. Midiéndolo pantalla por pantalla en un iPhone, en
+  // seis de las ocho páginas había algún momento en que se comía un elemento:
+  // el botón de "Google Maps" de /contacto — tocarlo abría la promoción en vez
+  // de las direcciones — y los enlaces del pie ("Máquinas Nuevas", "Términos",
+  // "Contacto") en casi todas.
+  //
+  // Reservar espacio abajo no lo arregla: eso solo corre el final del
+  // documento, y un elemento `fixed` se planta encima de cualquier cosa que
+  // pase por debajo mientras se hace scroll.
+  //
+  // Así que se comprueba lo que hay DEBAJO. `elementsFromPoint` devuelve toda
+  // la pila en ese punto; si pasado el propio botón aparece algo que se puede
+  // tocar, el botón se retira hasta que ese elemento deje de estar debajo. La
+  // promoción siempre se puede volver a abrir un dedo más arriba o más abajo,
+  // pero el toque de la persona SIEMPRE llega a donde apuntó.
+  const botonRef = useRef<HTMLButtonElement>(null);
+  const [estorbando, setEstorbando] = useState(false);
+
+  useEffect(() => {
+    if (oculto || abierto) return;
+
+    let pendiente = 0;
+    const revisar = () => {
+      pendiente = 0;
+      const el = botonRef.current;
+      if (!el) return;
+
+      const r = el.getBoundingClientRect();
+      // Cuatro esquinas metidas hacia adentro más el centro: con un solo punto
+      // se escapaba un botón que solo asomaba por una esquina.
+      const puntos: [number, number][] = [
+        [r.left + 6, r.top + 6],
+        [r.right - 6, r.top + 6],
+        [r.left + 6, r.bottom - 6],
+        [r.right - 6, r.bottom - 6],
+        [r.left + r.width / 2, r.top + r.height / 2],
+      ];
+
+      const tapa = puntos.some(([x, y]) => {
+        if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return false;
+        for (const bajo of document.elementsFromPoint(x, y)) {
+          if (bajo === el || el.contains(bajo)) continue; // el propio botón
+          return !!bajo.closest('a[href], button, input, select, textarea, [role="button"]');
+        }
+        return false;
+      });
+
+      setEstorbando((antes) => (antes === tapa ? antes : tapa));
+    };
+
+    const alVuelo = () => {
+      // Una sola medición por cuadro: `elementsFromPoint` fuerza al navegador a
+      // recalcular la maquetación, y hacerlo en cada evento de scroll de un
+      // celular se nota en el dedo.
+      if (!pendiente) pendiente = requestAnimationFrame(revisar);
+    };
+
+    revisar();
+    window.addEventListener('scroll', alVuelo, { passive: true });
+    window.addEventListener('resize', alVuelo);
+    return () => {
+      if (pendiente) cancelAnimationFrame(pendiente);
+      window.removeEventListener('scroll', alVuelo);
+      window.removeEventListener('resize', alVuelo);
+    };
+  }, [oculto, abierto]);
+
   const cerrar = useCallback(() => {
     setAbierto(false);
     try {
@@ -145,9 +215,19 @@ export function PromoLauncher() {
     <>
       {!abierto && (
         <button
+          ref={botonRef}
           type="button"
           onClick={abrir}
-          className="anim-flotar fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-gradient-to-b from-dorado-3 to-dorado-2 px-5 py-3.5 font-display text-sm font-bold text-tinta shadow-premio transition-transform hover:scale-105 active:scale-95"
+          // Mientras estorba se apaga DE VERDAD, no solo a la vista:
+          // `pointer-events-none` para que el toque atraviese, `tabIndex={-1}` y
+          // `aria-hidden` para que no lo pise el teclado ni lo lea un lector de
+          // pantalla. Con solo bajarle la opacidad seguiría interceptando el
+          // toque, que es justo el fallo que se quiere quitar.
+          tabIndex={estorbando ? -1 : undefined}
+          aria-hidden={estorbando || undefined}
+          className={`anim-flotar fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-gradient-to-b from-dorado-3 to-dorado-2 px-5 py-3.5 font-display text-sm font-bold text-tinta shadow-premio transition-[transform,opacity] hover:scale-105 active:scale-95 ${
+            estorbando ? 'pointer-events-none opacity-0' : 'opacity-100'
+          }`}
         >
           <span aria-hidden="true" className="text-lg leading-none">
             🎰

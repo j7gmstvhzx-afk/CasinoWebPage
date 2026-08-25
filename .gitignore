@@ -43,4 +43,5 @@ next-env.d.ts
 # Scripts de auditoría creados al vuelo durante una revisión. No son del proyecto.
 /.audit/
 /qa*.mjs
+/qa*.sh
 /audit-*.mjs
