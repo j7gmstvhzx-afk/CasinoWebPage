@@ -17,10 +17,15 @@ export default function PaginaContacto() {
 
       <section className="contenedor py-10 sm:py-14">
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="tarjeta p-8">
-            <h2 className="font-display text-2xl font-bold">Visítanos</h2>
+          <div className="tarjeta relative overflow-hidden p-8">
+            <div
+              aria-hidden="true"
+              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+            />
+            <h2 className="relative font-display text-2xl font-bold">Visítanos</h2>
+            <div aria-hidden="true" className="cinta-ficha relative mt-3 h-[3px] w-16" />
 
-            <dl className="mt-6 space-y-6">
+            <dl className="relative mt-6 space-y-6">
               <Dato etiqueta="Dirección">
                 <p>{fullAddress()}</p>
               </Dato>
@@ -57,7 +62,11 @@ export default function PaginaContacto() {
               </Dato>
             </dl>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            {/* `relative` no es adorno: la textura de arriba está posicionada
+                y, por regla de pintado, un elemento posicionado se dibuja por
+                ENCIMA de sus hermanos estáticos aunque vaya antes en el HTML.
+                Sin esto, el patrón queda por delante de los botones. */}
+            <div className="relative mt-8 flex flex-wrap gap-3">
               <a
                 href={SITE.waze}
                 target="_blank"

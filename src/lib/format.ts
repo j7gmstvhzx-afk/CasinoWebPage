@@ -38,9 +38,27 @@ const dt = (opts: Intl.DateTimeFormatOptions) => {
   return { format: (d: Date) => espacios(f.format(d)) };
 };
 
+/**
+ * Convierte a Date lo que llegue, sin correr el día.
+ *
+ * Una fecha suelta ('2026-08-28') no lleva hora ni zona: es un día de
+ * calendario. `new Date('2026-08-28')` la fija en medianoche UTC y, mirada
+ * desde Puerto Rico (UTC-4), esa medianoche es el día ANTERIOR a las 8 p.m.:
+ * un torneo del viernes se anunciaba el jueves.
+ *
+ * Anclándola al mediodía UTC, el día es el mismo en cualquier zona entre UTC-11
+ * y UTC+11 — Puerto Rico incluido — sin importar el horario de verano.
+ *
+ * Lo que ya trae hora (un timestamp) se deja intacto: eso sí es un instante.
+ */
+const aFecha = (d: Date | string): Date =>
+  typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
+    ? new Date(`${d}T12:00:00Z`)
+    : new Date(d);
+
 /** "16 de agosto de 2026" */
 export const longDate = (d: Date | string) =>
-  dt({ day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(d));
+  dt({ day: 'numeric', month: 'long', year: 'numeric' }).format(aFecha(d));
 
 /** "16 ago 2026, 3:47 p.m." */
 export const dateTime = (d: Date | string) =>
@@ -50,7 +68,7 @@ export const dateTime = (d: Date | string) =>
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(d));
+  }).format(aFecha(d));
 
 /** "hoy, 7:58 a.m." / "ayer, 7:58 a.m." / "14 ago, 7:58 a.m." */
 export function relativeUpdate(d: Date | string): string {

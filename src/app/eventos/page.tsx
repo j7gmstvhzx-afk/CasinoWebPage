@@ -63,6 +63,8 @@ function Grupo({
   return (
     <div>
       <h2 className="font-display text-2xl font-bold sm:text-3xl">{titulo}</h2>
+      {/* El canto de la ficha, igual que en la portada y en el menú. */}
+      <div aria-hidden="true" className="cinta-ficha mt-3 h-[3px] w-16" />
       <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {eventos.map((e) => (
           <li key={e.id} className="tarjeta overflow-hidden">

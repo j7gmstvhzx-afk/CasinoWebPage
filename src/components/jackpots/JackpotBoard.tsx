@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JackpotVista } from '@/lib/queries';
 import { money } from '@/lib/format';
+import { FichaPuesto, FICHA } from '@/components/site/FichaPuesto';
 
 /**
  * Tablero de jackpots.
@@ -241,41 +242,6 @@ function BarraRelativa({
   );
 }
 
-/**
- * Ficha de puesto.
- *
- * El borde discontinuo no es un adorno cualquiera: reproduce las MUESCAS del
- * canto de la ficha de póker del logo. Es la pieza que ata el tablero a la
- * marca, y se repite en los tres niveles (héroe, podio, parrilla) a tres
- * tamaños distintos.
- *
- * `aria-hidden`: el puesto ya está en el orden visual de la lista y, en el
- * podio, escrito como "#2" en la insignia. Un lector de pantalla que anuncie
- * "2" suelto antes del nombre solo estorba.
- */
-function FichaPuesto({ puesto, clase }: { puesto: number; clase: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`relative inline-flex shrink-0 items-center justify-center rounded-full font-display font-bold ${clase}`}
-    >
-      <span className="absolute inset-0 rounded-full border-[3px] border-dashed border-current opacity-40" />
-      <span className="relative">{puesto}</span>
-    </span>
-  );
-}
-
-/** Materiales de la ficha por puesto. El salto oro → plata → bronce → casa es
- * lo que hace legible la jerarquía sin leer un solo número. */
-const FICHA = {
-  1: 'bg-gradient-to-br from-dorado-3 via-dorado-2 to-dorado text-[#0a2547]',
-  2: 'bg-gradient-to-br from-slate-100 via-slate-200 to-slate-400 text-slate-700',
-  3: 'bg-gradient-to-br from-orange-100 via-orange-200 to-orange-400 text-orange-900',
-} as const;
-
-/** Halo de color detrás de cada tarjeta del podio, a juego con el material de
- * su ficha. El emoji de medalla que había aquí se quitó: repetía a menor
- * calidad lo que la ficha ya dice. */
 const MEDALLA = [
   { anillo: 'from-dorado-3 via-dorado-2 to-dorado', halo: 'shadow-premio' },
   { anillo: 'from-slate-200 via-slate-300 to-slate-400', halo: 'shadow-suave' },
@@ -463,7 +429,7 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
           <>
             <FichaPuesto
               puesto={puesto}
-              clase="h-9 w-9 bg-superficie text-sm text-marca"
+              clase={`h-9 w-9 text-sm ${FICHA.casa}`}
             />
             <span className="sr-only">Puesto {puesto}.</span>
           </>

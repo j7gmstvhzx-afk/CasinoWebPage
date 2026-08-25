@@ -2,20 +2,17 @@ export function PageHero({
   titulo,
   descripcion,
   children,
-  patron,
 }: {
   titulo: string;
   descripcion?: React.ReactNode;
   children?: React.ReactNode;
-  /**
-   * Enciende la textura de picas del logo y remata la banda con las muescas de
-   * la ficha. Se usa donde la sección de abajo también lleva la textura (los
-   * jackpots), para que la cabecera y el tablero se lean como UNA zona
-   * diseñada y no como un título pegado encima de una lista.
-   */
-  patron?: boolean;
 }) {
   return (
+    // La banda de cabecera es la MISMA en todas las páginas: el lavado de
+    // color, el tejido de picas del logo y el remate con las muescas de la
+    // ficha. No es opción por página — es la firma del sitio, y algo que
+    // aparece en unas secciones sí y en otras no deja de ser identidad y pasa a
+    // parecer un descuido.
     <section className="relative overflow-hidden border-b border-linea">
       {/* Un lavado de color de arriba a abajo, sin manchas. En el tema oscuro
           esto eran dos halos radiales; sobre blanco se veían como dos borrones
@@ -27,20 +24,18 @@ export function PageHero({
           background: 'linear-gradient(180deg, rgb(43 169 224 / .07), transparent)',
         }}
       />
-      {patron && (
-        // La máscara la desvanece hacia abajo. Sin ella el tejido se corta en
-        // seco contra el borde de la sección y parece un recorte mal pegado, no
-        // una textura del papel. Va con prefijo -webkit- porque Safari todavía
-        // lo pide.
-        <div
-          aria-hidden="true"
-          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 85%)',
-            maskImage: 'linear-gradient(180deg, #000 0%, transparent 85%)',
-          }}
-        />
-      )}
+      {/* La máscara desvanece el tejido hacia abajo. Sin ella se corta en seco
+          contra el borde de la sección y parece un recorte mal pegado, no una
+          textura del papel. Va con prefijo -webkit- porque Safari todavía lo
+          pide. */}
+      <div
+        aria-hidden="true"
+        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.06]"
+        style={{
+          WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 85%)',
+          maskImage: 'linear-gradient(180deg, #000 0%, transparent 85%)',
+        }}
+      />
       <div className="contenedor relative py-10 sm:py-14">
         <h1 className="font-display text-4xl font-bold sm:text-6xl">{titulo}</h1>
         {descripcion && (
@@ -50,15 +45,13 @@ export function PageHero({
         )}
         {children}
       </div>
-      {patron && (
-        <div
-          aria-hidden="true"
-          // 3px y al 45%: a todo lo ancho de la pantalla, la cinta a plena
-          // intensidad se leía como cinta de obra y le robaba el ojo al primer
-          // premio. Bajada, hace lo suyo — rematar la banda — sin gritar.
-          className="cinta-ficha absolute inset-x-0 bottom-0 h-[3px] opacity-45"
-        />
-      )}
+      {/* 3px y al 45%: a todo lo ancho de la pantalla, la cinta a plena
+          intensidad se leía como cinta de obra y le robaba el ojo al contenido
+          de abajo. Bajada, hace lo suyo — rematar la banda — sin gritar. */}
+      <div
+        aria-hidden="true"
+        className="cinta-ficha absolute inset-x-0 bottom-0 h-[3px] opacity-45"
+      />
     </section>
   );
 }

@@ -34,7 +34,6 @@ export default async function PaginaJackpots() {
   return (
     <>
       <PageHero
-        patron
         titulo="Jackpots"
         descripcion={
           <>

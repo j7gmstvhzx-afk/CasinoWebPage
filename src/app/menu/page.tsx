@@ -66,16 +66,33 @@ export default async function PaginaMenu() {
         {secciones.length === 0 ? (
           <SeccionVacia mensaje="Estamos actualizando el menú. Pregunta en el restaurante por nuestra oferta de hoy." />
         ) : (
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-x-14">
+          // La carta va sobre una pieza con textura, no suelta sobre el
+          // blanco. Es la única página del sitio sin fotos ni tarjetas: sin un
+          // soporte debajo, dos columnas de texto y precios se ven como un
+          // documento pegado, no como la carta de un sitio.
+          <div className="tarjeta relative overflow-hidden p-6 sm:p-9">
+            <div
+              aria-hidden="true"
+              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+            />
+            <div className="relative grid gap-10 lg:grid-cols-2 lg:gap-x-14">
             {secciones.map((s) => (
               <div key={s.nombre}>
                 <h2 className="font-display text-2xl font-bold text-cian">{s.nombre}</h2>
+                {/* El mismo trocito del canto de la ficha que remata cada
+                    encabezado de sección en la portada. */}
+                <div aria-hidden="true" className="cinta-ficha mt-2.5 h-[3px] w-12" />
                 <ul className="mt-5 space-y-5">
                   {s.platos.map((p) => (
                     <li key={p.id} className="border-b border-linea/60 pb-4">
                       <div className="flex items-baseline justify-between gap-4">
                         <h3 className="font-display text-lg font-semibold">{p.name}</h3>
-                        <span className="shrink-0 font-display font-bold text-dorado tabular">
+                        {/* text-xl no es capricho de tamaño: el dorado del
+                            dinero da 3.63:1 sobre blanco. A 16px eso incumple
+                            (piden 4.5:1); a 20px en negrita cuenta como texto
+                            grande y el mínimo baja a 3:1. El precio se lee
+                            mejor y deja de ser un fallo de accesibilidad. */}
+                        <span className="shrink-0 font-display text-xl font-bold text-dorado tabular">
                           {p.price_cents === null ? 'Precio del día' : money(p.price_cents)}
                         </span>
                       </div>
@@ -89,6 +106,7 @@ export default async function PaginaMenu() {
                 </ul>
               </div>
             ))}
+            </div>
           </div>
         )}
       </section>

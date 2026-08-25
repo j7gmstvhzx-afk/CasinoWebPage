@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PromoExperience } from '@/components/slot/PromoExperience';
 import { Marco } from '@/components/site/Marco';
+import { FichaPuesto, FICHA } from '@/components/site/FichaPuesto';
 import {
   getJackpots,
   getMaquinasNuevas,
@@ -55,9 +56,27 @@ export default async function Inicio() {
           }}
         />
 
+        {/* El mismo tejido de picas que llevan las cabeceras de las demás
+            páginas. La portada era la única banda del sitio sin textura, y se
+            notaba: entrabas a una hoja en blanco y las secciones interiores sí
+            estaban vestidas. */}
+        <div
+          aria-hidden="true"
+          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 88%)',
+            maskImage: 'linear-gradient(180deg, #000 0%, transparent 88%)',
+          }}
+        />
+
         <div className="contenedor relative grid items-center gap-12 py-14 lg:grid-cols-[1.05fr_auto] lg:gap-16 lg:py-20">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-dorado/40 bg-dorado/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-dorado">
+            {/* Texto en tinta, no en dorado: a 12px hace falta 4.5:1 y el
+                dorado de marca se queda en 3.63:1 sobre blanco. El borde y el
+                fondo dorados siguen diciendo "promoción"; el rótulo solo tiene
+                que leerse. Es el mismo criterio que la insignia CALIENTE del
+                tablero de premios. */}
+            <p className="inline-flex items-center gap-2 rounded-full border border-dorado/40 bg-dorado/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-tinta">
               Promoción del día
             </p>
 
@@ -100,6 +119,13 @@ export default async function Inicio() {
             <PromoExperience />
           </div>
         </div>
+
+        {/* Las muescas del canto de la ficha cierran la portada igual que
+            cierran cada cabecera: es el mismo remate en todo el sitio. */}
+        <div
+          aria-hidden="true"
+          className="cinta-ficha absolute inset-x-0 bottom-0 h-[3px] opacity-45"
+        />
       </section>
 
       {/* ---------------------------------------------------------------- */}
@@ -113,23 +139,38 @@ export default async function Inicio() {
             nota={ultima ? `Actualizado ${relativeUpdate(ultima)}` : undefined}
           />
 
+          {/* Las mismas fichas del tablero de /jackpots, con el mismo material
+              por puesto. Quien llega a la portada y luego entra al tablero ve
+              la misma pieza: es un solo sitio, no dos pantallas parecidas. */}
           <ul className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {destacados.map((j) => (
-              <li key={j.id} className="tarjeta p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-display text-base font-semibold leading-tight">
-                    {j.nombre}
-                  </p>
+            {destacados.map((j, i) => (
+              <li key={j.id} className="tarjeta relative overflow-hidden p-5">
+                <div
+                  aria-hidden="true"
+                  className="patron-picas pointer-events-none absolute inset-0 opacity-[0.04]"
+                />
+                <div className="relative flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <FichaPuesto
+                      puesto={i + 1}
+                      clase={`h-8 w-8 text-sm ${
+                        i === 0 ? FICHA[1] : i === 1 ? FICHA[2] : i === 2 ? FICHA[3] : FICHA.casa
+                      }`}
+                    />
+                    <p className="min-w-0 font-display text-base font-semibold leading-tight">
+                      {j.nombre}
+                    </p>
+                  </div>
                   {j.caliente && (
                     <span className="anim-brillo shrink-0 text-sm" title="Premio caliente">
                       🔥
                     </span>
                   )}
                 </div>
-                <p className="mt-3 font-display text-2xl font-bold text-dorado tabular">
+                <p className="relative mt-3 font-display text-2xl font-bold text-dorado tabular">
                   {money(j.centavos)}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-tenue">
+                <p className="relative mt-1 text-xs uppercase tracking-[0.18em] text-tenue">
                   Banco {j.banco}
                 </p>
               </li>
@@ -142,7 +183,16 @@ export default async function Inicio() {
       {/* Máquinas nuevas                                                   */}
       {/* ---------------------------------------------------------------- */}
       {maquinas.length > 0 && (
-        <section className="contenedor py-14">
+        // Banda de superficie con textura. La portada era una sola hoja blanca
+        // de arriba abajo: sin un cambio de fondo, cuatro secciones seguidas se
+        // leen como una sola lista larga. Alternar da respiro y marca dónde
+        // empieza cada cosa.
+        <section className="relative border-y border-linea bg-superficie">
+          <div
+            aria-hidden="true"
+            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+          />
+          <div className="contenedor relative py-14">
           <EncabezadoSeccion
             titulo="Máquinas recién llegadas"
             enlace={{ href: '/maquinas-nuevas', texto: 'Ver todas' }}
@@ -169,6 +219,7 @@ export default async function Inicio() {
               </li>
             ))}
           </ul>
+          </div>
         </section>
       )}
 
@@ -205,8 +256,12 @@ export default async function Inicio() {
       {/* Visítanos                                                         */}
       {/* ---------------------------------------------------------------- */}
       <section className="contenedor py-14">
-        <div className="tarjeta grid gap-8 p-8 sm:p-10 md:grid-cols-2">
-          <div>
+        <div className="tarjeta relative grid gap-8 overflow-hidden p-8 sm:p-10 md:grid-cols-2">
+          <div
+            aria-hidden="true"
+            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+          />
+          <div className="relative">
             <h2 className="font-display text-3xl font-bold">Visítanos</h2>
             <address className="mt-5 space-y-3 not-italic text-tenue">
               <p className="text-tinta">{fullAddress()}</p>
@@ -237,7 +292,7 @@ export default async function Inicio() {
             </div>
           </div>
 
-          <ul className="grid grid-cols-2 gap-4 self-center">
+          <ul className="relative grid grid-cols-2 gap-4 self-center">
             {[
               { n: '285+', t: 'Máquinas' },
               { n: '6', t: 'Mesas de juego' },
@@ -271,12 +326,21 @@ function EncabezadoSeccion({
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h2 className="font-display text-3xl font-bold sm:text-4xl">{titulo}</h2>
-        {nota && <p className="mt-1.5 text-sm text-tenue">{nota}</p>}
+        {/* Un trocito del canto de la ficha bajo cada título. Es lo mínimo que
+            hace falta para que un encabezado se lea como parte de un sistema y
+            no como texto grande suelto. */}
+        <div aria-hidden="true" className="cinta-ficha mt-3 h-[3px] w-16" />
+        {nota && <p className="mt-2.5 text-sm text-tenue">{nota}</p>}
       </div>
       {enlace && (
+        // `inline-block py-1.5` para que la zona tocable llegue a 24px: el
+        // texto de 14px deja un enlace de 20px de alto. No es un enlace suelto
+        // dentro de un párrafo (esos están exentos y estirarlos rompería el
+        // renglón), es el acceso a una sección entera y tiene que ser fácil de
+        // dar con el pulgar. Es el mismo arreglo del pie de página.
         <Link
           href={enlace.href}
-          className="text-sm font-medium text-cian underline-offset-4 hover:underline"
+          className="inline-block py-1.5 text-sm font-medium text-cian underline-offset-4 hover:underline"
         >
           {enlace.texto} →
         </Link>

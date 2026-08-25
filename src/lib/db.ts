@@ -107,6 +107,39 @@ function crear(): Sql {
   const cliente = postgres(corregida, {
     max: 1,
     prepare: false,
+    types: {
+      // Las columnas `date` vuelven como CADENA 'YYYY-MM-DD', no como Date.
+      //
+      // Una fecha de Postgres es un DÍA DE CALENDARIO, no un instante. El
+      // driver, por defecto, la convierte en un Date a medianoche UTC, y de ahí
+      // salieron dos fallos de verdad:
+      //
+      //   1. /eventos se quedaba EN BLANCO por completo, con eventos publicados
+      //      y todo. La página compara `e.starts_on <= hoy` contra una cadena
+      //      'YYYY-MM-DD'; con un Date de un lado, JavaScript convierte el otro
+      //      operando a número, sale NaN, y TODA comparación da false. Los
+      //      eventos no caían ni en "Ahora mismo" ni en "Próximamente" y la
+      //      sección se pintaba vacía. Sin error, sin aviso, sin nada.
+      //
+      //   2. Todas las fechas salían UN DÍA ANTES. Medianoche UTC del día 28,
+      //      mirada desde Puerto Rico (UTC-4), es el día 27 a las 8 p.m. Un
+      //      torneo del viernes se anunciaba el jueves.
+      //
+      // Los tipos de TypeScript ya decían `string | null` en todas partes: no
+      // era el código el que mentía, era el driver. Devolviendo la cadena cruda
+      // el tipo pasa a ser cierto, las comparaciones funcionan, `.slice(0, 10)`
+      // del panel deja de ser una llamada a un método que no existe, y no hay
+      // ninguna zona horaria de por medio que pueda correr el día.
+      //
+      // Esto NO toca `timestamptz` (created_at, reading_at…): esos SÍ son
+      // instantes y tienen que seguir llegando como Date.
+      fecha: {
+        to: 1082,
+        from: [1082],
+        serialize: (x: string) => x,
+        parse: (x: string) => x,
+      },
+    },
     idle_timeout: 20,
     connect_timeout: 10,
     ssl: local ? false : 'require',
