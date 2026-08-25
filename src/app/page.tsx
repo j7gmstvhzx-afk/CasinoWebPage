@@ -52,6 +52,7 @@ export default async function Inicio() {
         <section className="contenedor pb-10 pt-8 sm:pb-12 sm:pt-10">
           <EncabezadoSeccion
             compacto
+            comoH1
             titulo="Premios más altos ahora"
             enlace={{ href: '/jackpots', texto: 'Ver todos' }}
             nota={ultima ? `Actualizado ${relativeUpdate(ultima)}` : undefined}
@@ -148,11 +149,15 @@ export default async function Inicio() {
               Promoción del día
             </p>
 
-            <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] sm:text-7xl">
+            {/* h2 y no h1: el h1 de la página es ahora "Premios más altos
+                ahora", que es lo que abre la portada. El tamaño no cambia —
+                este sigue siendo el titular grande — solo el nivel, para que el
+                orden de encabezados vuelva a ser 1, 2, 2, 2. */}
+            <h2 className="mt-5 font-display text-5xl font-bold leading-[1.05] sm:text-7xl">
               Gira y gana{' '}
               <span className="texto-dorado">{PROMO.prizeLabel}</span> en
               efectivo
-            </h1>
+            </h2>
 
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-tenue">
               Una tirada gratis cada día. Si te salen tres símbolos iguales,
@@ -335,6 +340,7 @@ function EncabezadoSeccion({
   enlace,
   nota,
   compacto,
+  comoH1,
 }: {
   titulo: string;
   enlace?: { href: string; texto: string };
@@ -346,17 +352,31 @@ function EncabezadoSeccion({
    * que se viera de entrada.
    */
   compacto?: boolean;
+  /**
+   * Renderiza el título como `h1` en vez de `h2`.
+   *
+   * Al subir los premios por encima de la portada, el primer encabezado del
+   * documento pasó a ser un h2 y el h1 quedaba más abajo. Funcionaba, pero el
+   * orden de encabezados dejaba de ser descendente y quien navega por títulos
+   * con un lector de pantalla se encontraba el nivel 2 antes que el 1.
+   *
+   * El nivel no lo decide el tamaño de la letra: este h1 se sigue viendo
+   * compacto. Lo que dice es cuál es el tema de la página, y en un casino cuyo
+   * reclamo son los progresivos, ese tema son los premios.
+   */
+  comoH1?: boolean;
 }) {
+  const Titulo = comoH1 ? 'h1' : 'h2';
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h2
+        <Titulo
           className={`font-display font-bold ${
             compacto ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'
           }`}
         >
           {titulo}
-        </h2>
+        </Titulo>
         {/* Un trocito del canto de la ficha bajo cada título. Es lo mínimo que
             hace falta para que un encabezado se lea como parte de un sistema y
             no como texto grande suelto. */}
