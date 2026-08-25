@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/site/PageHero';
 import { JackpotBoard } from '@/components/jackpots/JackpotBoard';
 import { getJackpots, getUltimaActualizacion, seguro } from '@/lib/queries';
-import { relativeUpdate } from '@/lib/format';
+import { relativeUpdate, longDate } from '@/lib/format';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -42,13 +42,7 @@ export default async function PaginaJackpots() {
           </>
         }
       >
-        {ultima && (
-          <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-linea bg-superficie px-4 py-2 text-sm">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-gana anim-brillo" />
-            <span className="text-tenue">Última actualización:</span>
-            <span className="font-medium text-tinta">{relativeUpdate(ultima)}</span>
-          </p>
-        )}
+        {ultima && <AvisoActualizacion ultima={ultima} />}
       </PageHero>
 
       <section className="contenedor py-10 sm:py-14">
@@ -60,5 +54,48 @@ export default async function PaginaJackpots() {
         </p>
       </section>
     </>
+  );
+}
+
+/**
+ * Cuándo se actualizaron estos montos.
+ *
+ * Si son de hoy, basta con el punto verde y la hora: es la señal de "esto está
+ * vivo". Si NO son de hoy hay que decirlo con todas las letras y con la fecha,
+ * porque son cantidades de dinero por las que alguien maneja hasta Manatí.
+ * Enseñar montos de hace una semana con el mismo puntito verde de siempre es
+ * dejar que el visitante crea algo que no es.
+ *
+ * El corte a las 20 horas y no a las 24: la hoja se sube por la mañana, así que
+ * a las 24 h una subida de ayer temprano todavía contaría como "de hoy" bien
+ * entrada la tarde siguiente.
+ */
+function AvisoActualizacion({ ultima }: { ultima: string | Date }) {
+  const horas = (Date.now() - new Date(ultima).getTime()) / 3_600_000;
+  const alDia = horas < 20;
+
+  if (alDia) {
+    return (
+      <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-linea bg-superficie px-4 py-2 text-sm">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-gana anim-brillo" />
+        <span className="text-tenue">Última actualización:</span>
+        <span className="font-medium text-tinta">{relativeUpdate(ultima)}</span>
+      </p>
+    );
+  }
+
+  return (
+    <p className="mt-6 flex max-w-xl items-start gap-2.5 rounded-2xl border border-dorado/40 bg-dorado/10 px-4 py-3 text-sm text-tinta">
+      <span aria-hidden="true" className="mt-px shrink-0">
+        ⏳
+      </span>
+      <span>
+        <strong className="font-semibold">
+          Estos montos son del {longDate(ultima)}.
+        </strong>{' '}
+        Todavía no hemos subido los de hoy; los de verdad pueden estar más
+        altos. Pregunta en el casino por el monto del momento.
+      </span>
+    </p>
   );
 }

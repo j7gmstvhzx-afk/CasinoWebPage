@@ -278,8 +278,13 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
             />
 
             <div className="min-w-0">
+              {/* Sin la palabra "hoy". El tablero puede estar enseñando los
+                  montos de la última subida y no los de esta mañana, y la
+                  fecha ya se dice arriba con todas las letras. Un titular que
+                  promete "hoy" sobre una cifra de hace una semana es la clase
+                  de detalle por el que alguien maneja hasta Manatí para nada. */}
               <span className="inline-flex items-center gap-1.5 rounded-full border border-dorado-2/40 bg-dorado-2/15 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-dorado-3">
-                Premio más alto hoy
+                Premio más alto
               </span>
               {/* Sin `truncate`: el nombre puede envolver en dos líneas. Este
                   es el titular de la página; cortar "Money In The Bank" en

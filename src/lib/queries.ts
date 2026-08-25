@@ -49,22 +49,41 @@ export type JackpotVista = {
  */
 export async function getJackpots(): Promise<JackpotVista[]> {
   const filas = await sql<Jackpot[]>`
-    with ultimas as (
+    -- La lectura más reciente de TODO el sistema. Es el momento de la última
+    -- actualización general, sirve para saber qué máquinas se quedaron fuera,
+    -- y además ANCLA la ventana de frescura (ver abajo).
+    with corte as (
+      select max(reading_at) as ultima from app.jackpot_readings where amount_cents is not null
+    ),
+    ultimas as (
       select distinct on (m.id)
              m.id, m.name, m.bank_number, r.amount_cents, r.reading_at
         from app.machines m
         join app.jackpot_readings r on r.machine_id = m.id
+        cross join corte c
        where m.active
          and r.amount_cents is not null
-         -- Ventana de frescura: un premio que lleva más de 3 días sin lectura
-         -- deja de publicarse. Sin esto, una máquina que salió del salón se
-         -- quedaría en el tablero para siempre con su último monto.
-         and r.reading_at > now() - interval '3 days'
+         -- Ventana de frescura de 3 días, colgada de la ÚLTIMA SUBIDA y no de
+         -- "ahora". Sigue sacando del tablero la máquina que salió del salón
+         -- mientras el resto se actualiza — que es para lo que está: si la hoja
+         -- se sube a diario, la última subida ES ahora y la ventana es la misma
+         -- de siempre.
+         --
+         -- Pero anclada solo a now() tenía un modo de fallo grave: si NADIE
+         -- sube la hoja durante tres días (el personal de vacaciones, el Excel
+         -- que no cuadra, un festivo largo), la ventana se come el tablero
+         -- ENTERO y la página de premios queda en blanco, con el mensaje de
+         -- "Los premios se están actualizando". Un casino con sus jackpots al
+         -- día en la base de datos se ve, desde la calle, como si no tuviera
+         -- ninguno. Pasó: la última subida fue el 18 de agosto y la página
+         -- llevaba una semana vacía.
+         --
+         -- Colgada de la última subida, el tablero muestra SIEMPRE el último
+         -- estado publicado. Que ese estado es viejo se dice arriba, con su
+         -- fecha, en vez de esconderlo todo.
+         and r.reading_at > c.ultima - interval '3 days'
        order by m.id, r.reading_at desc
     ),
-    -- La lectura más reciente de TODO el sistema: es el momento de la última
-    -- actualización general, y sirve para saber qué máquinas se quedaron fuera.
-    corte as (select max(reading_at) as ultima from app.jackpot_readings where amount_cents is not null),
     previas as (
       select distinct on (r.machine_id) r.machine_id, r.amount_cents
         from app.jackpot_readings r
