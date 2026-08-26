@@ -16,6 +16,19 @@ set -euo pipefail
 
 CLIENTS="${1:-50}"
 SPINS="${2:-200}"
+
+# pgbench reparte -t transacciones por cliente, así que el total real es
+# CLIENTS * (SPINS / CLIENTS). Si no divide exacto, se disparan menos tiradas de
+# las pedidas y la comprobación "todas las tiradas se guardaron" falla por un
+# resto que no tiene nada que ver con la concurrencia.
+if [ $((SPINS % CLIENTS)) -ne 0 ]; then
+  echo "El número de tiradas ($SPINS) tiene que ser múltiplo del de clientes ($CLIENTS)." >&2
+  exit 2
+fi
+if [ "$SPINS" -gt 100000000 ]; then
+  echo "Tope de $SPINS: solo hay 100.000.000 de teléfonos distintos con este formato." >&2
+  exit 2
+fi
 DB="${PGDATABASE:-cam}"
 PSQL=(psql -d "$DB" -v ON_ERROR_STOP=1 -tAq)
 
@@ -36,9 +49,25 @@ create table t_players (n bigint primary key, id uuid not null);
 drop sequence if exists spin_seq;
 create sequence spin_seq;
 
--- Jugadores de prueba: +1787555XXXX
+-- Jugadores de prueba.
+--
+-- El formato que exige la tabla es ^\\+1[2-9]\\d{2}[2-9]\\d{6}$: diez dígitos tras
+-- el +1, con el primero del código de área y el primero del intercambio entre
+-- 2 y 9. Quedan libres los DOS últimos del código de área y los SEIS finales,
+-- o sea cien millones de números distintos.
+--
+-- Antes esto era '+1787555' || lpad(g, 4, '0'), que solo variaba cuatro
+-- dígitos. Y lpad no recorta por la izquierda: lpad('10000', 4, '0') devuelve
+-- '1000', el mismo que g=1000. Así que a partir de la tirada 10.000 el script
+-- moría con "duplicate key value violates unique constraint players_phone_key"
+-- — un techo de 9.999 que no estaba escrito en ningún sitio, en la única
+-- prueba que respalda la garantía de un premio por día.
 insert into app.players (phone_e164, full_name, municipality_id)
-select '+1787555' || lpad(g::text, 4, '0'), 'Jugador Prueba ' || g, 47
+select '+17'
+       || lpad((((g - 1) / 1000000) % 100)::text, 2, '0')
+       || '5'
+       || lpad(((g - 1) % 1000000)::text, 6, '0'),
+       'Jugador Prueba ' || g, 47
 from generate_series(1, $SPINS) g;
 
 insert into t_players (n, id)
