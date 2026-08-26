@@ -203,6 +203,29 @@ export async function getUltimaActualizacion(): Promise<string | null> {
   return fila?.max ?? null;
 }
 
+/**
+ * ¿Los montos que se están enseñando son de hoy?
+ *
+ * El corte a las 20 horas y no a las 24: la hoja se sube por la mañana, así que
+ * a las 24 h una subida de ayer temprano todavía contaría como "de hoy" bien
+ * entrada la tarde siguiente.
+ *
+ * La comparación se hace en SQL, con el reloj de la base, y no en el
+ * componente. `Date.now()` en el cuerpo de un componente es impuro —dos
+ * renders pueden dar resultados distintos— y el linter de React lo rechaza con
+ * razón. Aquí, además, el reloj de la base es la referencia correcta: es el
+ * mismo que estampó `reading_at`, así que no puede haber deriva entre los dos
+ * relojes que se están restando.
+ */
+export async function getJackpotsAlDia(): Promise<boolean> {
+  const [fila] = await sql<{ al_dia: boolean | null }[]>`
+    select max(reading_at) > now() - interval '20 hours' as al_dia
+      from app.jackpot_readings
+     where amount_cents is not null
+  `;
+  return fila?.al_dia ?? false;
+}
+
 export type MaquinaNueva = {
   id: string;
   name: string;

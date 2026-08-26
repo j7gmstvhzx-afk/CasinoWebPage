@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { MUNICIPIOS_ORDENADOS } from '@/lib/municipios';
 import { maskPhoneInput } from '@/lib/phone';
 import { PROMO } from '@/lib/site';
@@ -59,22 +59,33 @@ const botonPrincipal =
  * la persona hale la palanca. Quien se registra y cierra la página queda
  * grabado igual, y al volver puede entrar.
  *
- * `ids` existe porque las dos instancias del pop-up (el modal y la máquina de
- * la portada) llegan a estar montadas a la vez: con ids fijos habría dos
- * <label for="nombre"> apuntando al mismo sitio y tocar la etiqueta llevaría
- * el foco al formulario equivocado.
+ * Los ids de los campos salen de `useId()`, no de una prop.
+ *
+ * Antes había una prop `ids` para esto mismo, y el aviso de este comentario
+ * decía justo lo que pasaría si dos instancias compartían valor. Pasó: en la
+ * portada están montadas a la vez la máquina del héroe y la del modal, y las
+ * dos se llamaban `pop-reg`. Ocho ids duplicados. Como `label[for]` resuelve
+ * SIEMPRE al primer elemento con ese id, las tres etiquetas del modal
+ * apuntaban al formulario invisible de detrás: tocar "Nombre completo" —el
+ * gesto normal en un celular— abría el teclado y todo lo tecleado caía en el
+ * campo de atrás, mientras el del modal se quedaba vacío. Y de paso los
+ * campos del modal se quedaban sin etiqueta programática, con solo el
+ * `placeholder` para un lector de pantalla.
+ *
+ * Una prop que hay que acordarse de variar es una trampa esperando. `useId()`
+ * da un valor distinto por instancia sin que nadie tenga que acordarse de
+ * nada, y no se puede usar mal.
  */
 export function FormularioRegistro({
-  ids = 'reg',
   onListo,
   alEntrar,
   textoBoton = 'CONTINUAR',
 }: {
-  ids?: string;
   onListo: (datos: DatosRegistro & { nombreCorto: string }) => void;
   alEntrar?: () => void;
   textoBoton?: string;
 }) {
+  const ids = useId();
   const [nombre, setNombre] = useState('');
   const [celular, setCelular] = useState('');
   const [pueblo, setPueblo] = useState('');
@@ -83,13 +94,30 @@ export function FormularioRegistro({
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Qué campo señala el error, para poder marcarlo con `aria-invalid` y
+  // llevarle el foco. El mensaje solo aparecía debajo del botón: quien usa
+  // lector de pantalla lo oía, pero nada le decía CUÁL de los tres campos
+  // arreglar, y el foco se quedaba en el botón de enviar.
+  const [campoMalo, setCampoMalo] = useState<'nombre' | 'pueblo' | 'acepta' | null>(null);
+  const idError = `${ids}-error`;
+
+  function fallar(campo: 'nombre' | 'pueblo' | 'acepta', mensaje: string) {
+    setCampoMalo(campo);
+    setError(mensaje);
+    // Tras el repintado, para que el campo ya tenga `aria-invalid` puesto
+    // cuando el lector de pantalla lo anuncie.
+    setTimeout(() => document.getElementById(`${ids}-${campo}`)?.focus(), 0);
+  }
+
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setCampoMalo(null);
 
-    if (nombre.trim().split(/\s+/).length < 2) return setError('Escribe tu nombre y apellido.');
-    if (!pueblo) return setError('Selecciona tu pueblo.');
-    if (!acepta) return setError('Debes aceptar los términos para participar.');
+    if (nombre.trim().split(/\s+/).length < 2)
+      return fallar('nombre', 'Escribe tu nombre y apellido.');
+    if (!pueblo) return fallar('pueblo', 'Selecciona tu pueblo.');
+    if (!acepta) return fallar('acepta', 'Debes aceptar los términos para participar.');
 
     setEnviando(true);
     try {
@@ -127,6 +155,8 @@ export function FormularioRegistro({
           name="name"
           autoComplete="name"
           required
+          aria-invalid={campoMalo === 'nombre' || undefined}
+          aria-describedby={campoMalo === 'nombre' ? idError : undefined}
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Ej. María Rivera Colón"
@@ -154,6 +184,8 @@ export function FormularioRegistro({
           <select
             id={`${ids}-pueblo`}
             required
+            aria-invalid={campoMalo === 'pueblo' || undefined}
+            aria-describedby={campoMalo === 'pueblo' ? idError : undefined}
             value={pueblo}
             onChange={(e) => setPueblo(e.target.value)}
             className={estiloCampo}
@@ -184,8 +216,11 @@ export function FormularioRegistro({
 
       <label className="flex cursor-pointer items-start gap-3 text-sm text-tenue">
         <input
+          id={`${ids}-acepta`}
           type="checkbox"
           checked={acepta}
+          aria-invalid={campoMalo === 'acepta' || undefined}
+          aria-describedby={campoMalo === 'acepta' ? idError : undefined}
           onChange={(e) => setAcepta(e.target.checked)}
           className="mt-0.5 h-5 w-5 shrink-0 rounded border-linea bg-superficie accent-dorado"
         />
@@ -199,7 +234,7 @@ export function FormularioRegistro({
       </label>
 
       {error && (
-        <p role="alert" className="text-sm text-pierde">
+        <p id={idError} role="alert" className="text-sm text-pierde">
           {error}
         </p>
       )}
@@ -232,14 +267,13 @@ export function FormularioRegistro({
  * ajenos hasta dar con uno que ganó y quedarse con el código del cupón.
  */
 export function FormularioEntrar({
-  ids = 'entrar',
   onListo,
   alRegistrarse,
 }: {
-  ids?: string;
   onListo: () => void;
   alRegistrarse?: () => void;
 }) {
+  const ids = useId();
   const [nombre, setNombre] = useState('');
   const [celular, setCelular] = useState('');
   const [enviando, setEnviando] = useState(false);

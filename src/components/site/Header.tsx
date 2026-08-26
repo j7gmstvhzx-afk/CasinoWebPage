@@ -42,6 +42,34 @@ export function Header() {
   const activo = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
 
+  // Escape cierra el menú, y pasar a la maqueta de escritorio también.
+  //
+  // Sin lo primero, quien abre el menú con teclado tenía que retroceder nueve
+  // paradas con Shift+Tab para llegar al botón y cerrarlo. Escape es lo que
+  // todo el mundo intenta primero.
+  //
+  // Lo segundo es un estado que se quedaba mintiendo: al ensanchar de celular
+  // a escritorio con el menú abierto, el panel se esconde solo (`lg:hidden`)
+  // pero `abierto` seguía en true, así que la hamburguesa —ya invisible—
+  // seguía diciendo `aria-expanded="true"`. Medido: {menuVisible:"none",
+  // hamburguesaVisible:"none", ariaExpanded:"true"}.
+  useEffect(() => {
+    if (!abierto) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAbierto(false);
+    };
+    // El mismo 1024px del `lg:` de Tailwind, que es donde el panel se esconde.
+    const anchaEscritorio = window.matchMedia('(min-width: 1024px)');
+    const alCambiar = () => anchaEscritorio.matches && setAbierto(false);
+    alCambiar();
+    document.addEventListener('keydown', onKey);
+    anchaEscritorio.addEventListener('change', alCambiar);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      anchaEscritorio.removeEventListener('change', alCambiar);
+    };
+  }, [abierto]);
+
   // Le avisa al registro de overlays que este menú está abierto: los dos son
   // overlays de pantalla completa independientes, y sin este aviso el pop-up
   // de promoción (o el visor de la galería) podía montarse encima a mitad de

@@ -93,7 +93,6 @@ export function PanelCuenta() {
         </p>
         <div className="mt-6">
           <FormularioRegistro
-            ids="cuenta-reg"
             textoBoton="CREAR MI CUENTA"
             onListo={() => void leerEstado()}
             alEntrar={() => setEstado({ paso: 'entrar' })}
@@ -113,7 +112,6 @@ export function PanelCuenta() {
         </p>
         <div className="mt-6">
           <FormularioEntrar
-            ids="cuenta-entrar"
             onListo={() => void leerEstado()}
             alRegistrarse={() => setEstado({ paso: 'registro' })}
           />

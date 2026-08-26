@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/site/PageHero';
 import { JackpotBoard } from '@/components/jackpots/JackpotBoard';
-import { getJackpots, getUltimaActualizacion, seguro } from '@/lib/queries';
+import {
+  getJackpots,
+  getJackpotsAlDia,
+  getUltimaActualizacion,
+  seguro,
+} from '@/lib/queries';
 import { relativeUpdate, longDate } from '@/lib/format';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
@@ -26,9 +31,10 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaJackpots() {
-  const [jackpots, ultima] = await Promise.all([
+  const [jackpots, ultima, alDia] = await Promise.all([
     seguro(getJackpots, []),
     seguro(getUltimaActualizacion, null),
+    seguro(getJackpotsAlDia, false),
   ]);
 
   return (
@@ -42,7 +48,9 @@ export default async function PaginaJackpots() {
           </>
         }
       >
-        {ultima && <AvisoActualizacion ultima={ultima} />}
+        {ultima && (
+          <AvisoActualizacion ultima={ultima} alDia={alDia} />
+        )}
       </PageHero>
 
       <section className="contenedor py-10 sm:py-14">
@@ -70,10 +78,13 @@ export default async function PaginaJackpots() {
  * a las 24 h una subida de ayer temprano todavía contaría como "de hoy" bien
  * entrada la tarde siguiente.
  */
-function AvisoActualizacion({ ultima }: { ultima: string | Date }) {
-  const horas = (Date.now() - new Date(ultima).getTime()) / 3_600_000;
-  const alDia = horas < 20;
-
+function AvisoActualizacion({
+  ultima,
+  alDia,
+}: {
+  ultima: string | Date;
+  alDia: boolean;
+}) {
   if (alDia) {
     return (
       <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-linea bg-superficie px-4 py-2 text-sm">

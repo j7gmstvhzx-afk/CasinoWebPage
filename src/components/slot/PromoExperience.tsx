@@ -179,7 +179,6 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
         </div>
         <div className="mt-6">
           <FormularioEntrar
-            ids="pop-entrar"
             onListo={trasEntrar}
             alRegistrarse={() => setEstado({ paso: 'registro' })}
           />
@@ -194,7 +193,6 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
         <Encabezado />
         <div className="mt-6">
           <FormularioRegistro
-            ids="pop-reg"
             onListo={(d) => {
               setDatos(d);
               setEstado({ paso: 'maquina', nombre: d.nombreCorto });

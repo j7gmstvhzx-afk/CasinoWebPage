@@ -230,7 +230,7 @@ export function SlotMachine({
     <div className="flex flex-col items-center">
       {/* Carcasa */}
       <div className="relative rounded-3xl border border-dorado/30 bg-gradient-to-b from-maquina-2 to-maquina p-3 shadow-premio sm:p-4">
-        <div className="flex gap-2 sm:gap-3" aria-live="polite" aria-atomic="true">
+        <div className="flex gap-2 sm:gap-3">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
@@ -272,7 +272,16 @@ export function SlotMachine({
         <div className="pointer-events-none absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-dorado/40 sm:inset-x-4" />
       </div>
 
-      <p className="sr-only">
+      {/* El `aria-live` va AQUÍ, no en la carcasa de los rolos.
+          Estaba puesto en el div de las tres tiras, que solo contiene SVG sin
+          texto: su `textContent` es "" en reposo y "" girando, o sea que nunca
+          cambia y no hay nada que anunciar. El texto que sí cambia —"Girando…"
+          / "Rolos: corona, pava, coquí"— vivía en este párrafo, FUERA de la
+          región. Resultado medido: quien usa lector de pantalla no se enteraba
+          ni de que la máquina giró ni de qué salió. Una región viva anuncia lo
+          que hay dentro de ella; ponerla alrededor de dibujos no anuncia
+          nada. */}
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
         {girando
           ? 'Girando…'
           : `Rolos: ${visibles.map((v) => SYMBOLS[v]).join(', ')}`}

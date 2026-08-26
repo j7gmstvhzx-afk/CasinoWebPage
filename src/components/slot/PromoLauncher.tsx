@@ -27,6 +27,7 @@ export function PromoLauncher() {
   const [abierto, setAbierto] = useState(false);
   const dialogo = useRef<HTMLDivElement>(null);
   const activoPrevio = useRef<HTMLElement | null>(null);
+  const botonRef = useRef<HTMLButtonElement>(null);
 
   const enAdmin = pathname.startsWith('/admin');
   const enPremio = pathname.startsWith('/premio');
@@ -36,6 +37,30 @@ export function PromoLauncher() {
   const enCuenta = pathname.startsWith('/cuenta');
   const oculto = enAdmin || enPremio || enCuenta;
   const algunOverlayActivo = useAlgunOverlayActivo();
+
+  // Cerrar el modal al navegar. Mismo patrón que el header: ajuste durante el
+  // render, no en un efecto, para que la página nueva nunca llegue a pintarse
+  // con la promoción encima.
+  //
+  // Sin esto pasaban dos cosas, las dos medidas:
+  //
+  //  1. Tocar una pestaña del menú con la promoción abierta cambiaba la URL
+  //     pero dejaba el modal `fixed inset-0` encima de la página nueva. Desde
+  //     el asiento de la persona la pantalla no cambiaba en NADA: el síntoma
+  //     exacto de "toco y no pasa nada" que este proyecto ya arrastró.
+  //
+  //  2. Peor: al entrar a /cuenta, /admin o /premio el componente devuelve
+  //     null y el diálogo desaparece de la pantalla, pero `abierto` seguía en
+  //     true, así que el efecto que bloquea el scroll NUNCA se limpiaba. La
+  //     página quedaba congelada sin nada visible que lo explicara ni nada que
+  //     tocar para soltarla: 1.170px de /cuenta y ~1.250px de la página del
+  //     CUPÓN fuera de alcance, justo al final del embudo. En un celular no
+  //     hay tecla Escape y el único rescate era el botón Atrás.
+  const [rutaPrevia, setRutaPrevia] = useState(pathname);
+  if (pathname !== rutaPrevia) {
+    setRutaPrevia(pathname);
+    setAbierto(false);
+  }
 
   // Apertura automática, una vez al día, tras DEMORA_MS de tiempo real
   // (no reloj de pared) sin que haya otro overlay abierto — el menú móvil del
@@ -96,7 +121,6 @@ export function PromoLauncher() {
   // tocar, el botón se retira hasta que ese elemento deje de estar debajo. La
   // promoción siempre se puede volver a abrir un dedo más arriba o más abajo,
   // pero el toque de la persona SIEMPRE llega a donde apuntó.
-  const botonRef = useRef<HTMLButtonElement>(null);
   const [estorbando, setEstorbando] = useState(false);
 
   useEffect(() => {
@@ -166,6 +190,18 @@ export function PromoLauncher() {
     };
   }, [oculto, abierto]);
 
+  // Al cerrar hay que devolver el foco, pero NO se puede hacer aquí mismo.
+  //
+  // El botón flotante se desmonta mientras el modal está abierto (`{!abierto &&
+  // ...}`), y casi siempre es él quien tenía el foco al abrirse. Llamar a
+  // `activoPrevio.current.focus()` dentro de `cerrar` enfoca un nodo ya
+  // despegado del documento: no lanza, no hace nada, y el foco se cae al
+  // `body`. Quien navega con teclado o lector de pantalla volvía al principio
+  // de la página cada vez que cerraba la promoción.
+  //
+  // Se marca la intención y se ejecuta en un efecto, después de que React haya
+  // vuelto a montar el botón: para entonces el nodo existe otra vez.
+  const devolverFoco = useRef(false);
   const cerrar = useCallback(() => {
     setAbierto(false);
     try {
@@ -173,8 +209,19 @@ export function PromoLauncher() {
     } catch {
       /* sin almacenamiento: se volverá a mostrar, y no pasa nada */
     }
-    activoPrevio.current?.focus?.();
+    devolverFoco.current = true;
   }, []);
+
+  useEffect(() => {
+    if (abierto || !devolverFoco.current) return;
+    devolverFoco.current = false;
+    const previo = activoPrevio.current;
+    // Si el nodo de antes sigue vivo, ahí vuelve el foco. Si no (el caso
+    // normal: era el propio botón flotante), al botón recién remontado.
+    const destino =
+      previo && document.contains(previo) ? previo : botonRef.current;
+    destino?.focus?.();
+  }, [abierto]);
 
   const abrir = useCallback(() => {
     activoPrevio.current = document.activeElement as HTMLElement;
@@ -185,7 +232,12 @@ export function PromoLauncher() {
   // abierto: sin esto, tabular saca el foco a la página de atrás y quien navega
   // con teclado o lector de pantalla se pierde.
   useEffect(() => {
-    if (!abierto) return;
+    // `!oculto` además de `!abierto`: cinturón y tirantes. El cierre al navegar
+    // de arriba ya evita el caso, pero si alguna vez se monta este componente
+    // con `abierto` en true en una ruta oculta, el scroll del sitio no se puede
+    // quedar bloqueado. Bloquear el scroll es de las poquísimas cosas que, si
+    // se escapan, dejan la página inservible sin dar ninguna pista.
+    if (!abierto || oculto) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') return cerrar();
@@ -222,7 +274,7 @@ export function PromoLauncher() {
       document.body.style.overflow = overflowPrevio;
       clearTimeout(t);
     };
-  }, [abierto, cerrar]);
+  }, [abierto, oculto, cerrar]);
 
   // No hace falta una bandera de "ya montó": lo primero que se pinta (el botón
   // flotante) es idéntico en servidor y cliente. Lo único que depende del
@@ -256,7 +308,19 @@ export function PromoLauncher() {
 
       {abierto && (
         <div
-          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-24 backdrop-blur-sm sm:items-center sm:pt-4"
+          // pt-24 SIEMPRE, y en sm+ pt-20: el relleno superior nunca baja de los
+          // 4,5rem que mide el header.
+          //
+          // Antes era `sm:pt-4`. El header es `sticky top-0 z-50` y este
+          // overlay es z-40, así que el header le pasa POR ENCIMA. Un teléfono
+          // acostado mide 844x390: entra en `sm:`, el diálogo subía a y=16 y su
+          // botón "Cerrar" quedaba en y=33..69, entero debajo del header.
+          // Medido con una rejilla de 4px sobre todo el rectángulo del botón:
+          // 0 de 121 puntos llegaban al botón, los 121 caían en el header. El
+          // pop-up se abre solo, y quien mira el sitio con el teléfono
+          // acostado se encontraba la promoción encima y el único botón para
+          // quitarla sin respuesta.
+          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-24 backdrop-blur-sm sm:items-center sm:pt-20"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) cerrar();
           }}
