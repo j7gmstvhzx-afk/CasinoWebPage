@@ -109,23 +109,41 @@ export function PromoLauncher() {
       if (!el) return;
 
       const r = el.getBoundingClientRect();
-      // Cuatro esquinas metidas hacia adentro más el centro: con un solo punto
-      // se escapaba un botón que solo asomaba por una esquina.
-      const puntos: [number, number][] = [
-        [r.left + 6, r.top + 6],
-        [r.right - 6, r.top + 6],
-        [r.left + 6, r.bottom - 6],
-        [r.right - 6, r.bottom - 6],
-        [r.left + r.width / 2, r.top + r.height / 2],
-      ];
+      // Margen de holgura: pegarse a un precio sin llegar a taparlo también
+      // estorba para leerlo.
+      const M = 6;
 
-      const tapa = puntos.some(([x, y]) => {
-        if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return false;
-        for (const bajo of document.elementsFromPoint(x, y)) {
-          if (bajo === el || el.contains(bajo)) continue; // el propio botón
-          return !!bajo.closest('a[href], button, input, select, textarea, [role="button"]');
+      // Se comparan RECTÁNGULOS, no puntos sueltos.
+      //
+      // Antes esto muestreaba cinco puntos del botón (las cuatro esquinas y el
+      // centro) y miraba qué había debajo. Es rápido, pero se le escapaba todo
+      // lo que cayera ENTRE los puntos: con el botón de 138px de ancho sobre
+      // una pantalla de 320, un precio como "$22.95" cabe entero en un hueco
+      // del muestreo. Así seguía tapando cifras en la carta y el chip de filtro
+      // del tablero después de "arreglarlo".
+      //
+      // Recorrer los candidatos y cruzar rectángulos es exacto y cuesta poco:
+      // son unas decenas de elementos, una vez por cuadro.
+      const tapa = [
+        ...document.querySelectorAll<HTMLElement>(
+          'a[href], button, input, select, textarea, [role="button"], .tabular',
+        ),
+      ].some((otro) => {
+        if (otro === el || el.contains(otro) || otro.contains(el)) return false;
+        const q = otro.getBoundingClientRect();
+        if (q.width < 2 || q.height < 2) return false;
+        // Fuera de la ventana no molesta a nadie.
+        if (q.bottom < 0 || q.top > window.innerHeight) return false;
+        const cs = getComputedStyle(otro);
+        if (cs.visibility === 'hidden' || cs.display === 'none' || cs.opacity === '0') {
+          return false;
         }
-        return false;
+        return !(
+          q.right < r.left - M ||
+          q.left > r.right + M ||
+          q.bottom < r.top - M ||
+          q.top > r.bottom + M
+        );
       });
 
       setEstorbando((antes) => (antes === tapa ? antes : tapa));

@@ -81,9 +81,19 @@ export function JackpotBoard({
   // lee de un vistazo, sin comparar los números uno por uno. Es la misma
   // jerarquía de las fichas (oro, plata, bronce, casa) llevada al tamaño.
   //
-  // Solo tiene sentido con la lista completa: buscando o filtrando, la persona
-  // ya sabe qué está mirando y un podio parcial solo confunde.
-  const mostrarPodio = !busqueda && filtro === 'todos';
+  // Los escalones se muestran cuando lo que hay en pantalla ES el ranking
+  // completo, no cuando el filtro dice "todos".
+  //
+  // La regla anterior miraba el filtro elegido, no el resultado. Con las quince
+  // máquinas calientes a la vez —que pasa cuando todas vienen subiendo— pulsar
+  // "🔥 Calientes" devolvía las MISMAS quince en el MISMO orden y aun así
+  // derrumbaba la jerarquía entera: adiós tarjeta azul, adiós fichas, y el
+  // premio mayor pasaba de 60px a 20px. Un filtro que no quita nada no puede
+  // cambiar cómo se ve nada.
+  //
+  // Comparando longitudes, el podio aparece exactamente cuando no falta ningún
+  // premio — filtre lo que filtre, y también si una búsqueda casa con todos.
+  const mostrarPodio = filtrados.length === jackpots.length;
   const primero = mostrarPodio ? filtrados[0] : undefined;
   const podio2y3 = mostrarPodio ? filtrados.slice(1, 3) : [];
   const cuarto5 = mostrarPodio ? filtrados.slice(3, 5) : [];
@@ -313,7 +323,15 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
                   fecha ya se dice arriba con todas las letras. Un titular que
                   promete "hoy" sobre una cifra de hace una semana es la clase
                   de detalle por el que alguien maneja hasta Manatí para nada. */}
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-dorado-2/40 bg-dorado-2/15 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-dorado-3">
+              {/* Sin relleno, solo el borde.
+                  El `bg-dorado-2/15` que llevaba antes aclaraba el fondo de
+                  #455666 a #5f6460 y hundía el contraste del rótulo de 5.38:1 a
+                  4.30:1 — por debajo del 4.5:1 que pide un texto de 10.4px,
+                  aunque vaya en negrita. Es un fallo que no se ve calculando el
+                  contraste contra el degradado a secas: hay que contar también
+                  el propio relleno de la píldora. Quitándolo, el dorado se
+                  queda y el texto cumple. */}
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-dorado-2/50 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-dorado-3">
                 Premio más alto
               </span>
               {/* Sin `truncate`: el nombre puede envolver en dos líneas. Este
@@ -349,7 +367,7 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
             {j.caliente && (
               <span
                 title="Por encima de su promedio de los últimos 30 días"
-                className="anim-brillo shrink-0 rounded-full border border-dorado-2/50 bg-dorado-2/15 px-2.5 py-1 text-xs font-semibold text-dorado-3"
+                className="anim-brillo shrink-0 rounded-full border border-dorado-2/60 px-2.5 py-1 text-xs font-semibold text-dorado-3"
               >
                 🔥 CALIENTE
               </span>

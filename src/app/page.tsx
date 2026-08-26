@@ -61,12 +61,18 @@ export default async function Inicio() {
           {/* Las mismas fichas del tablero de /jackpots, con el mismo material
               por puesto. Quien llega a la portada y luego entra al tablero ve
               la misma pieza: es un solo sitio, no dos pantallas parecidas. */}
-          {/* Dos columnas ya en celular. Apiladas de una en una, las cuatro
-              tarjetas medían 853px contra una ventana de 664: al entrar solo se
-              veían DOS premios y el héroe quedaba a una pantalla y media de
-              distancia. En dos columnas caben los cuatro de un vistazo, que es
-              justo para lo que se subieron aquí arriba. */}
-          <ul className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {/* Dos columnas desde 380px, una sola por debajo.
+              Apiladas de una en una, las cuatro tarjetas medían 853px contra
+              una ventana de 664: al entrar solo se veían DOS premios y el héroe
+              quedaba a pantalla y media. En dos columnas caben los cuatro de un
+              vistazo, que es justo para lo que se subieron aquí arriba.
+              Pero a 320px dos columnas dejan unos 60px para el nombre —
+              descontando la ficha y su hueco— y ahí no cabe "Lightning" ni
+              partiéndolo: la tinta se salía 35px de su caja y se pintaba encima
+              del 🔥 de al lado, dejando "Lightni🔥g Link". Por debajo de 380px
+              se vuelve a una columna: en el teléfono más estrecho pesa más leer
+              el nombre entero que ahorrar scroll. */}
+          <ul className="mt-6 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
             {destacados.map((j, i) => (
               <li key={j.id} className="tarjeta relative overflow-hidden p-5">
                 <div
@@ -81,7 +87,10 @@ export default async function Inicio() {
                         i === 0 ? FICHA[1] : i === 1 ? FICHA[2] : i === 2 ? FICHA[3] : FICHA.casa
                       }`}
                     />
-                    <p className="min-w-0 font-display text-sm font-semibold leading-tight sm:text-base">
+                    {/* break-words como red de seguridad: si algún día entra
+                        una máquina con un nombre de una sola palabra muy larga,
+                        que se parta en vez de pintarse sobre el vecino. */}
+                    <p className="min-w-0 break-words font-display text-sm font-semibold leading-tight sm:text-base">
                       {j.nombre}
                     </p>
                   </div>
@@ -261,8 +270,18 @@ export default async function Inicio() {
                 <Marco imagen={e.image_path} alt={e.title} />
                 <div className="p-5">
                   <p className="font-display text-lg font-semibold">{e.title}</p>
-                  {e.starts_on && (
-                    <p className="mt-1 text-sm text-cian">{longDate(e.starts_on)}</p>
+                  {/* El rango entero, no solo la fecha de inicio.
+                      Un evento que empezó el 18 y acaba el 17 del mes que viene
+                      está EN CURSO, pero enseñando solo su fecha de inicio se
+                      leía como algo ya pasado — y encima aparecía debajo de dos
+                      eventos futuros. En /eventos ya se mostraba el rango; aquí
+                      faltaba. */}
+                  {(e.starts_on || e.ends_on) && (
+                    <p className="mt-1 text-sm text-cian">
+                      {e.starts_on && e.ends_on && e.starts_on !== e.ends_on
+                        ? `${longDate(e.starts_on)} — ${longDate(e.ends_on)}`
+                        : longDate((e.starts_on ?? e.ends_on)!)}
+                    </p>
                   )}
                   {e.body && (
                     <p className="mt-2 line-clamp-3 text-sm text-tenue">{e.body}</p>
