@@ -216,7 +216,7 @@ export function FormularioRegistro({
         <button
           type="button"
           onClick={alEntrar}
-          className="w-full text-center text-sm text-cian underline underline-offset-4"
+          className="w-full py-2.5 text-center text-sm text-cian underline underline-offset-4"
         >
           ¿Ya te registraste? Entra aquí
         </button>

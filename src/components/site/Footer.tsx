@@ -21,7 +21,7 @@ export function Footer() {
           <address className="mt-4 space-y-2 text-sm not-italic text-tenue">
             <p>{fullAddress()}</p>
             <p>
-              <a className="hover:text-cian" href={`tel:${SITE.phone}`}>
+              <a className="inline-block py-1 hover:text-cian" href={`tel:${SITE.phone}`}>
                 {SITE.phoneDisplay}
               </a>
             </p>
@@ -89,15 +89,26 @@ export function Footer() {
               +{PROMO.minAge}
             </span>
             <span>Juega con responsabilidad.</span>
-            <Link className="underline underline-offset-4 hover:text-cian" href="/terminos">
+            {/* `inline-block py-1.5` sube estos enlaces de 16px de alto a 28.
+                No son enlaces sueltos dentro de una frase —esos están exentos—
+                sino ítems de una fila; el mínimo tocable son 24px. */}
+            <Link
+              className="inline-block py-1.5 underline underline-offset-4 hover:text-cian"
+              href="/terminos"
+            >
               Términos y condiciones
             </Link>
             {/* Entrada al panel del casino. Va aquí abajo, discreta: el cliente
                 no tiene por qué verla en el menú principal, pero el dueño y los
                 empleados necesitan poder llegar sin escribir la dirección de
                 memoria. La contraseña la sigue pidiendo /admin/entrar. */}
+            {/* Sin el `/70`. Rebajar el token al 70% dejaba #8a99ab sobre el
+                gris del pie: 2,69:1, muy por debajo del 4,5:1 que pide un texto
+                de 12px. El token a pleno da 4,71:1 — está calibrado justo para
+                este fondo. Discreto no puede significar ilegible, y menos en el
+                enlace por el que entra el personal. */}
             <Link
-              className="text-tenue/70 underline underline-offset-4 hover:text-cian"
+              className="inline-block py-1.5 text-tenue underline underline-offset-4 hover:text-cian"
               href="/admin"
             >
               Administración

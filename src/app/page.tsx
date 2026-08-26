@@ -235,7 +235,7 @@ export default async function Inicio() {
                 <Marco imagen={m.image_path} alt={m.name} />
                 <div className="p-5">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-cian/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cian">
+                    <span className="rounded-full bg-cian/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-tinta">
                       Nueva
                     </span>
                     {m.bank_number !== null && (
@@ -307,7 +307,7 @@ export default async function Inicio() {
             <address className="mt-5 space-y-3 not-italic text-tenue">
               <p className="text-tinta">{fullAddress()}</p>
               <p>
-                <a className="hover:text-cian" href={`tel:${SITE.phone}`}>
+                <a className="inline-block py-1 hover:text-cian" href={`tel:${SITE.phone}`}>
                   {SITE.phoneDisplay}
                 </a>
               </p>

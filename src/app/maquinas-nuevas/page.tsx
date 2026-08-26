@@ -47,7 +47,7 @@ export default async function PaginaMaquinasNuevas() {
                   <div className="p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       {m.es_nueva && (
-                        <span className="rounded-full bg-cian/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cian">
+                        <span className="rounded-full bg-cian/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-tinta">
                           Nueva
                         </span>
                       )}

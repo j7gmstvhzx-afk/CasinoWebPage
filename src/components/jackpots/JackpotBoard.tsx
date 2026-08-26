@@ -367,7 +367,7 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
             {j.caliente && (
               <span
                 title="Por encima de su promedio de los últimos 30 días"
-                className="anim-brillo shrink-0 rounded-full border border-dorado-2/60 px-2.5 py-1 text-xs font-semibold text-dorado-3"
+                className="anim-calor shrink-0 rounded-full border border-dorado-2/60 px-2.5 py-1 text-xs font-semibold text-dorado-3"
               >
                 🔥 CALIENTE
               </span>
@@ -425,7 +425,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
             {j.caliente && (
               <span
                 title="Por encima de su promedio de los últimos 30 días"
-                className="anim-brillo shrink-0 rounded-full border border-dorado/40 bg-dorado/10 px-2 py-1 text-xs font-semibold text-tinta"
+                className="anim-calor shrink-0 rounded-full border border-dorado/40 bg-dorado/10 px-2 py-1 text-xs font-semibold text-tinta"
               >
                 🔥
               </span>
@@ -491,7 +491,7 @@ function TarjetaCuarta({ j, puesto, max }: { j: JackpotVista; puesto: number; ma
             {j.caliente && (
               <span
                 title="Por encima de su promedio de los últimos 30 días"
-                className="anim-brillo shrink-0 rounded-full border border-dorado/40 bg-dorado/10 px-2 py-1 text-xs font-semibold text-tinta"
+                className="anim-calor shrink-0 rounded-full border border-dorado/40 bg-dorado/10 px-2 py-1 text-xs font-semibold text-tinta"
               >
                 🔥
               </span>
@@ -575,7 +575,7 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
             // el dorado de marca se queda en 3.63:1 sobre blanco. El envase
             // dorado (borde y fondo) es el que carga la señal de "premio
             // caliente"; el texto solo tiene que leerse.
-            className="anim-brillo rounded-full border border-dorado/40 bg-dorado/10 px-2.5 py-1 text-xs font-semibold text-tinta"
+            className="anim-calor rounded-full border border-dorado/40 bg-dorado/10 px-2.5 py-1 text-xs font-semibold text-tinta"
           >
             🔥 CALIENTE
           </span>

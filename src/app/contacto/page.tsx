@@ -31,7 +31,7 @@ export default function PaginaContacto() {
               </Dato>
 
               <Dato etiqueta="Teléfono">
-                <a href={`tel:${SITE.phone}`} className="text-cian hover:underline">
+                <a href={`tel:${SITE.phone}`} className="inline-block py-1 text-cian hover:underline">
                   {SITE.phoneDisplay}
                 </a>
               </Dato>
