@@ -54,10 +54,25 @@ export async function GET(req: NextRequest) {
 
   const nuevos = dias.filter((d) => !d.ya_existia).length;
 
+  // De paso, la basura del limitador de intentos.
+  //
+  // `app.rate_events` guarda una fila por (cubo, IP, hora) y nada la borraba:
+  // 0001 llegó a crear el índice `rate_events_gc_idx` sobre window_start para
+  // esta limpieza, y la limpieza nunca se escribió. Cuelga de aquí porque este
+  // cron ya corre a diario y ya está autenticado; un cron nuevo sería una
+  // pieza más que puede fallar en silencio.
+  //
+  // Si falla, no se arrastra la siembra: quedarse sin sembrar los premios del
+  // día rompe la promoción, y acumular filas de más no rompe nada.
+  const limpiadas = await sql<{ borradas: number }[]>`
+    select app.rate_events_gc() as borradas
+  `.catch(() => [{ borradas: -1 }]);
+
   return NextResponse.json({
     ok: true,
     sembrados: nuevos,
     yaExistian: dias.length - nuevos,
+    limiteLimpiado: limpiadas[0]?.borradas ?? 0,
     // Jamás se devuelve winning_moment_at. Este endpoint está protegido, pero
     // un secreto filtrado no debe además regalar la respuesta del juego.
     hasta: dias[dias.length - 1]?.gaming_date ?? null,

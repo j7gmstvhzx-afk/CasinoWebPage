@@ -53,10 +53,16 @@ export async function GET() {
   // El apóstrofo delante es la neutralización estándar: la hoja de cálculo lo
   // trata como "esto es texto". Ningún nombre real empieza por esos caracteres,
   // así que ninguna fila legítima se ve alterada.
+  //
+  // Se prueba sobre el valor sin espacios delante a propósito. El registro ya
+  // rechaza estos nombres, pero esta función también tiene que proteger filas
+  // que se guardaran ANTES de esa regla, y ahí puede haber un " =1+1" con
+  // espacio. No está claro que toda hoja de cálculo lo ignore, y averiguarlo
+  // caso por caso cuesta más que cubrir los dos.
   const FORMULA = /^[=+\-@\t\r]/;
   const escapar = (v: string) => {
     const s = String(v);
-    return `"${(FORMULA.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
+    return `"${(FORMULA.test(s.trimStart()) ? `'${s}` : s).replace(/"/g, '""')}"`;
   };
 
   const lineas = [
