@@ -149,7 +149,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
 
   if (estado.paso === 'cargando') {
     return (
-      <div className="flex min-h-[22rem] items-center justify-center">
+      <div className="flex min-h-[26rem] items-center justify-center">
         <div className="h-9 w-9 animate-spin rounded-full border-2 border-linea border-t-dorado" />
       </div>
     );
@@ -170,7 +170,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
 
   if (estado.paso === 'entrar') {
     return (
-      <div className="anim-entrar">
+      <div className="anim-aparecer">
         <div className="text-center">
           <h2 className="font-display text-3xl font-bold">Entra a tu cuenta</h2>
           <p className="mt-2 text-sm text-tenue">
@@ -189,7 +189,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
 
   if (estado.paso === 'registro') {
     return (
-      <div className="anim-entrar">
+      <div className="anim-aparecer">
         <Encabezado />
         <div className="mt-6">
           <FormularioRegistro
@@ -206,7 +206,7 @@ export function PromoExperience({ onCerrar }: { onCerrar?: () => void }) {
 
   if (estado.paso === 'maquina') {
     return (
-      <div className="anim-entrar">
+      <div className="anim-aparecer">
         <Encabezado saludo={estado.nombre} onSalir={salir} />
         <div className="mt-7">
           <SlotMachine
@@ -237,7 +237,7 @@ function Resultado({
 
   if (gano && outcome.voucherCode) {
     return (
-      <div className="anim-entrar text-center">
+      <div className="anim-aparecer text-center">
         <Confeti />
         <p className="font-display text-sm font-semibold tracking-[0.3em] text-dorado">
           ¡GANASTE!
@@ -272,7 +272,7 @@ function Resultado({
   if (gano) {
     // Ganó pero el cupón ya se había emitido antes (volvió a abrir la página).
     return (
-      <div className="anim-entrar text-center">
+      <div className="anim-aparecer text-center">
         <p className="font-display text-3xl font-bold texto-dorado">¡Ya ganaste hoy!</p>
         <p className="mt-3 text-tenue">Busca tu cupón en el enlace que te mostramos al ganar.</p>
         <CerrarBoton onCerrar={onCerrar} />
@@ -281,7 +281,7 @@ function Resultado({
   }
 
   return (
-    <div className="anim-entrar text-center">
+    <div className="anim-aparecer text-center">
       <p className="font-display text-3xl font-bold text-tinta">
         {outcome.alreadySpunToday ? 'Ya tiraste hoy' : '¡Casi!'}
       </p>

@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { normalizePhone, PHONE_ERROR_ES } from '@/lib/phone';
 import {
+  contrasenaValida,
+  gastarTiempoIgual,
+  hashContrasena,
+  REGLA_CONTRASENA,
+  verificarContrasena,
+} from '@/lib/contrasena';
+import {
   getClientIp,
   getSession,
   signToken,
@@ -30,16 +37,29 @@ export const maxDuration = 15;
  * uno que ganó ese día y quedarse con el código del cupón. Pidiendo también el
  * nombre completo, hay que saber las dos cosas.
  *
- * Esto NO es verificación de identidad —  el dueño decidió no mandar SMS por
- * ahora —  y no pretende serlo. La defensa de verdad está al final: el cupón se
- * canjea en Servicio al Cliente con identificación con foto, y el nombre de la
- * identificación tiene que cuadrar con el del cupón. Un código robado no cobra.
- * Cuando quieran activar SMS, la columna `phone_verified_at` ya está en la
- * tabla esperando.
+ * AHORA HACE FALTA CONTRASEÑA
+ * ---------------------------
+ * El nombre completo está impreso en el carnet que se enseña en el mostrador,
+ * así que no era un secreto: quien viera una identificación ajena tenía las dos
+ * cosas. La contraseña sí es algo que solo sabe el cliente.
+ *
+ * CUENTAS HEREDADAS
+ * -----------------
+ * Las cuentas creadas antes de esto no tienen contraseña, y nadie puede
+ * inventarles una. Entran como siempre —  celular + nombre —  y en ese mismo
+ * paso escriben la contraseña que van a usar de ahora en adelante. Nadie se
+ * queda fuera y nadie recibe un correo raro.
+ *
+ * Sigue sin ser verificación de identidad, y sigue sin pretenderlo: la defensa
+ * final es que el cupón se canjea en Servicio al Cliente con identificación con
+ * foto y el nombre tiene que cuadrar. Un código robado no cobra. Cuando se
+ * quiera activar SMS, `phone_verified_at` ya está en la tabla esperando.
  */
 const Entrada = z.object({
   celular: z.string().trim().min(7).max(25),
-  nombre: z.string().trim().min(3).max(120),
+  contrasena: z.string().min(1).max(200),
+  // Solo lo piden las cuentas heredadas, para poder crear su contraseña.
+  nombre: z.string().trim().min(3).max(120).optional(),
 });
 
 const error = (mensaje: string, status = 400) =>
@@ -68,24 +88,76 @@ export async function POST(req: NextRequest) {
   // El nombre se compara ya normalizado (sin acentos, sin mayúsculas, sin
   // espacios de más) contra la columna generada: quien se registró como
   // "José Rivera" entra escribiendo "jose rivera".
-  const [jugador] = await sql<{ id: string; full_name: string; blocked_at: string | null }[]>`
-    select id, full_name, blocked_at
+  const [jugador] = await sql<
+    {
+      id: string;
+      full_name: string;
+      blocked_at: string | null;
+      password_hash: string | null;
+      nombre_cuadra: boolean;
+    }[]
+  >`
+    select id, full_name, blocked_at, password_hash,
+           full_name_norm = app.norm_name(${parsed.data.nombre ?? ''}) as nombre_cuadra
       from app.players
-     where phone_e164     = ${tel.e164}
-       and full_name_norm = app.norm_name(${parsed.data.nombre})
+     where phone_e164 = ${tel.e164}
      limit 1
   `;
 
-  // Un solo mensaje para "no existe" y para "el nombre no cuadra". Decir cuál
-  // de los dos falló convertiría esto en un detector de números registrados.
+  // Un solo mensaje para "no existe" y para "la contraseña no cuadra". Decir
+  // cuál de los dos falló convertiría esto en un detector de qué números están
+  // registrados en el casino.
+  //
+  // Y no basta con el mensaje: sin contraseña que comprobar, esta rama
+  // contestaría en 2ms y la otra en ~90ms, así que la diferencia se mide con un
+  // cronómetro. `gastarTiempoIgual` hace el mismo trabajo contra un hash de
+  // mentira para que las dos tarden lo mismo.
+  // 401 y no 404: el navegador y las herramientas lo entienden como "no
+  // autenticado", que es lo que pasa. El 404 anterior venía de cuando esto
+  // buscaba una fila por nombre. Da igual para la fuga de información — el
+  // mismo código y el mismo mensaje para las dos ramas — pero es lo correcto.
+  const NO_CUADRA = 'No encontramos esa combinación. Revisa tu celular y tu contraseña.';
   if (!jugador) {
-    return error('No encontramos esa combinación de celular y nombre. Revísalos o regístrate.', 404);
+    await gastarTiempoIgual();
+    return error(NO_CUADRA, 401);
   }
   if (jugador.blocked_at) {
     return error('Esta cuenta no puede participar. Pasa por Servicio al Cliente.', 403);
   }
 
-  await sql`update app.players set last_seen_at = now() where id = ${jugador.id}`;
+  if (jugador.password_hash) {
+    // Cuenta normal: la contraseña manda y el nombre ya no pinta nada.
+    if (!(await verificarContrasena(parsed.data.contrasena, jugador.password_hash))) {
+      return error(NO_CUADRA, 401);
+    }
+    await sql`update app.players set last_seen_at = now() where id = ${jugador.id}`;
+  } else {
+    // Cuenta heredada: se comprueba el nombre, como toda la vida, y en el mismo
+    // paso se guarda la contraseña que acaba de escribir.
+    if (!parsed.data.nombre) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'FALTA_NOMBRE',
+          mensaje: 'Esta cuenta es de antes de que existieran las contraseñas. Escribe tu nombre completo para crear la tuya.',
+        },
+        { status: 400 },
+      );
+    }
+    if (!jugador.nombre_cuadra) return error(NO_CUADRA, 401);
+    if (!contrasenaValida(parsed.data.contrasena)) return error(REGLA_CONTRASENA);
+
+    const hash = await hashContrasena(parsed.data.contrasena);
+    // `where password_hash is null` cierra la carrera de dos pestañas creando
+    // contraseñas distintas a la vez: la segunda no pisa a la primera.
+    await sql`
+      update app.players
+         set password_hash   = ${hash},
+             password_set_at = now(),
+             last_seen_at    = now()
+       where id = ${jugador.id} and password_hash is null
+    `;
+  }
 
   const res = NextResponse.json({
     ok: true,

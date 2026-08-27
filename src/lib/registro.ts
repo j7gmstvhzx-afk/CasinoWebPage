@@ -2,6 +2,7 @@ import 'server-only';
 import { sql } from './db';
 import { normalizePhone, PHONE_ERROR_ES } from './phone';
 import { signToken, cookieHeader, SESSION_COOKIE } from './session';
+import { contrasenaValida, hashContrasena, REGLA_CONTRASENA } from './contrasena';
 
 /**
  * Alta de un jugador.
@@ -22,6 +23,7 @@ export type DatosRegistro = {
   celular?: string;
   puebloId?: number;
   acepta?: boolean;
+  contrasena?: string;
 };
 
 export type ResultadoRegistro =
@@ -32,7 +34,7 @@ export async function registrarJugador(
   datos: DatosRegistro,
   ctx: { ip: string; deviceId: string },
 ): Promise<ResultadoRegistro> {
-  const { nombre, celular, puebloId, acepta } = datos;
+  const { nombre, celular, puebloId, acepta, contrasena } = datos;
 
   if (!nombre || !celular || !puebloId) {
     return { ok: false, codigo: 'REGISTRO_REQUERIDO', mensaje: 'Completa tu nombre, celular y pueblo.', status: 400 };
@@ -59,6 +61,10 @@ export async function registrarJugador(
     return { ok: false, codigo: 'TELEFONO_INVALIDO', mensaje: PHONE_ERROR_ES[tel.reason], status: 400 };
   }
 
+  if (!contrasenaValida(contrasena ?? '')) {
+    return { ok: false, codigo: 'CONTRASENA_INVALIDA', mensaje: REGLA_CONTRASENA, status: 400 };
+  }
+
   const [permitido] = await sql<{ rate_hit: boolean }[]>`
     select app.rate_hit('register_ip', ${ctx.ip}, interval '1 hour', 12) as rate_hit
   `;
@@ -66,16 +72,51 @@ export async function registrarJugador(
     return { ok: false, codigo: 'DEMASIADOS_INTENTOS', mensaje: 'Demasiados registros desde esta conexión. Intenta más tarde.', status: 429 };
   }
 
+  // ¿Ya existe ese celular, y ya tiene contraseña?
+  //
+  // ESTO ES UNA COMPROBACIÓN DE SEGURIDAD, no una comodidad. Antes, registrarse
+  // con un celular ya existente simplemente devolvía la sesión de esa cuenta:
+  // con las contraseñas puestas, eso sería una puerta trasera perfecta —
+  // cualquiera que supiera un número se saltaría la contraseña rellenando el
+  // formulario de registro. Si la cuenta ya tiene contraseña, aquí NO se
+  // entrega sesión: se manda a entrar.
+  //
+  // Si NO la tiene (cuenta creada antes de que existieran), se le pone la que
+  // acaba de escribir y se entra. No empeora nada: esa cuenta ya se abría con
+  // celular + nombre, que es exactamente lo que este formulario pide.
+  const [existente] = await sql<{ tiene_clave: boolean }[]>`
+    select password_hash is not null as tiene_clave
+      from app.players
+     where phone_e164 = ${tel.e164}
+  `;
+  if (existente?.tiene_clave) {
+    return {
+      ok: false,
+      codigo: 'CUENTA_EXISTE',
+      mensaje: 'Ya tienes una cuenta con este número. Entra con tu contraseña.',
+      status: 409,
+    };
+  }
+
+  const hash = await hashContrasena(contrasena!);
+
   // DO UPDATE, no DO NOTHING: con DO NOTHING un conflicto devuelve cero filas y
   // RETURNING no da nada, así que haría falta un SELECT extra y un reintento.
   // Así siempre vuelve la fila.
+  //
+  // `coalesce` en password_hash cierra la carrera: si entre el SELECT de arriba
+  // y este INSERT alguien le puso contraseña a esa cuenta, la suya gana y esta
+  // no la pisa.
   const [jugador] = await sql<{ id: string; blocked_at: string | null }[]>`
-    insert into app.players (phone_e164, full_name, municipality_id, consent_at)
-    values (${tel.e164}, ${nombre}, ${puebloId}, now())
+    insert into app.players (phone_e164, full_name, municipality_id, consent_at,
+                             password_hash, password_set_at)
+    values (${tel.e164}, ${nombre}, ${puebloId}, now(), ${hash}, now())
     on conflict (phone_e164) do update
       set last_seen_at    = now(),
           full_name       = excluded.full_name,
-          municipality_id = excluded.municipality_id
+          municipality_id = excluded.municipality_id,
+          password_hash   = coalesce(app.players.password_hash, excluded.password_hash),
+          password_set_at = coalesce(app.players.password_set_at, excluded.password_set_at)
     returning id, blocked_at
   `;
 

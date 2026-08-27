@@ -98,10 +98,12 @@ export function FormularioRegistro({
   // llevarle el foco. El mensaje solo aparecía debajo del botón: quien usa
   // lector de pantalla lo oía, pero nada le decía CUÁL de los tres campos
   // arreglar, y el foco se quedaba en el botón de enviar.
-  const [campoMalo, setCampoMalo] = useState<'nombre' | 'pueblo' | 'acepta' | null>(null);
+  const [contrasena, setContrasena] = useState('');
+  const [verClave, setVerClave] = useState(false);
+  const [campoMalo, setCampoMalo] = useState<'nombre' | 'pueblo' | 'acepta' | 'contrasena' | null>(null);
   const idError = `${ids}-error`;
 
-  function fallar(campo: 'nombre' | 'pueblo' | 'acepta', mensaje: string) {
+  function fallar(campo: 'nombre' | 'pueblo' | 'acepta' | 'contrasena', mensaje: string) {
     setCampoMalo(campo);
     setError(mensaje);
     // Tras el repintado, para que el campo ya tenga `aria-invalid` puesto
@@ -117,6 +119,8 @@ export function FormularioRegistro({
     if (nombre.trim().split(/\s+/).length < 2)
       return fallar('nombre', 'Escribe tu nombre y apellido.');
     if (!pueblo) return fallar('pueblo', 'Selecciona tu pueblo.');
+    if (contrasena.length < 8)
+      return fallar('contrasena', 'Tu contraseña debe tener al menos 8 caracteres.');
     if (!acepta) return fallar('acepta', 'Debes aceptar los términos para participar.');
 
     setEnviando(true);
@@ -129,6 +133,7 @@ export function FormularioRegistro({
           celular,
           puebloId: Number(pueblo),
           acepta,
+          contrasena,
           website: trampa,
         }),
       })) as { nombre?: string };
@@ -199,6 +204,41 @@ export function FormularioRegistro({
           </select>
         </Campo>
       </div>
+
+      <Campo etiqueta="Contraseña" htmlFor={`${ids}-contrasena`}>
+        <div className="relative">
+          <input
+            id={`${ids}-contrasena`}
+            name="new-password"
+            // `new-password` y no `password`: así el gestor de contraseñas del
+            // teléfono ofrece GENERAR una, en vez de intentar rellenar la de
+            // otro sitio.
+            autoComplete="new-password"
+            type={verClave ? 'text' : 'password'}
+            required
+            minLength={8}
+            value={contrasena}
+            onChange={(e) => setContrasena(e.target.value)}
+            aria-invalid={campoMalo === 'contrasena' || undefined}
+            aria-describedby={campoMalo === 'contrasena' ? idError : `${ids}-pista`}
+            placeholder="Al menos 8 caracteres"
+            className={`${estiloCampo} pr-20`}
+          />
+          {/* Poder verla no es un lujo: esto se escribe en un celular, de pie y
+              con prisa. Sin verla la gente se equivoca y abandona justo en el
+              paso que crea la cuenta. */}
+          <button
+            type="button"
+            onClick={() => setVerClave((v) => !v)}
+            className="absolute inset-y-0 right-0 px-4 text-sm font-medium text-cian"
+          >
+            {verClave ? 'Ocultar' : 'Ver'}
+          </button>
+        </div>
+        <p id={`${ids}-pista`} className="mt-1.5 text-xs text-tenue">
+          La vas a necesitar para entrar desde otro celular.
+        </p>
+      </Campo>
 
       {/* Trampa para bots: invisible y fuera del orden de tabulación. Una
           persona nunca la llena; muchos bots llenan todo lo que encuentran. */}
@@ -276,8 +316,21 @@ export function FormularioEntrar({
   const ids = useId();
   const [nombre, setNombre] = useState('');
   const [celular, setCelular] = useState('');
+  const [contrasena, setContrasena] = useState('');
+  const [verClave, setVerClave] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Cuentas de antes de que existieran las contraseñas.
+   *
+   * No se pide el nombre de entrada a todo el mundo: la inmensa mayoría ya
+   * tendrá contraseña y pedirle un dato de más sería fricción sin motivo. Solo
+   * cuando el servidor contesta FALTA_NOMBRE aparece el campo, con una
+   * explicación de por qué. Es el propio servidor quien sabe qué cuentas son
+   * heredadas —  el navegador no puede saberlo sin preguntar, y preguntar sería
+   * decirle a cualquiera qué números están registrados.
+   */
+  const [pideNombre, setPideNombre] = useState(false);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -287,11 +340,23 @@ export function FormularioEntrar({
       await pedirJson('/api/entrar', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ celular, nombre: nombre.trim() }),
+        body: JSON.stringify({
+          celular,
+          contrasena,
+          ...(pideNombre ? { nombre: nombre.trim() } : {}),
+        }),
       });
       onListo();
     } catch (err) {
-      setError(err instanceof Error ? err.message : ERROR_GENERICO);
+      const msg = err instanceof Error ? err.message : ERROR_GENERICO;
+      // El servidor responde con este mensaje cuando la cuenta es heredada.
+      if (/nombre completo para crear/i.test(msg)) {
+        setPideNombre(true);
+        setError(msg);
+        setTimeout(() => document.getElementById(`${ids}-nombre`)?.focus(), 0);
+      } else {
+        setError(msg);
+      }
     } finally {
       setEnviando(false);
     }
@@ -314,18 +379,48 @@ export function FormularioEntrar({
         />
       </Campo>
 
-      <Campo etiqueta="Nombre completo" htmlFor={`${ids}-nombre`}>
-        <input
-          id={`${ids}-nombre`}
-          name="name"
-          autoComplete="name"
-          required
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="Ej. María Rivera Colón"
-          className={estiloCampo}
-        />
+      <Campo etiqueta="Contraseña" htmlFor={`${ids}-clave`}>
+        <div className="relative">
+          <input
+            id={`${ids}-clave`}
+            name="password"
+            autoComplete="current-password"
+            type={verClave ? 'text' : 'password'}
+            required
+            value={contrasena}
+            onChange={(e) => setContrasena(e.target.value)}
+            placeholder="Tu contraseña"
+            className={`${estiloCampo} pr-20`}
+          />
+          <button
+            type="button"
+            onClick={() => setVerClave((v) => !v)}
+            className="absolute inset-y-0 right-0 px-4 text-sm font-medium text-cian"
+          >
+            {verClave ? 'Ocultar' : 'Ver'}
+          </button>
+        </div>
       </Campo>
+
+      {pideNombre && (
+        <Campo etiqueta="Nombre completo" htmlFor={`${ids}-nombre`}>
+          <input
+            id={`${ids}-nombre`}
+            name="name"
+            autoComplete="name"
+            required
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Ej. María Rivera Colón"
+            className={estiloCampo}
+          />
+          <p className="mt-1.5 text-xs text-tenue">
+            Tu cuenta es de antes de que existieran las contraseñas. Escribe tu
+            nombre tal como te registraste y la contraseña de arriba queda
+            guardada para la próxima vez.
+          </p>
+        </Campo>
+      )}
 
       {error && (
         <p role="alert" className="text-sm text-pierde">

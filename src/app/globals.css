@@ -1,63 +1,89 @@
 @import 'tailwindcss';
 
 /* ==========================================================================
-   Identidad de Casino Atlántico Manatí
+   Identidad de Casino Atlántico Manatí — azul profundo con luz
 
-   El sitio es CLARO y minimalista: fondo blanco, mucho aire, y el color
-   reservado para lo que importa. Los azules salen del logo (la ficha con el
-   mandala). El dorado queda solo para dinero: montos de jackpot, el premio de
-   $25 y el botón de girar. Si el dorado se usa para cualquier otra cosa deja
-   de significar "premio".
+   El sitio sigue siendo CLARO y minimalista, pero deja de ser blanco plano.
+   Tres cosas lo cambian:
 
-   Los nombres de los tokens dicen su función, no su color: así el día que
-   cambie un tono no hay que renombrar media aplicación.
+     1. TRES capas de superficie en vez de una. Un sitio se siente "sin vida"
+        cuando todo está al mismo nivel: página, tarjeta y tarjeta-dentro-de-
+        tarjeta con el mismo blanco. Aquí cada capa baja un escalón.
+     2. El azul pasa a ser protagonista, no decoración.
+     3. El turquesa aparece como color de ACCIÓN: lo que se puede tocar.
+
+   REGLA DE LOS DOS TONOS, que se repite en toda la paleta: cada color de
+   marca tiene una versión para TEXTO y otra para RELLENO. El turquesa vivo
+   (#00A9C7) da 2.73:1 sobre el fondo — precioso en un botón, ilegible como
+   letra. El mismo tono oscurecido da 5.24:1. Medido, no estimado: cada valor
+   de aquí abajo cumple 4.5:1 sobre las TRES superficies, comprobado contra la
+   más oscura, que es la que manda.
+
+   Los nombres dicen su función, no su color: el día que cambie un tono no hay
+   que renombrar media aplicación.
    ========================================================================== */
 
 @theme {
-  /* Superficies */
-  --color-fondo: #ffffff; /* la página */
-  --color-superficie: #f5f8fc; /* tarjetas y bloques elevados */
-  --color-linea: #e4eaf2; /* bordes y separadores */
+  /* --- Superficies, de la más clara a la más honda ---------------------- */
+  --color-fondo: #fbfcfe; /* la página. Blanco con un punto de frío, no #fff */
+  --color-superficie: #eff4fa; /* tarjetas */
+  --color-superficie-2: #e3ecf7; /* bloques dentro de una tarjeta */
+  --color-linea: #dae4f0;
 
-  /* Texto */
-  --color-tinta: #10294a; /* texto principal: azul muy oscuro, no negro puro */
-  --color-tenue: #5d7189; /* texto secundario. Contraste 4.6:1 sobre blanco */
+  /* --- Texto ------------------------------------------------------------ */
+  --color-tinta: #0e2645; /* 14.8:1 sobre el fondo */
+  --color-tenue: #596c7f; /* secundario. 4.54:1 en la superficie más oscura */
 
-  /* Marca */
-  --color-marca: #1b4f9c; /* azul del logo */
-  /* Cian del logo, oscurecido para leerse sobre blanco Y sobre la superficie
-     gris. Dos pasadas hicieron falta: #0b7fb4 daba 4.46:1 sobre blanco y el
-     mínimo para texto normal es 4.5:1; #0b7eb2 arreglaba el blanco (4.52:1)
-     pero se quedaba en 4.25:1 sobre `superficie`, que es donde caen los enlaces
-     del pie y de las bandas de sección. Este tono cumple en los dos fondos
-     — 4.92:1 y 4.61:1 — y la diferencia a ojo es imperceptible. */
-  --color-cian: #0a78a9;
+  /* --- Marca ------------------------------------------------------------ */
+  --color-marca: #12386f; /* azul profundo. 11.2:1: sirve hasta para texto */
+  --color-marca-2: #1d5aa8; /* más claro, para degradados y rellenos */
 
-  /* Dinero. Oscurecido respecto al logo: el dorado claro sobre blanco no se lee. */
-  --color-dorado: #b07d13; /* dorado para TEXTO sobre fondo claro */
-  --color-dorado-2: #f2b33d; /* dorado para RELLENOS: botones, fichas, brillos */
+  /* --- Acción (turquesa) ------------------------------------------------ */
+  /* Regla de los dos tonos: `cian` se lee, `cian-2` se rellena. */
+  --color-cian: #007589; /* TEXTO: enlaces, etiquetas */
+  --color-cian-2: #00a9c7; /* RELLENO: botones, subrayados, indicadores */
+  --color-cian-3: #5fd9ec; /* claro, para degradados y sobre azul oscuro */
+
+  /* --- Dinero ----------------------------------------------------------- */
+  /* El dorado es SOLO para dinero: montos, el premio de $25, el botón de
+     girar. Si se usa para otra cosa deja de significar "premio". */
+  --color-dorado: #8a630d; /* TEXTO sobre fondo claro */
+  --color-dorado-2: #f2b33d; /* RELLENO: botones, fichas, brillos */
   --color-dorado-3: #ffd479; /* el más claro, para degradados */
+  /* El canto oscuro del METAL, que no es lo mismo que el dorado de TEXTO.
+     `--color-dorado` (#8a630d) está oscurecido para leerse sobre fondo claro;
+     usarlo como parada final del degradado de la ficha del podio dejaba el
+     número en 2.83:1 sobre su propio metal. Este tono es el más oscuro que
+     mantiene el número legible: 5.45:1. */
+  --color-dorado-metal: #c8901a;
 
-  /* La CARCASA de la tragamonedas. Es un objeto oscuro a propósito: sobre una
-     página blanca, una máquina oscura es lo primero que mira el ojo. */
-  --color-maquina: #0a2547;
-  --color-maquina-2: #123a72;
+  /* --- La carcasa de la tragamonedas ------------------------------------ */
+  /* Un objeto oscuro a propósito: sobre una página clara, la máquina es lo
+     primero que mira el ojo. */
+  --color-maquina: #071c37;
+  --color-maquina-2: #0f2f5e;
+  --color-maquina-3: #16447f;
 
-  /* 2% más oscuro que #0b8a5f, que daba 4.36:1: la flecha de "subió" del
-     tablero es texto de 16px y pide 4.5:1. */
-  --color-gana: #0b875d;
+  --color-gana: #0a7853;
   --color-pierde: #c2372f;
 
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  --radius-card: 1rem;
+  --radius-card: 1.125rem;
 
-  /* Sombras suaves y de un solo tono: es lo que separa un sitio limpio de uno
-     cargado. Nada de sombras negras duras. */
-  --shadow-suave: 0 1px 2px rgb(16 41 74 / 0.04), 0 8px 24px -12px rgb(16 41 74 / 0.12);
-  --shadow-alza: 0 2px 4px rgb(16 41 74 / 0.05), 0 24px 48px -20px rgb(16 41 74 / 0.22);
+  /* Sombras teñidas de azul, nunca negras: una sombra gris sobre una paleta
+     azul es lo que hace que un sitio se vea "sucio" sin saber por qué.
+     Tres niveles para que las tres capas de superficie tengan a dónde subir. */
+  --shadow-suave: 0 1px 2px rgb(14 38 69 / 0.04), 0 8px 24px -12px rgb(14 38 69 / 0.14);
+  --shadow-alza: 0 2px 4px rgb(14 38 69 / 0.05), 0 24px 48px -20px rgb(14 38 69 / 0.24);
+  --shadow-flota: 0 4px 8px rgb(14 38 69 / 0.06), 0 32px 64px -24px rgb(14 38 69 / 0.3);
   --shadow-premio: 0 0 0 1px rgb(242 179 61 / 0.5), 0 16px 40px -14px rgb(242 179 61 / 0.55);
+  --shadow-accion: 0 0 0 1px rgb(0 169 199 / 0.45), 0 12px 28px -12px rgb(0 169 199 / 0.5);
+
+  /* Una sola curva para todo el sitio. Salida suave con un punto de
+     adelanto: es lo que separa "se movió" de "respondió". */
+  --ease-vivo: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* --------------------------------------------------------------------------
@@ -67,6 +93,9 @@
 html {
   color-scheme: light;
   scroll-behavior: smooth;
+  /* El header es sticky y mide 72px: sin esto, saltar a un ancla deja el
+     título justo debajo del header, tapado. */
+  scroll-padding-top: 5.5rem;
 }
 
 body {
@@ -74,6 +103,14 @@ body {
   color: var(--color-tinta);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  /* Luz de fondo muy tenue: dos manchas de color fijas al viewport que le
+     quitan al blanco su planitud. `fixed` y no `scroll` a propósito — si se
+     moviera con la página sería un adorno que distrae; quieta, es luz de
+     ambiente y no se nota que está. */
+  background-image:
+    radial-gradient(60rem 40rem at 12% -10%, rgb(0 169 199 / 0.05), transparent 60%),
+    radial-gradient(50rem 36rem at 92% 4%, rgb(29 90 168 / 0.06), transparent 60%);
+  background-attachment: fixed;
 }
 
 h1,
@@ -81,8 +118,14 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.022em;
   text-wrap: balance;
+}
+
+/* `pretty` evita la palabra huérfana al final de un párrafo. Donde no hay
+   soporte simplemente no hace nada. */
+p {
+  text-wrap: pretty;
 }
 
 /* Los montos de dinero SIEMPRE con cifras tabulares: sin esto, las columnas de
@@ -92,14 +135,18 @@ h4 {
   font-feature-settings: 'tnum';
 }
 
+/* El foco se ve SIEMPRE, en turquesa vivo y con un halo blanco por dentro
+   para que también se vea sobre la carcasa azul oscuro de la tragamonedas.
+   Un anillo de un solo color desaparece sobre la mitad de los fondos. */
 :focus-visible {
-  outline: 2px solid var(--color-cian);
+  outline: 2px solid var(--color-cian-2);
   outline-offset: 3px;
-  border-radius: 4px;
+  box-shadow: 0 0 0 5px rgb(0 169 199 / 0.22);
+  border-radius: 6px;
 }
 
 ::selection {
-  background: rgb(11 127 180 / 0.18);
+  background: rgb(0 169 199 / 0.2);
 }
 
 /* --------------------------------------------------------------------------
@@ -113,12 +160,16 @@ h4 {
   padding-inline: 1.25rem;
 }
 
-/* Tarjeta minimalista: blanca, borde de un pelo, sombra apenas perceptible. */
+/* Tarjeta: capa 1. Borde de un pelo y una luz interior arriba — el reflejo
+   de una superficie física. Es lo que la despega del fondo sin necesidad de
+   una sombra dura. */
 @utility tarjeta {
   background: var(--color-fondo);
   border: 1px solid var(--color-linea);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-suave);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+    var(--shadow-suave);
 }
 
 /* Variante sin sombra, para rejillas densas donde 12 sombras ensucian. */
@@ -128,11 +179,70 @@ h4 {
   border-radius: var(--radius-card);
 }
 
+/* Capa 2: un bloque DENTRO de una tarjeta. Sin esto, una tarjeta con una caja
+   dentro se ve como dos rectángulos del mismo color pegados. */
+@utility hueco {
+  background: var(--color-superficie-2);
+  border: 1px solid color-mix(in srgb, var(--color-linea) 70%, transparent);
+  border-radius: calc(var(--radius-card) - 0.375rem);
+}
+
+/* Tarjeta que responde al dedo o al ratón.
+ *
+ * Sube 2px y estrecha la sombra: el gesto de "esto se puede tocar". El
+ * `translateZ(0)` no es superstición — promueve la capa antes del hover, así
+ * que el primer fotograma de la transición no se come el coste de crearla, que
+ * es justo el tirón que se ve en celulares baratos.
+ *
+ * Al pulsar vuelve a bajar: sin el estado activo, en un celular la tarjeta se
+ * queda levantada después del toque y parece que se rompió. */
+@utility tarjeta-viva {
+  transform: translateZ(0);
+  transition:
+    transform 0.28s var(--ease-vivo),
+    box-shadow 0.28s var(--ease-vivo),
+    border-color 0.28s var(--ease-vivo);
+}
+@utility tarjeta-viva-hover {
+  transform: translateY(-2px) translateZ(0);
+  border-color: color-mix(in srgb, var(--color-cian-2) 45%, var(--color-linea));
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+    var(--shadow-alza);
+}
+
 /* Bloque azul de marca: para las zonas donde sí queremos peso visual
-   (el héroe de la tragamonedas, el pie de página). */
+   (el héroe de la tragamonedas, el pie de página). El tercer punto del
+   degradado en turquesa muy bajo evita que el azul se vea muerto. */
 @utility bloque-marca {
-  background: linear-gradient(150deg, #123a72, #0b2a55 60%, #0a2547);
-  color: #f7f9fc;
+  background:
+    radial-gradient(38rem 22rem at 88% -20%, rgb(0 169 199 / 0.22), transparent 62%),
+    /* La parada más clara es #17497f y no `--color-marca-2` (#1d5aa8): con el
+       azul claro, `dorado-2` encima se quedaba en 3.67:1. Con este, 4.92:1, y
+       la sensación de profundidad no cambia a ojo. */
+    linear-gradient(155deg, #17497f, var(--color-marca) 46%, var(--color-maquina));
+  color: #f4f9ff;
+}
+
+/* Subrayado que crece desde la izquierda. Es la señal de "aquí estás" de la
+   navegación y de las pestañas, y la que hace que el menú se sienta vivo sin
+   mover el texto ni un píxel — mover el texto al pasar por encima es lo que
+   hace que una barra se sienta inestable. */
+@utility subrayado-vivo {
+  position: relative;
+}
+@utility subrayado-vivo-linea {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.35rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-cian-2), var(--color-marca-2));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.32s var(--ease-vivo);
 }
 
 @utility texto-dorado {
@@ -153,22 +263,25 @@ h4 {
 
 /* Tejido de picas azul, para superficies claras. */
 @utility patron-picas {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2272%22%20height%3D%2272%22%20viewBox%3D%220%200%2072%2072%22%3E%20%3Cg%20fill%3D%22%231b4f9c%22%20fill-opacity%3D%221%22%3E%20%3Cg%20transform%3D%22translate(6%206)%20scale(.62)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%22translate(42%2042)%20scale(.62)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%22translate(48%2012)%20scale(.42)%20rotate(180%2012%2012)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%22translate(12%2048)%20scale(.42)%20rotate(180%2012%2012)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Ccircle%20cx%3D%2236%22%20cy%3D%228%22%20r%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%228%22%20cy%3D%2236%22%20r%3D%221.5%22%2F%3E%20%3Ccircle%20cx%3D%2264%22%20cy%3D%2236%22%20r%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2264%22%20r%3D%221.5%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E");
-  background-size: 72px 72px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22128%22%20height=%22128%22%20viewBox=%220%200%20128%20128%22%3E%3Cg%20fill=%22%2312386f%22%20fill-opacity=%22.6%22%3E%3Cg%20transform=%22translate(20%2020)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2084)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2020)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(24%2088)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-size: 128px 128px;
 }
 
 /* El mismo tejido en dorado, para las superficies azul oscuro. */
 @utility patron-picas-oro {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2272%22%20height%3D%2272%22%20viewBox%3D%220%200%2072%2072%22%3E%20%3Cg%20fill%3D%22%23f2b33d%22%20fill-opacity%3D%221%22%3E%20%3Cg%20transform%3D%22translate(6%206)%20scale(.62)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%22translate(42%2042)%20scale(.62)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%22translate(48%2012)%20scale(.42)%20rotate(180%2012%2012)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Cg%20transform%3D%22translate(12%2048)%20scale(.42)%20rotate(180%2012%2012)%22%3E%3Cpath%20d%3D%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22%2F%3E%3C%2Fg%3E%20%3Ccircle%20cx%3D%2236%22%20cy%3D%228%22%20r%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%228%22%20cy%3D%2236%22%20r%3D%221.5%22%2F%3E%20%3Ccircle%20cx%3D%2264%22%20cy%3D%2236%22%20r%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%2264%22%20r%3D%221.5%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E");
-  background-size: 72px 72px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22128%22%20height=%22128%22%20viewBox=%220%200%20128%20128%22%3E%3Cg%20fill=%22%23f2b33d%22%20fill-opacity=%22.6%22%3E%3Cg%20transform=%22translate(20%2020)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2084)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2020)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(24%2088)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-size: 128px 128px;
 }
 
 /* Muescas del canto de la ficha, como cinta superior de una tarjeta. */
 @utility cinta-ficha {
-  background-image: repeating-linear-gradient(
+  background-image: linear-gradient(
     90deg,
-    var(--color-dorado-2) 0 10px,
-    transparent 10px 22px
+    transparent,
+    var(--color-dorado-2) 18%,
+    var(--color-dorado-3) 50%,
+    var(--color-dorado-2) 82%,
+    transparent
   );
 }
 
@@ -264,8 +377,152 @@ h4 {
 .anim-entrar {
   animation: entrar 0.5s ease-out both;
 }
+
+/* Como `entrar` pero SIN mover nada.
+ *
+ * `anim-entrar` traslada 12px, y eso está bien para un bloque que aparece en
+ * una página quieta. Dentro de un diálogo NO: el diálogo se dimensiona por su
+ * contenido, así que un hijo que se desliza cambia la altura del diálogo en
+ * cada fotograma, y con él se recompone el `backdrop-blur` del velo. Ese era
+ * literalmente el parpadeo que se reportó. Aquí solo se enciende. */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-aparecer {
+  animation: aparecer 0.34s ease-out both;
+}
 .anim-pulso-premio {
   animation: pulso-premio 2s ease-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Vida al desplazar
+
+   Cada sección entra al aparecer, con animaciones DIRIGIDAS POR EL SCROLL
+   (`animation-timeline: view()`). No hay JavaScript, ni IntersectionObserver,
+   ni un `useEffect` por sección: lo calcula el compositor del navegador, así
+   que va a 60fps hasta en un celular viejo.
+
+   Va dentro de `@supports`: donde no hay soporte, el elemento simplemente
+   está visible desde el principio. Eso importa más de lo que parece — la
+   receta habitual con JavaScript arranca en `opacity: 0`, y si el script
+   falla o tarda, la página se queda EN BLANCO. Aquí el estado por defecto es
+   "visible" y la animación solo puede mejorarlo.
+   -------------------------------------------------------------------------- */
+@keyframes revelar {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .revela {
+      animation: revelar linear both;
+      animation-timeline: view();
+      /* Termina cuando lleva un 28% subido: si acabara al 50%, la mitad de
+         los bloques se leerían todavía a media opacidad. */
+      animation-range: entry 0% cover 28%;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   La tragamonedas
+   -------------------------------------------------------------------------- */
+
+/* Giro del rolo. Se mueve la CINTA de símbolos, no cada símbolo: una sola
+   capa compuesta en vez de una por figura. */
+@keyframes girar-cinta {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+/* El aterrizaje: pasa de largo y vuelve. Un rolo que se detiene en seco se ve
+   digital; el rebote es lo que lo hace parecer una máquina con inercia. */
+@keyframes aterrizar {
+  0% {
+    transform: translate3d(0, -14%, 0);
+  }
+  62% {
+    transform: translate3d(0, 4%, 0);
+  }
+  82% {
+    transform: translate3d(0, -1.5%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Destello que barre el cristal cuando se para un rolo. */
+@keyframes destello {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.85;
+  }
+  to {
+    transform: translateX(220%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+/* Celebración al ganar: la carcasa entera respira una vez. */
+@keyframes celebrar {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  22% {
+    transform: scale(1.022);
+  }
+  55% {
+    transform: scale(0.995);
+  }
+}
+
+@keyframes subir-monto {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-girar-cinta {
+  animation: girar-cinta 0.42s linear infinite;
+}
+.anim-aterrizar {
+  animation: aterrizar 0.62s var(--ease-vivo) both;
+}
+.anim-destello {
+  animation: destello 0.7s ease-out both;
+}
+.anim-celebrar {
+  animation: celebrar 0.9s var(--ease-vivo) both;
+}
+.anim-subir-monto {
+  animation: subir-monto 0.5s var(--ease-vivo) both;
 }
 
 /* Respeta a quien pidió menos movimiento. Los rolos igual aterrizan donde

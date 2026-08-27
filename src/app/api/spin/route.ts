@@ -26,6 +26,7 @@ const Registro = z.object({
   celular: z.string().trim().min(7).max(25).optional(),
   puebloId: z.coerce.number().int().min(1).max(78).optional(),
   acepta: z.boolean().optional(),
+  contrasena: z.string().min(8).max(200).optional(),
   // Trampa: un campo oculto que una persona nunca llena y un bot sí.
   website: z.string().max(0).optional(),
 });

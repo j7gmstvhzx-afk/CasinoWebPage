@@ -29,9 +29,13 @@ export function FichaPuesto({ puesto, clase }: { puesto: number; clase: string }
 /** Materiales de la ficha por puesto. El salto oro → plata → bronce → casa es
  * lo que hace legible la jerarquía sin leer un solo número. */
 export const FICHA = {
-  1: 'bg-gradient-to-br from-dorado-3 via-dorado-2 to-dorado text-[#0a2547]',
-  2: 'bg-gradient-to-br from-slate-100 via-slate-200 to-slate-400 text-slate-700',
-  3: 'bg-gradient-to-br from-orange-100 via-orange-200 to-orange-400 text-orange-900',
+  1: 'bg-gradient-to-br from-dorado-3 via-dorado-2 to-dorado-metal text-[#0a2547]',
+  /* La última parada se aclara un paso y el número se oscurece otro. Medido en
+     el sitio: plata daba 3.94:1 y bronce 3.97:1 sobre su propio metal, con 4.5
+     exigido — el número del podio es texto pequeño. El salto de material se
+     sigue viendo igual; lo que cambia es que ahora se lee. */
+  2: 'bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 text-slate-800',
+  3: 'bg-gradient-to-br from-orange-100 via-orange-200 to-orange-300 text-orange-950',
   /** De la 4 en adelante: ficha azul "de la casa", sin metal. Existe, pero no
    * compite con el podio. */
   casa: 'bg-superficie text-marca',

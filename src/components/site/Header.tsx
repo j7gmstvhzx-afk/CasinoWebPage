@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Logo } from './Logo';
 import { NAV } from '@/lib/site';
 import { setOverlayActivo } from '@/lib/overlay-activo';
@@ -38,6 +38,43 @@ export function Header() {
     setRutaPrevia(pathname);
     setAbierto(false);
   }
+
+  /**
+   * Indicador que se DESLIZA entre pestañas.
+   *
+   * Un fondo por pestaña (lo que había antes) hace que la barra parezca una
+   * lista de botones. Una sola pastilla que viaja de una a otra hace que
+   * parezca un solo control con una posición — y de paso enseña de dónde
+   * vienes al navegar, que es información real, no adorno.
+   *
+   * Sigue al ratón y vuelve sola a la pestaña activa al salir. Se mide con
+   * offsetLeft/offsetWidth contra el <nav>, que es el contenedor posicionado,
+   * en vez de getBoundingClientRect: así el valor no depende del scroll ni de
+   * dónde esté el header en ese momento.
+   */
+  const navRef = useRef<HTMLElement>(null);
+  const [pastilla, setPastilla] = useState<{ x: number; w: number } | null>(null);
+
+  const moverA = useCallback((el: HTMLElement | null) => {
+    if (el) setPastilla({ x: el.offsetLeft, w: el.offsetWidth });
+  }, []);
+
+  const alActivo = useCallback(() => {
+    moverA(navRef.current?.querySelector<HTMLElement>('[aria-current="page"]') ?? null);
+  }, [moverA]);
+
+  // Se recoloca al navegar y al cambiar el ancho. El ResizeObserver es
+  // necesario además del evento de resize: las fuentes cargan después del
+  // primer render y cambian el ancho de las pestañas sin que la ventana se
+  // mueva, dejando la pastilla descuadrada hasta el siguiente clic.
+  useEffect(() => {
+    alActivo();
+    const nav = navRef.current;
+    if (!nav) return;
+    const ro = new ResizeObserver(alActivo);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [alActivo, pathname]);
 
   const activo = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -107,21 +144,47 @@ export function Header() {
           <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Principal">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={activo(item.href) ? 'page' : undefined}
-              className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors ${
-                activo(item.href)
-                  ? 'bg-marca/10 text-tinta'
-                  : 'text-tenue hover:bg-superficie hover:text-tinta'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav
+          ref={navRef}
+          onMouseLeave={alActivo}
+          className="relative hidden items-center gap-0.5 lg:flex"
+          aria-label="Principal"
+        >
+          {/* La pastilla va DETRÁS del texto (-z-10) y no lo tapa. Solo se
+              pinta cuando ya se midió: sin eso, en el primer render aparece
+              en x=0 y se ve cruzar la barra de un lado a otro al cargar. */}
+          {pastilla && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-1 -z-10 rounded-full bg-superficie-2 transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{ width: pastilla.w, transform: `translateX(${pastilla.x}px)` }}
+            />
+          )}
+          {NAV.map((item) => {
+            const esActivo = activo(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={esActivo ? 'page' : undefined}
+                onMouseEnter={(e) => moverA(e.currentTarget)}
+                onFocus={(e) => moverA(e.currentTarget)}
+                className={`group relative rounded-full px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
+                  esActivo ? 'text-tinta' : 'text-tenue hover:text-tinta'
+                }`}
+              >
+                {item.label}
+                {/* La línea de la pestaña activa. `scale-x` en vez de width
+                    para que la anime el compositor y no dispare relayout. */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-3.5 bottom-1 h-[2px] origin-left rounded-full bg-gradient-to-r from-cian-2 to-marca-2 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    esActivo ? 'scale-x-100' : 'scale-x-0'
+                  }`}
+                />
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Acceso al panel de empleados, discreto pero A LA VISTA: antes solo
@@ -130,7 +193,7 @@ export function Header() {
             se ve en todo momento sin quedar en la cara del cliente. */}
         <Link
           href="/admin"
-          className="hidden shrink-0 items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-tenue transition-colors hover:border-cian hover:text-cian lg:inline-flex"
+          className="hidden shrink-0 items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-tenue transition-[color,border-color,background-color] duration-200 hover:border-cian-2 hover:bg-cian-2/8 hover:text-cian lg:inline-flex"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
             <path
@@ -147,7 +210,7 @@ export function Header() {
           onClick={() => setAbierto((v) => !v)}
           aria-expanded={abierto}
           aria-controls="menu-movil"
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-linea lg:hidden"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-linea transition-[background-color,border-color,transform] duration-200 active:scale-95 active:bg-superficie-2 lg:hidden"
         >
           <span className="sr-only">{abierto ? 'Cerrar menú' : 'Abrir menú'}</span>
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -189,20 +252,53 @@ export function Header() {
                 está, el pathname no cambia, el efecto nunca dispara, y el
                 menú se quedaba abierto sin ninguna reacción visible — se
                 sentía como que el toque no hacía nada. */}
-            {NAV.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={() => setAbierto(false)}
-                  aria-current={activo(item.href) ? 'page' : undefined}
-                  className={`block rounded-xl px-4 py-3 text-base font-medium ${
-                    activo(item.href) ? 'bg-marca/10 text-tinta' : 'text-tenue'
-                  }`}
+            {NAV.map((item, n) => {
+              const esActivo = activo(item.href);
+              return (
+                <li
+                  key={item.href}
+                  className="anim-entrar"
+                  // Entrada escalonada: 34ms entre pestañas. El menú deja de
+                  // "aparecer" y pasa a "desplegarse", que es lo que hace que
+                  // se sienta una pieza y no un bloque que se enciende.
+                  // Tope en 8 para que un menú largo no acabe con la última
+                  // pestaña entrando medio segundo tarde.
+                  style={{ animationDelay: `${Math.min(n, 8) * 34}ms` }}
                 >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+                  <Link
+                    href={item.href}
+                    onClick={() => setAbierto(false)}
+                    aria-current={esActivo ? 'page' : undefined}
+                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-base font-medium transition-colors active:bg-superficie-2 ${
+                      esActivo ? 'bg-superficie-2 text-tinta' : 'text-tenue'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      {/* Marca de la pestaña activa: una barra de color a la
+                          izquierda. En celular no hay ratón, así que el estado
+                          "aquí estás" tiene que verse sin interacción. */}
+                      <span
+                        aria-hidden="true"
+                        className={`h-5 w-[3px] rounded-full transition-colors ${
+                          esActivo ? 'bg-cian-2' : 'bg-transparent'
+                        }`}
+                      />
+                      {item.label}
+                    </span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className={`h-4 w-4 transition-opacity ${esActivo ? 'opacity-100 text-cian' : 'opacity-0'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           <Link
             href="/admin"

@@ -17,7 +17,7 @@ import { SymbolIcon } from './symbols';
  * fases — giro libre en bucle, y aterrizaje hacia el resultado ya decidido.
  */
 
-const ITEM_H = 92; // alto de un símbolo, en px
+const ITEM_H = 104; // alto de un símbolo, en px
 const CYCLE = ITEM_H * SYMBOLS.length; // una vuelta completa del rolo
 const REPEAT = 10; // cuántas vueltas hay en la tira (ver EXTRA_LOOPS)
 const SPIN_CYCLE_MS = 300; // velocidad del giro libre
@@ -28,6 +28,10 @@ const LAND_MS = 1150; // duración del frenado
 // Vueltas extra al aterrizar. El tercer rolo da más vueltas: ahí está el
 // suspenso, porque es el que decide si son tres iguales.
 const EXTRA_LOOPS = [3, 5, 7];
+
+// Símbolos de reposo, uno distinto por rolo. Se eligen separados en la tira
+// para que la máquina en reposo no insinúe ninguna combinación.
+const REPOSO = [0, 2, 4];
 
 export type SpinOutcome = {
   reels: number[];
@@ -86,7 +90,12 @@ export function SlotMachine({
 
   const [fase, setFase] = useState<Fase>('listo');
   const [error, setError] = useState<string | null>(null);
-  const [visibles, setVisibles] = useState<number[]>([0, 1, 2]);
+  const [visibles, setVisibles] = useState<number[]>(REPOSO);
+  // Qué rolos acaban de aterrizar. Dispara el destello del cristal y el aro de
+  // ese rolo concreto — la sensación de que la máquina responde pieza a pieza
+  // en vez de encenderse entera al final.
+  const [parados, setParados] = useState<boolean[]>([false, false, false]);
+  const [gano, setGano] = useState(false);
 
   const limpiar = useCallback(() => {
     temporizadores.current.forEach(clearTimeout);
@@ -95,7 +104,32 @@ export function SlotMachine({
     animaciones.current = [null, null, null];
   }, []);
 
+  const marcarParado = useCallback((i: number) => {
+    setParados((p) => {
+      const n = [...p];
+      n[i] = true;
+      return n;
+    });
+  }, []);
+
   useEffect(() => limpiar, [limpiar]);
+
+  // Posición de reposo: cada rolo en un símbolo DISTINTO.
+  //
+  // Las tres tiras arrancan en translateY(0), o sea las tres en el símbolo 0:
+  // la máquina se veía con tres coronas iguales antes de tirar, que es
+  // exactamente la combinación premiada. Enseñarle al cliente un premio que no
+  // ha ganado, cada vez que abre, es lo peor que puede hacer esta pantalla.
+  //
+  // El estado ya arranca en REPOSO (ver useState más arriba); aquí solo se
+  // coloca la tira, que es DOM y no estado de React.
+  useEffect(() => {
+    tiras.current.forEach((el, i) => {
+      if (!el) return;
+      el.style.transform = `translate3d(0,${-(REPOSO[i] * ITEM_H)}px,0)`;
+    });
+     
+  }, []);
 
   /** Fase 1: giro libre en bucle. Empieza al instante, sin esperar al servidor. */
   const girarLibre = useCallback(() => {
@@ -113,7 +147,7 @@ export function SlotMachine({
   }, []);
 
   /** Fase 2: frenar el rolo `i` hasta que el símbolo `simbolo` quede a la vista. */
-  const aterrizar = useCallback((i: number, simbolo: number) => {
+  const aterrizar = useCallback((i: number, simbolo: number, alParar?: () => void) => {
     const el = tiras.current[i];
     if (!el) return;
 
@@ -141,6 +175,7 @@ export function SlotMachine({
       el.style.transition = 'none';
       el.style.transform = `translate3d(0,${-(destino % CYCLE)}px,0)`;
       el.removeEventListener('transitionend', normalizar);
+      alParar?.();
     };
     el.addEventListener('transitionend', normalizar);
      
@@ -161,6 +196,8 @@ export function SlotMachine({
 
     limpiar();
     setError(null);
+    setParados([false, false, false]);
+    setGano(false);
     setFase('girando');
 
     const sinMovimiento = prefiereMenosMovimiento();
@@ -184,6 +221,8 @@ export function SlotMachine({
 
     if (sinMovimiento) {
       resultado.reels.forEach((s, i) => posicionInstantanea(i, s));
+      setParados([true, true, true]);
+      setGano(resultado.result === 'win');
       setFase('revelado');
       onRevealed(resultado);
       return;
@@ -197,13 +236,14 @@ export function SlotMachine({
       setTimeout(() => {
         resultado.reels.forEach((simbolo, i) => {
           temporizadores.current.push(
-            setTimeout(() => aterrizar(i, simbolo), i * STAGGER_MS),
+            setTimeout(() => aterrizar(i, simbolo, () => marcarParado(i)), i * STAGGER_MS),
           );
         });
 
         temporizadores.current.push(
           setTimeout(
             () => {
+              setGano(resultado.result === 'win');
               setFase('revelado');
               onRevealed(resultado);
             },
@@ -220,6 +260,7 @@ export function SlotMachine({
     onSpin,
     onRevealed,
     aterrizar,
+    marcarParado,
     posicionInstantanea,
     visibles,
   ]);
@@ -228,48 +269,152 @@ export function SlotMachine({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Carcasa */}
-      <div className="relative rounded-3xl border border-dorado/30 bg-gradient-to-b from-maquina-2 to-maquina p-3 shadow-premio sm:p-4">
-        <div className="flex gap-2 sm:gap-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="relative overflow-hidden rounded-2xl border border-linea bg-maquina"
-              style={{ height: ITEM_H, width: ITEM_H }}
-            >
-              <div
-                ref={(el) => {
-                  tiras.current[i] = el;
-                }}
-                className="will-change-transform"
-              >
-                {/* Tira: los símbolos repetidos REPEAT veces. Se puede avanzar
-                    cualquier múltiplo de una vuelta sin que se note el corte. */}
-                {Array.from({ length: REPEAT * SYMBOLS.length }, (_, n) => (
-                  <div
-                    key={n}
-                    className="flex items-center justify-center p-2.5"
-                    style={{ height: ITEM_H, width: ITEM_H }}
-                  >
-                    <SymbolIcon index={n % SYMBOLS.length} />
-                  </div>
-                ))}
-              </div>
+      {/* ================= LA MÁQUINA =================
 
-              {/* Sombreado interior: da sensación de tambor físico. */}
+          Tres capas físicas, porque un solo rectángulo con degradado se ve
+          plano por muy bonito que sea el degradado:
+
+            1. el MUEBLE  — el borde dorado exterior y su sombra
+            2. el FRENTE  — la cara oscura con el letrero y el cristal
+            3. el CRISTAL — reflejo y viñeta ENCIMA de los rolos
+
+          El reflejo va arriba del todo y con `pointer-events-none`: es lo que
+          convierte "tres listas que se desplazan" en "algo que se mira a
+          través de un vidrio". */}
+      <div
+        className={`relative w-full max-w-[26rem] rounded-[1.75rem] p-[3px] ${gano ? 'anim-celebrar' : ''}`}
+        style={{
+          background:
+            'linear-gradient(160deg, var(--color-dorado-3), var(--color-dorado-2) 28%, #7c5510 62%, var(--color-dorado-2))',
+          boxShadow: gano
+            ? '0 0 0 1px rgb(242 179 61 / .7), 0 0 60px -6px rgb(242 179 61 / .75), 0 28px 60px -24px rgb(7 28 55 / .6)'
+            : '0 2px 4px rgb(7 28 55 / .12), 0 28px 60px -24px rgb(7 28 55 / .55)',
+          transition: 'box-shadow .5s var(--ease-vivo)',
+        }}
+      >
+        <div className="relative overflow-hidden rounded-[1.6rem] bg-gradient-to-b from-maquina-2 via-maquina to-maquina px-3 pb-4 pt-3 sm:px-4">
+          {/* Letrero superior. Le da a la máquina una cabeza — sin esto es una
+              caja con ventanas, y una tragamonedas de verdad siempre anuncia
+              su premio arriba. */}
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-dorado-2/25 bg-maquina/60 px-3 py-2">
+            <span className="font-display text-[0.62rem] font-bold uppercase tracking-[0.24em] text-cian-3">
+              Atlántico
+            </span>
+            <span className="font-display text-sm font-bold tracking-wide text-dorado-3">
+              $25 EN EFECTIVO
+            </span>
+            {/* Tres luces. Se encienden a medida que paran los rolos: el
+                progreso de la tirada, leíble de un vistazo. */}
+            <span className="flex items-center gap-1" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="h-1.5 w-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    background: parados[i] ? 'var(--color-dorado-2)' : 'rgb(255 255 255 / .16)',
+                    boxShadow: parados[i] ? '0 0 8px 1px rgb(242 179 61 / .8)' : 'none',
+                  }}
+                />
+              ))}
+            </span>
+          </div>
+
+          {/* --- Los tres tambores --- */}
+          <div className="flex justify-center gap-2 sm:gap-2.5">
+            {[0, 1, 2].map((i) => (
               <div
-                className="pointer-events-none absolute inset-0 rounded-2xl"
+                key={i}
+                className="relative flex-1 overflow-hidden rounded-xl transition-[box-shadow] duration-500"
                 style={{
-                  background:
-                    'linear-gradient(to bottom, rgb(10 37 71 / .85), transparent 28%, transparent 72%, rgb(10 37 71 / .85))',
+                  height: ITEM_H,
+                  maxWidth: ITEM_H,
+                  background: 'linear-gradient(180deg, #061529, #0b2340)',
+                  boxShadow: parados[i]
+                    ? 'inset 0 0 0 1px rgb(242 179 61 / .55), inset 0 8px 18px -8px rgb(0 0 0 / .9)'
+                    : 'inset 0 0 0 1px rgb(255 255 255 / .07), inset 0 8px 18px -8px rgb(0 0 0 / .9)',
                 }}
-              />
-            </div>
-          ))}
-        </div>
+              >
+                <div
+                  ref={(el) => {
+                    tiras.current[i] = el;
+                  }}
+                  className="will-change-transform"
+                >
+                  {/* Tira: los símbolos repetidos REPEAT veces. Se puede avanzar
+                      cualquier múltiplo de una vuelta sin que se note el corte. */}
+                  {Array.from({ length: REPEAT * SYMBOLS.length }, (_, n) => (
+                    <div
+                      key={n}
+                      className="flex items-center justify-center p-3"
+                      style={{ height: ITEM_H }}
+                    >
+                      <SymbolIcon index={n % SYMBOLS.length} />
+                    </div>
+                  ))}
+                </div>
 
-        {/* Línea de pago */}
-        <div className="pointer-events-none absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-dorado/40 sm:inset-x-4" />
+                {/* Curvatura del tambor: oscuro arriba y abajo, claro al centro.
+                    Es lo que hace leer el rolo como un cilindro girando y no
+                    como una lista que sube. */}
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgb(3 10 20 / .92), rgb(3 10 20 / .35) 22%, transparent 42%, transparent 58%, rgb(3 10 20 / .35) 78%, rgb(3 10 20 / .92))',
+                  }}
+                />
+
+                {/* Destello al aterrizar: una banda de luz que cruza el cristal
+                    de ese rolo. Se monta solo cuando para, así la animación
+                    corre una vez y no queda nada girando después. */}
+                {parados[i] && (
+                  <span
+                    key={`d${i}`}
+                    aria-hidden="true"
+                    className="anim-destello pointer-events-none absolute inset-y-0 -left-1/3 w-1/3"
+                    style={{
+                      background:
+                        'linear-gradient(90deg, transparent, rgb(255 255 255 / .5), transparent)',
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Línea de pago. Se enciende en dorado al ganar y arrastra los dos
+              triángulos de los lados, que es como una máquina de verdad señala
+              la línea premiada. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-4 top-1/2 flex -translate-y-1/2 items-center transition-opacity duration-500"
+            style={{ opacity: gano ? 1 : 0.34, marginTop: '1.1rem' }}
+          >
+            <span
+              className="h-0 w-0 border-y-[5px] border-l-[7px] border-y-transparent transition-colors duration-500"
+              style={{ borderLeftColor: gano ? 'var(--color-dorado-2)' : 'rgb(242 179 61 / .5)' }}
+            />
+            <span
+              className="h-px flex-1 transition-colors duration-500"
+              style={{ background: gano ? 'var(--color-dorado-2)' : 'rgb(242 179 61 / .45)' }}
+            />
+            <span
+              className="h-0 w-0 border-y-[5px] border-r-[7px] border-y-transparent transition-colors duration-500"
+              style={{ borderRightColor: gano ? 'var(--color-dorado-2)' : 'rgb(242 179 61 / .5)' }}
+            />
+          </div>
+
+          {/* Reflejo del cristal: una diagonal de luz muy tenue sobre TODO el
+              frente. Va la última para quedar encima de los rolos. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(118deg, rgb(255 255 255 / .1) 0 22%, transparent 42%)',
+            }}
+          />
+        </div>
       </div>
 
       {/* El `aria-live` va AQUÍ, no en la carcasa de los rolos.
@@ -287,13 +432,37 @@ export function SlotMachine({
           : `Rolos: ${visibles.map((v) => SYMBOLS[v]).join(', ')}`}
       </p>
 
+      {/* El botón.
+          Tiene GROSOR: un borde inferior oscuro que hace de canto. Al pulsarlo
+          baja 2px y el canto se reduce a 1 — la tecla se hunde de verdad.
+          Sin eso, un rectángulo que solo cambia de escala se siente a software;
+          con eso, se siente a botón. */}
       <button
         type="button"
         onClick={tirar}
         disabled={girando || deshabilitado}
-        className="mt-6 w-full max-w-sm rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+        className="group mt-6 w-full max-w-sm rounded-2xl border-b-[4px] border-b-[#8a5f0c] bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-[transform,border-width,box-shadow,filter] duration-150 enabled:hover:brightness-105 enabled:active:translate-y-[2px] enabled:active:border-b-[1px] disabled:cursor-not-allowed disabled:border-b-[2px] disabled:opacity-45"
       >
-        {girando ? 'GIRANDO…' : etiquetaBoton}
+        <span className="flex items-center justify-center gap-2.5">
+          {girando ? (
+            <>
+              GIRANDO
+              {/* Tres puntos que laten por turnos. Una etiqueta fija que dice
+                  "GIRANDO…" no informa de nada; esto dice "sigue vivo". */}
+              <span className="flex gap-1" aria-hidden="true">
+                {[0, 1, 2].map((n) => (
+                  <span
+                    key={n}
+                    className="anim-brillo h-1.5 w-1.5 rounded-full bg-tinta"
+                    style={{ animationDelay: `${n * 180}ms`, animationDuration: '1.1s' }}
+                  />
+                ))}
+              </span>
+            </>
+          ) : (
+            etiquetaBoton
+          )}
+        </span>
       </button>
 
       {deshabilitado && mensajeDeshabilitado && (

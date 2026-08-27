@@ -30,6 +30,10 @@ const CELULAR = process.env.CELULAR_PRUEBA ?? '7872360147';
 // comprobación con un error de "Executable doesn't exist".
 const CHROMIUM = process.env.CHROMIUM_PATH;
 const NOMBRE = 'Prueba Automatica';
+// La cuenta ahora lleva contraseña. No se saca de una variable de entorno a
+// propósito: esto crea cuentas desechables en bases de prueba, y una constante
+// a la vista deja claro que no es un secreto de nadie.
+const CLAVE = 'prueba-automatica-9';
 
 let fallos = 0;
 const comprobar = (ok, texto) => {
@@ -62,7 +66,14 @@ async function main() {
   const pagina = await contexto.newPage();
 
   const erroresConsola = [];
-  pagina.on('console', (m) => m.type() === 'error' && erroresConsola.push(m.text()));
+  pagina.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    // El navegador apunta como error de consola CUALQUIER respuesta 4xx, y esta
+    // prueba provoca una a propósito: el intento con la contraseña mala. Se
+    // descarta por su URL, no por el texto del mensaje, que no dice cuál fue.
+    if ((m.location()?.url ?? '').includes('/api/entrar')) return;
+    erroresConsola.push(m.text());
+  });
 
   console.log(`\n▶ Crear cuenta en ${BASE}/cuenta`);
   await pagina.goto(`${BASE}/cuenta`, { waitUntil: 'networkidle' });
@@ -74,6 +85,7 @@ async function main() {
   await pagina.getByLabel('Nombre completo').fill(NOMBRE);
   await pagina.getByLabel('Celular').fill(CELULAR);
   await pagina.getByLabel('Pueblo').selectOption({ label: 'Manatí' });
+  await pagina.getByLabel('Contraseña').fill(CLAVE);
   await pagina.getByRole('checkbox').check();
   await boton.click();
 
@@ -88,6 +100,23 @@ async function main() {
 
   console.log('\n▶ La tirada del día');
   await pagina.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+
+  // Antes de la máquina hay que pasar el arte de las promociones del día.
+  //
+  // Esto faltaba, y la prueba pasaba igual: en la base que se usaba no había
+  // ninguna promoción marcada para el pop-up, así que la máquina salía
+  // directa. Con promociones cargadas —  o sea, en producción —  se quedaba
+  // esperando un botón que estaba tres pantallas más allá. Una prueba que solo
+  // pasa con la base vacía no está probando el camino de la gente.
+  for (let i = 0; i < 6; i++) {
+    const siguiente = pagina
+      .getByRole('button', { name: /SIGUIENTE|IR A LA TRAGAMONEDAS/i })
+      .first();
+    if (!(await siguiente.count())) break;
+    await siguiente.click();
+    await pagina.waitForTimeout(350);
+  }
+
   const girar = pagina.getByRole('button', { name: /GIRAR|TIRAR/i }).first();
   await girar.waitFor({ timeout: 10_000 });
   comprobar(await recibeElClic(girar), 'el botón de girar recibe el clic');
@@ -128,10 +157,24 @@ async function main() {
 
   await pagina.getByRole('button', { name: /Ya te registraste/i }).click();
   await pagina.getByLabel('Celular').fill(CELULAR);
-  await pagina.getByLabel('Nombre completo').fill(NOMBRE);
+  await pagina.getByLabel('Contraseña').fill(CLAVE);
   await pagina.getByRole('button', { name: 'ENTRAR' }).click();
   await pagina.waitForSelector('text=Ya participaste hoy', { timeout: 10_000 });
-  comprobar(true, 'entrar con celular y nombre recupera la misma cuenta');
+  comprobar(true, 'entrar con celular y contraseña recupera la misma cuenta');
+
+  // Y con la contraseña MALA no entra. Sin esta comprobación, la prueba de
+  // humo pasaría igual si el servidor dejara de mirar la contraseña.
+  await pagina.getByRole('button', { name: /Salir/i }).click().catch(() => {});
+  await pagina.waitForSelector('text=Crea tu cuenta', { timeout: 10_000 });
+  await pagina.getByRole('button', { name: /Ya te registraste/i }).click();
+  await pagina.getByLabel('Celular').fill(CELULAR);
+  await pagina.getByLabel('Contraseña').fill(CLAVE + 'x');
+  await pagina.getByRole('button', { name: 'ENTRAR' }).click();
+  const rechazo = await pagina
+    .waitForSelector('text=/No encontramos esa combinaci/', { timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
+  comprobar(rechazo, 'con la contraseña mala NO entra');
 
   comprobar(erroresConsola.length === 0, `sin errores de consola (${erroresConsola.length})`);
   if (erroresConsola.length) erroresConsola.slice(0, 5).forEach((e) => console.log(`      ${e}`));

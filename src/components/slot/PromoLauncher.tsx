@@ -320,7 +320,19 @@ export function PromoLauncher() {
           // pop-up se abre solo, y quien mira el sitio con el teléfono
           // acostado se encontraba la promoción encima y el único botón para
           // quitarla sin respuesta.
-          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-24 backdrop-blur-sm sm:items-center sm:pt-20"
+          // `items-start` SIEMPRE, también en escritorio.
+          //
+          // Estaba `sm:items-center`, y centrar es justo lo que provocaba el
+          // parpadeo: el contenido del diálogo cambia de alto (cargando ->
+          // promoción -> máquina -> resultado), y con el centrado cada cambio
+          // recoloca el diálogo entero, lo que obliga al `backdrop-blur` del
+          // velo a recomponerse. Medido: 434 -> 845px de alto y el borde
+          // superior saltando de y=252 a y=103.
+          //
+          // Anclado arriba, el diálogo crece hacia abajo y su borde superior no
+          // se mueve nunca. El overlay ya tenía scroll propio, así que un
+          // contenido más alto que la pantalla sigue siendo alcanzable.
+          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-24 backdrop-blur-sm sm:pt-20"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) cerrar();
           }}
@@ -330,7 +342,7 @@ export function PromoLauncher() {
             role="dialog"
             aria-modal="true"
             aria-label={`Gira y gana ${PROMO.prizeLabel}`}
-            className="anim-entrar relative my-auto w-full max-w-lg rounded-3xl border border-linea bg-fondo p-6 pt-14 shadow-alza sm:p-8 sm:pt-14"
+            className="anim-aparecer relative mb-8 w-full max-w-lg rounded-3xl border border-linea bg-fondo p-6 pt-14 shadow-alza sm:p-8 sm:pt-14"
           >
             {/* z-10 NO es decoración: sin él este botón queda por debajo del
                 contenido del modal, que ocupa todo el ancho, y el navegador le

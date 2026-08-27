@@ -36,26 +36,58 @@ export function VistaPromos({
   const ultima = i === promos.length - 1;
 
   return (
-    <div className="anim-entrar text-center">
+    <div className="anim-aparecer text-center">
       <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-dorado">
         {promos.length > 1 ? `Promoción ${i + 1} de ${promos.length}` : 'Promoción de hoy'}
       </p>
 
-      {/* El arte manda. Si todavía no hay imagen cargada, el título ocupa su
-          lugar en grande en vez de dejar un hueco. */}
-      {promo.image_path ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={promo.id}
-          src={promo.image_path}
-          alt={promo.title}
-          className="anim-entrar mx-auto mt-4 max-h-[52vh] w-auto rounded-2xl border border-linea object-contain"
-        />
-      ) : (
-        <div className="mt-4 flex min-h-[16rem] items-center justify-center rounded-2xl border border-linea bg-gradient-to-br from-superficie to-linea p-8">
-          <p className="font-display text-3xl font-bold">{promo.title}</p>
-        </div>
-      )}
+      {/* EL HUECO DE LA FOTO TIENE ALTURA FIJA, y esto no es una preferencia
+          estética: era el fallo del parpadeo.
+      
+          Antes el <img> no reservaba espacio (`w-auto`, sin width ni height) y
+          además se remontaba con `key={promo.id}` al pasar de promoción. Medido
+          en un celular a 1.6 Mbps: al aterrizar la foto, el diálogo saltaba de
+          434 a 600px de alto y su borde superior brincaba de y=252 a y=168 — 84
+          píxeles de golpe. Y como el diálogo está centrado, cada píxel que
+          crecía lo recolocaba, así que el `backdrop-blur` del velo se
+          recomponía en CADA fotograma: eso es lo que se veía como "cambios de
+          luz" detrás. Playwright ni siquiera podía pulsar el botón, porque el
+          elemento nunca llegaba a estar quieto dos fotogramas seguidos.
+
+          Con la altura reservada, la foto aparece DENTRO de un marco que ya
+          existía. Nada se mueve, ni al cargar ni al cambiar de promoción.
+
+          `anim-aparecer` se quitó de la imagen y se dejó solo en el contenedor:
+          estaban anidados, y el desliz de la imagen dentro de un contenedor
+          centrado movía el diálogo aunque la altura ya estuviera reservada. */}
+      <div className="relative mt-4 aspect-[16/10] max-h-[40vh] overflow-hidden rounded-2xl border border-linea bg-superficie-2">
+        {promo.image_path ? (
+          <>
+            {/* Fondo desenfocado con la misma foto: rellena las bandas que deja
+                `object-contain` cuando el arte no tiene la proporción del
+                marco. Sin esto, un flyer vertical deja dos franjas grises. */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 scale-110 bg-cover bg-center opacity-25 blur-xl"
+              style={{ backgroundImage: `url(${JSON.stringify(promo.image_path)})` }}
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={promo.id}
+              src={promo.image_path}
+              alt={promo.title}
+              // `decoding="sync"` para que el navegador no pinte el marco vacío
+              // un instante antes de la foto al cambiar de promoción.
+              decoding="sync"
+              className="relative mx-auto h-full w-full object-contain"
+            />
+          </>
+        ) : (
+          <div className="flex h-full items-center justify-center p-8">
+            <p className="font-display text-3xl font-bold">{promo.title}</p>
+          </div>
+        )}
+      </div>
 
       {promo.image_path && (
         <h3 className="mt-5 font-display text-2xl font-bold">{promo.title}</h3>
@@ -79,8 +111,8 @@ export function VistaPromos({
           {promos.map((p, n) => (
             <span
               key={p.id}
-              className={`h-1.5 rounded-full transition-all ${
-                n === i ? 'w-6 bg-dorado' : 'w-1.5 bg-linea'
+              className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                n === i ? 'w-7 bg-dorado-2' : 'w-1.5 bg-linea'
               }`}
             />
           ))}
@@ -90,7 +122,7 @@ export function VistaPromos({
       <button
         type="button"
         onClick={() => (ultima ? onTerminar() : setI(i + 1))}
-        className="mt-6 w-full rounded-2xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        className="mt-6 w-full rounded-2xl border-b-[4px] border-b-[#8a5f0c] bg-gradient-to-b from-dorado-3 to-dorado-2 px-8 py-4 font-display text-lg font-bold tracking-wide text-tinta shadow-premio transition-[transform,border-width,filter] duration-150 hover:brightness-105 active:translate-y-[2px] active:border-b-[1px]"
       >
         {ultima ? '🎰 IR A LA TRAGAMONEDAS' : 'SIGUIENTE'}
       </button>
