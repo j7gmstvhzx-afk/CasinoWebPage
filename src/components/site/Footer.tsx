@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from './Logo';
 import { NAV, SITE, PROMO, fullAddress } from '@/lib/site';
+import { AYUDA } from '@/lib/juego-responsable';
 
 export function Footer() {
   return (
@@ -73,8 +74,58 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Juego responsable. Va en TODAS las páginas, no escondido en Términos:
-          es un casino con licencia y esta línea es parte de operar en serio. */}
+      {/* Juego responsable, CON LOS RECURSOS DE VERDAD.
+
+          Antes esto era la frase "Juega con responsabilidad" y nada más, y en
+          los términos decía "puedes hablar con nuestro personal". Eso no es un
+          recurso. Quien se da cuenta de que tiene un problema a las dos de la
+          mañana no puede hablar con el personal.
+
+          Puerto Rico tiene las dos cosas de verdad, gratis: la Línea PAS de
+          ASSMCA 24/7 y el programa de autoexclusión voluntaria de la Comisión
+          de Juegos, que cubre casinos, hípica y apuestas deportivas a la vez.
+          Van en TODAS las páginas y no escondidas dentro de Términos. */}
+      <div className="border-t border-linea">
+        <div className="contenedor grid gap-5 py-8 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <h2 className="font-display text-sm font-semibold text-tinta">
+              ¿El juego dejó de ser entretenimiento?
+            </h2>
+            <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-tenue">
+              Hay ayuda gratuita y confidencial. También puedes pedirle a la
+              Comisión de Juegos que te excluya de los casinos de Puerto Rico:
+              es voluntario, no cuesta nada y lo decides tú.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            {/* Relleno sólido y texto blanco: 5.38:1.
+                La primera versión era `text-cian` sobre `bg-cian/10`, y medida
+                daba 4.24:1 sobre el gris del pie —por debajo del 4.5 exigido—
+                justo en el número de teléfono, que es el texto más importante
+                de todo el bloque. El tinte al 10% oscurecía el fondo lo justo
+                para tumbarlo. Y el "24/7" en `text-tenue` encima de ese mismo
+                tinte se quedaba en 4.88:1, aprobando por poco algo que no tiene
+                por qué ir apretado. */}
+            <a
+              href={`tel:${AYUDA.lineaTelefono}`}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-cian px-4 text-sm font-semibold text-white"
+            >
+              {AYUDA.lineaDisplay}
+              <span className="font-normal">24/7</span>
+            </a>
+            <a
+              href={AYUDA.autoexclusion}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex min-h-11 items-center rounded-xl border border-linea px-4 text-sm font-medium text-tinta hover:border-cian hover:text-cian"
+            >
+              Autoexclusión voluntaria
+            </a>
+          </div>
+        </div>
+      </div>
+
       <div className="border-t border-linea">
         {/* pb-28 en celular: el botón flotante "GANA $25" es `fixed` abajo a la
             derecha y se comía un 31% del enlace "Administración" en TODAS las

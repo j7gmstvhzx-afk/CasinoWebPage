@@ -85,6 +85,9 @@ async function main() {
   await pagina.getByLabel('Nombre completo').fill(NOMBRE);
   await pagina.getByLabel('Celular').fill(CELULAR);
   await pagina.getByLabel('Pueblo').selectOption({ label: 'Manatí' });
+  // Fecha de nacimiento: el registro comprueba los 18 años de verdad desde que
+  // se añadió el campo, así que sin esto la cuenta no se crea.
+  await pagina.getByLabel('Fecha de nacimiento').fill('1985-04-12');
   await pagina.getByLabel('Contraseña', { exact: true }).fill(CLAVE);
   await pagina.getByRole('checkbox').check();
   await boton.click();

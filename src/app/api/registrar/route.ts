@@ -32,6 +32,11 @@ const Alta = z.object({
   puebloId: z.coerce.number().int().min(1).max(78),
   acepta: z.boolean(),
   contrasena: z.string().min(8).max(200),
+  // Se acepta cualquier fecha con forma de fecha y la regla de los 18
+  // años la aplica `registrarJugador`. Así el cliente recibe "tienes que
+  // tener 18 años o más" y no un "revisa los datos del formulario" que no
+  // le dice qué arreglar.
+  nacimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   // Trampa: un campo oculto que una persona nunca llena y un bot sí.
   website: z.string().max(0).optional(),
 });

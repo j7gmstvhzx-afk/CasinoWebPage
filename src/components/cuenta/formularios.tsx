@@ -5,6 +5,7 @@ import { useId, useState } from 'react';
 import { MUNICIPIOS_ORDENADOS } from '@/lib/municipios';
 import { maskPhoneInput } from '@/lib/phone';
 import { PROMO } from '@/lib/site';
+import { edadValida, hoyEnPR, REGLA_EDAD } from '@/lib/edad';
 import { pedirJson, ERROR_GENERICO } from '@/lib/fetch-json';
 
 /**
@@ -89,6 +90,7 @@ export function FormularioRegistro({
   const [nombre, setNombre] = useState('');
   const [celular, setCelular] = useState('');
   const [pueblo, setPueblo] = useState('');
+  const [nacimiento, setNacimiento] = useState('');
   const [acepta, setAcepta] = useState(false);
   const [trampa, setTrampa] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -100,10 +102,13 @@ export function FormularioRegistro({
   // arreglar, y el foco se quedaba en el botón de enviar.
   const [contrasena, setContrasena] = useState('');
   const [verClave, setVerClave] = useState(false);
-  const [campoMalo, setCampoMalo] = useState<'nombre' | 'pueblo' | 'acepta' | 'contrasena' | null>(null);
+  const [campoMalo, setCampoMalo] = useState<'nombre' | 'pueblo' | 'nacimiento' | 'acepta' | 'contrasena' | null>(null);
   const idError = `${ids}-error`;
 
-  function fallar(campo: 'nombre' | 'pueblo' | 'acepta' | 'contrasena', mensaje: string) {
+  function fallar(
+    campo: 'nombre' | 'pueblo' | 'nacimiento' | 'acepta' | 'contrasena',
+    mensaje: string,
+  ) {
     setCampoMalo(campo);
     setError(mensaje);
     // Tras el repintado, para que el campo ya tenga `aria-invalid` puesto
@@ -119,6 +124,11 @@ export function FormularioRegistro({
     if (nombre.trim().split(/\s+/).length < 2)
       return fallar('nombre', 'Escribe tu nombre y apellido.');
     if (!pueblo) return fallar('pueblo', 'Selecciona tu pueblo.');
+    // La misma regla que aplica el servidor, aquí solo para contestar al
+    // instante. La que manda es la de `registrarJugador`: esta pantalla se
+    // puede saltar mandando la petición directa.
+    if (!edadValida(nacimiento))
+      return fallar('nacimiento', nacimiento ? REGLA_EDAD : 'Escribe tu fecha de nacimiento.');
     if (contrasena.length < 8)
       return fallar('contrasena', 'Tu contraseña debe tener al menos 8 caracteres.');
     if (!acepta) return fallar('acepta', 'Debes aceptar los términos para participar.');
@@ -132,6 +142,7 @@ export function FormularioRegistro({
           nombre: nombre.trim(),
           celular,
           puebloId: Number(pueblo),
+          nacimiento,
           acepta,
           contrasena,
           website: trampa,
@@ -204,6 +215,36 @@ export function FormularioRegistro({
           </select>
         </Campo>
       </div>
+
+      {/* Fecha de nacimiento.
+          Es UN campo más en un formulario que ya tiene cinco, y se añade a
+          sabiendas de que cada campo cuesta registros. Se añade igual porque
+          hasta ahora el "+18" no lo comprobaba nadie: un menor podía ganar $25
+          en un casino con licencia. Y de paso es lo que hace posible el regalo
+          de cumpleaños, que es la recompensa que dan los casinos pequeños que
+          no tienen sistema de tarjetas.
+
+          `max` en el propio input: el teclado de fecha del celular no deja ni
+          escoger el futuro. */}
+      <Campo etiqueta="Fecha de nacimiento" htmlFor={`${ids}-nacimiento`}>
+        <input
+          id={`${ids}-nacimiento`}
+          type="date"
+          required
+          max={hoyEnPR()}
+          min="1900-01-01"
+          autoComplete="bday"
+          aria-invalid={campoMalo === 'nacimiento' || undefined}
+          aria-describedby={campoMalo === 'nacimiento' ? idError : `${ids}-nacimiento-pista`}
+          value={nacimiento}
+          onChange={(e) => setNacimiento(e.target.value)}
+          className={estiloCampo}
+        />
+        <p id={`${ids}-nacimiento-pista`} className="mt-1.5 text-xs text-tenue">
+          Hace falta para confirmar que tienes {PROMO.minAge} años o más. También
+          la usamos para tu regalo de cumpleaños.
+        </p>
+      </Campo>
 
       <Campo etiqueta="Contraseña" htmlFor={`${ids}-contrasena`}>
         <div className="relative">

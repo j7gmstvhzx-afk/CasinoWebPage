@@ -27,6 +27,9 @@ const Registro = z.object({
   puebloId: z.coerce.number().int().min(1).max(78).optional(),
   acepta: z.boolean().optional(),
   contrasena: z.string().min(8).max(200).optional(),
+  // La regla de los 18 años la aplica `registrarJugador`, para que el
+  // cliente reciba el motivo de verdad y no un "revisa los datos".
+  nacimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   // Trampa: un campo oculto que una persona nunca llena y un bot sí.
   website: z.string().max(0).optional(),
 });

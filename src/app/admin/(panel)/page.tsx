@@ -70,6 +70,8 @@ export default async function PaginaResumen() {
     <>
       <h1 className="font-display text-3xl font-bold">Resumen</h1>
 
+      <Pendientes />
+
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tarjeta n={resumen?.clientes ?? 0} t="Clientes registrados" sub={`+${resumen?.clientes_hoy ?? 0} hoy`} />
         <Tarjeta n={resumen?.tiradas_hoy ?? 0} t="Tiradas hoy" />
@@ -168,4 +170,53 @@ function Estado({ estado, vence }: { estado: string; vence: string }) {
   const [texto, clase] = mapa[real] ?? ['—', 'text-tenue border-linea'];
 
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${clase}`}>{texto}</span>;
+}
+
+/**
+ * Lo que el casino tiene pendiente, en el sitio donde está quien puede
+ * arreglarlo.
+ *
+ * ESTO ANTES SE LE ENSEÑABA AL CLIENTE.
+ * -------------------------------------
+ * El aviso de "Términos — borrador pendiente de revisión legal" salía en la
+ * página pública de Términos, con instrucciones de configuración incluidas, a
+ * la vista de cualquier visitante. Se comprobó contra el sitio en vivo: ahí
+ * estaba. Anunciarle al público que las bases de la promoción no están
+ * revisadas es justo lo que no conviene el día que alguien discuta un premio.
+ *
+ * El recordatorio hace falta —si desaparece del todo, se olvida— pero le hace
+ * falta al dueño, no al cliente. Así que vive aquí.
+ */
+function Pendientes() {
+  const avisos: { titulo: string; texto: string }[] = [];
+
+  if (process.env.TERMINOS_APROBADOS !== 'si') {
+    avisos.push({
+      titulo: 'Los términos no han pasado revisión legal',
+      texto:
+        'El texto de /terminos describe con exactitud lo que hace el sistema, ' +
+        'pero no lo ha aprobado un abogado. El cliente no ve ningún aviso: esto ' +
+        'es un recordatorio interno. Cuando esté revisado, pon TERMINOS_APROBADOS=si ' +
+        'en Vercel y este recuadro desaparece.',
+    });
+  }
+
+  if (avisos.length === 0) return null;
+
+  return (
+    <ul className="mt-6 grid gap-3">
+      {avisos.map((a) => (
+        <li
+          key={a.titulo}
+          className="flex items-start gap-3 rounded-2xl border border-dorado/40 bg-dorado/10 px-4 py-3.5 text-sm"
+        >
+          <span aria-hidden="true" className="mt-px shrink-0">⚠️</span>
+          <span>
+            <strong className="font-semibold">{a.titulo}</strong>
+            <span className="mt-0.5 block text-tenue">{a.texto}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
 }

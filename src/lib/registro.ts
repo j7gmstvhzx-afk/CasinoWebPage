@@ -3,6 +3,7 @@ import { sql } from './db';
 import { normalizePhone, PHONE_ERROR_ES } from './phone';
 import { signToken, cookieHeader, SESSION_COOKIE } from './session';
 import { contrasenaValida, hashContrasena, REGLA_CONTRASENA } from './contrasena';
+import { edadValida, REGLA_EDAD } from './edad';
 
 /**
  * Alta de un jugador.
@@ -24,6 +25,8 @@ export type DatosRegistro = {
   puebloId?: number;
   acepta?: boolean;
   contrasena?: string;
+  /** 'YYYY-MM-DD'. Ver la comprobación de edad más abajo. */
+  nacimiento?: string;
 };
 
 export type ResultadoRegistro =
@@ -34,7 +37,7 @@ export async function registrarJugador(
   datos: DatosRegistro,
   ctx: { ip: string; deviceId: string },
 ): Promise<ResultadoRegistro> {
-  const { nombre, celular, puebloId, acepta, contrasena } = datos;
+  const { nombre, celular, puebloId, acepta, contrasena, nacimiento } = datos;
 
   if (!nombre || !celular || !puebloId) {
     return { ok: false, codigo: 'REGISTRO_REQUERIDO', mensaje: 'Completa tu nombre, celular y pueblo.', status: 400 };
@@ -54,6 +57,22 @@ export async function registrarJugador(
   // verdad cuesta más que cualquier limpieza que se gane apretando la regla.
   if (!/^\p{L}/u.test(nombre.trim()) || /[\u0000-\u001f]/.test(nombre)) {
     return { ok: false, codigo: 'NOMBRE_INVALIDO', mensaje: 'Escribe tu nombre tal como aparece en tu identificación.', status: 400 };
+  }
+
+  // LA EDAD SE COMPRUEBA AQUÍ, Y NO SOLO EN LA PANTALLA.
+  //
+  // Hasta ahora el "+18" del pie, el "Solo mayores de 18 años" del formulario y
+  // el "Personas de 18 años o más" de los términos eran las tres cosas lo
+  // mismo: un cartel. No había ni un sitio donde se comprobara. Un menor podía
+  // registrarse, tirar, ganar los $25 y presentarse a cobrarlos en el mostrador
+  // de un casino con licencia.
+  //
+  // Va en el servidor porque la pantalla no cuenta: cualquiera puede mandar la
+  // petición sin pasar por el formulario. Y se cuenta contra el calendario de
+  // Puerto Rico, no contra el del servidor, que va en UTC y adelanta el día a
+  // partir de las 8 de la noche.
+  if (!edadValida(nacimiento)) {
+    return { ok: false, codigo: 'EDAD_INVALIDA', mensaje: REGLA_EDAD, status: 400 };
   }
 
   const tel = normalizePhone(celular);
@@ -131,8 +150,8 @@ export async function registrarJugador(
   try {
     [jugador] = await sql<{ id: string; blocked_at: string | null }[]>`
       insert into app.players (phone_e164, full_name, municipality_id, consent_at,
-                               password_hash, password_set_at)
-      values (${tel.e164}, ${nombre}, ${puebloId}, now(), ${hash}, now())
+                               password_hash, password_set_at, birth_date)
+      values (${tel.e164}, ${nombre}, ${puebloId}, now(), ${hash}, now(), ${nacimiento!})
       returning id, blocked_at
     `;
   } catch (e) {

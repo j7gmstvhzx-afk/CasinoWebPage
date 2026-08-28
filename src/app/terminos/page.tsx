@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/site/PageHero';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
+import { AYUDA, AVISO_PROMOCIONAL } from '@/lib/juego-responsable';
 
 export const metadata: Metadata = {
   title: 'Términos y Condiciones',
@@ -162,8 +163,49 @@ export default function PaginaTerminos() {
             <p>
               El juego debe ser entretenimiento, no una forma de resolver
               problemas de dinero. Si sientes que el juego está afectando tu vida
-              o la de alguien cercano, busca ayuda. Puedes hablar con nuestro
-              personal en cualquier momento.
+              o la de alguien cercano, hay ayuda gratuita y confidencial.
+            </p>
+            {/* Recursos con nombre y número, no "habla con nuestro personal".
+                Quien se da cuenta a las dos de la mañana no puede hablar con
+                nadie del casino, y esa era toda la ayuda que ofrecía esta
+                página. */}
+            <ul className="list-disc space-y-2 pl-5">
+              <li>
+                <strong className="text-tinta">{AYUDA.lineaNombre}:</strong>{' '}
+                <a className="underline underline-offset-4 hover:text-cian" href={`tel:${AYUDA.lineaTelefono}`}>
+                  {AYUDA.lineaDisplay}
+                </a>
+                . 24 horas, 7 días, libre de costo. Atiende también a familiares.
+              </li>
+              <li>
+                <strong className="text-tinta">Autoexclusión voluntaria.</strong>{' '}
+                La Comisión de Juegos del Gobierno de Puerto Rico te puede excluir
+                de los casinos de la isla por el tiempo que tú decidas. Es gratis
+                y lo pides tú:{' '}
+                <a
+                  className="underline underline-offset-4 hover:text-cian"
+                  href={AYUDA.autoexclusion}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  comjuegos.pr.gov
+                </a>{' '}
+                o escribiendo a {AYUDA.autoexclusionCorreo}.
+              </li>
+              <li>
+                También puedes hablar con nuestro personal en cualquier momento.
+              </li>
+            </ul>
+          </Bloque>
+
+          <Bloque titulo="9. Esto no es juego de azar en línea">
+            <p>{AVISO_PROMOCIONAL}</p>
+            <p>
+              En Puerto Rico el casino en línea de dinero real no está
+              autorizado. La tragamonedas de esta página reparte un premio
+              promocional y nada más: no acepta apuestas, no vende créditos y no
+              paga en función de lo que juegues. Si ves una página que dice ser
+              este casino y te pide dinero para jugar en línea, no es nuestra.
             </p>
           </Bloque>
         </div>
@@ -185,10 +227,28 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
  * Recordatorio visible en la propia página, para que no se publique sin pasar
  * por revisión legal. Se borra este bloque cuando el casino apruebe el texto.
  */
+/**
+ * El aviso de "pendiente de revisión legal".
+ *
+ * ESTE AVISO NO ES PARA EL CLIENTE, Y SE ESTABA VIENDO EN VIVO.
+ * ---------------------------------------------------------------
+ * La condición era "ocultar solo si producción Y aprobado", así que en
+ * producción sin aprobar salía el recuadro entero — incluida la frase «para
+ * ocultar este aviso, define TERMINOS_APROBADOS=si». Comprobado contra la
+ * página en producción: ahí estaba, a la vista de cualquiera.
+ *
+ * Dos cosas mal a la vez. Una, se le enseñaba a un cliente una instrucción de
+ * configuración que no significa nada para él. Y dos, más grave: se anunciaba
+ * en público que las bases de la promoción no están revisadas, que es una
+ * invitación a discutirlas justo cuando alguien reclama un premio.
+ *
+ * El recordatorio hace falta, pero LE HACE FALTA A QUIEN PUEDE ACTUAR. Así que
+ * en producción no se le dice nada al cliente y el aviso sale en el panel del
+ * casino, junto al resto de lo que el dueño tiene pendiente. En desarrollo
+ * sigue saliendo aquí, bien grande, que es donde sirve.
+ */
 function Aviso() {
-  if (process.env.NODE_ENV === 'production' && process.env.TERMINOS_APROBADOS === 'si') {
-    return null;
-  }
+  if (process.env.NODE_ENV === 'production') return null;
   return (
     // El texto va en `tinta`, no en `dorado`: el dorado de la marca da 3.63:1
     // sobre blanco, suficiente para un monto grande (piden 3:1) pero NO para
@@ -198,8 +258,8 @@ function Aviso() {
       <p className="font-semibold">Borrador — pendiente de revisión legal</p>
       <p className="mt-1.5">
         Este texto describe con exactitud lo que el sistema hace, pero debe
-        aprobarlo el asesor legal del casino antes de publicarse. Para ocultar
-        este aviso, define <code>TERMINOS_APROBADOS=si</code>.
+        aprobarlo el asesor legal del casino. Este recuadro solo sale en
+        desarrollo; en el sitio en vivo el recordatorio va en el panel.
       </p>
     </div>
   );
