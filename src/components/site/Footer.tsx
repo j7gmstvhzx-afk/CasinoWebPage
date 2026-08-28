@@ -21,7 +21,7 @@ export function Footer() {
           <address className="mt-4 space-y-2 text-sm not-italic text-tenue">
             <p>{fullAddress()}</p>
             <p>
-              <a className="inline-block py-1 hover:text-cian" href={`tel:${SITE.phone}`}>
+              <a className="inline-flex min-h-11 items-center hover:text-cian" href={`tel:${SITE.phone}`}>
                 {SITE.phoneDisplay}
               </a>
             </p>
@@ -32,7 +32,7 @@ export function Footer() {
               href={SITE.waze}
               target="_blank"
               rel="noreferrer noopener"
-              className="rounded-full border border-linea px-3.5 py-1.5 text-xs font-medium text-tenue transition-colors hover:border-cian hover:text-cian"
+              className="inline-flex min-h-11 items-center rounded-full border border-linea px-4 text-xs font-medium text-tenue transition-colors hover:border-cian hover:text-cian"
             >
               Waze
             </a>
@@ -40,7 +40,7 @@ export function Footer() {
               href={SITE.maps}
               target="_blank"
               rel="noreferrer noopener"
-              className="rounded-full border border-linea px-3.5 py-1.5 text-xs font-medium text-tenue transition-colors hover:border-cian hover:text-cian"
+              className="inline-flex min-h-11 items-center rounded-full border border-linea px-4 text-xs font-medium text-tenue transition-colors hover:border-cian hover:text-cian"
             >
               Google Maps
             </a>
@@ -59,13 +59,13 @@ export function Footer() {
           <ul className="mt-4 grid grid-cols-2 gap-x-4 text-sm text-tenue">
             {NAV.filter((n) => n.href !== '/').map((item) => (
               <li key={item.href}>
-                <Link className="inline-block py-1.5 hover:text-cian" href={item.href}>
+                <Link className="inline-flex min-h-11 items-center hover:text-cian" href={item.href}>
                   {item.label}
                 </Link>
               </li>
             ))}
             <li>
-              <Link className="inline-block py-1.5 hover:text-cian" href="/terminos">
+              <Link className="inline-flex min-h-11 items-center hover:text-cian" href="/terminos">
                 Términos
               </Link>
             </li>
@@ -93,7 +93,7 @@ export function Footer() {
                 No son enlaces sueltos dentro de una frase —esos están exentos—
                 sino ítems de una fila; el mínimo tocable son 24px. */}
             <Link
-              className="inline-block py-1.5 underline underline-offset-4 hover:text-cian"
+              className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-cian"
               href="/terminos"
             >
               Términos y condiciones
@@ -108,7 +108,7 @@ export function Footer() {
                 este fondo. Discreto no puede significar ilegible, y menos en el
                 enlace por el que entra el personal. */}
             <Link
-              className="inline-block py-1.5 text-tenue underline underline-offset-4 hover:text-cian"
+              className="inline-flex min-h-11 items-center text-tenue underline underline-offset-4 hover:text-cian"
               href="/admin"
             >
               Administración

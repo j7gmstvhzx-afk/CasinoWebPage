@@ -144,7 +144,7 @@ export function GestorMenu({
           setEditando('nuevo');
           setError(null);
         }}
-        className="rounded-xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-5 py-2.5 text-sm font-bold text-tinta"
+        className="inline-flex min-h-11 items-center rounded-xl bg-gradient-to-b from-dorado-3 to-dorado-2 px-5 text-sm font-bold text-tinta"
       >
         + Añadir plato
       </button>
@@ -262,7 +262,7 @@ export function GestorMenu({
                         type="button"
                         onClick={() => alternarDisponible(p)}
                         disabled={ocupado}
-                        className="rounded-lg border border-linea px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                        className="inline-flex min-h-11 items-center rounded-lg border border-linea px-3 text-xs font-medium disabled:opacity-50"
                       >
                         {p.available ? 'Marcar agotado' : 'Volver a servir'}
                       </button>

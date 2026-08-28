@@ -31,7 +31,7 @@ export default function PaginaContacto() {
               </Dato>
 
               <Dato etiqueta="Teléfono">
-                <a href={`tel:${SITE.phone}`} className="inline-block py-1 text-cian hover:underline">
+                <a href={`tel:${SITE.phone}`} className="inline-flex min-h-11 items-center text-cian hover:underline">
                   {SITE.phoneDisplay}
                 </a>
               </Dato>
@@ -46,7 +46,7 @@ export default function PaginaContacto() {
                     href={SITE.social.facebook}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="rounded-xl border border-linea px-4 py-2 text-sm transition-colors hover:border-cian hover:text-cian"
+                    className="inline-flex min-h-11 items-center rounded-xl border border-linea px-4 text-sm transition-colors hover:border-cian hover:text-cian"
                   >
                     Facebook
                   </a>
@@ -54,7 +54,7 @@ export default function PaginaContacto() {
                     href={SITE.social.instagram}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="rounded-xl border border-linea px-4 py-2 text-sm transition-colors hover:border-cian hover:text-cian"
+                    className="inline-flex min-h-11 items-center rounded-xl border border-linea px-4 text-sm transition-colors hover:border-cian hover:text-cian"
                   >
                     Instagram
                   </a>

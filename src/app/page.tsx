@@ -49,7 +49,7 @@ export default async function Inicio() {
       {/* su máquina, más el pop-up de entrada y el botón flotante.           */}
       {/* ---------------------------------------------------------------- */}
       {destacados.length > 0 && (
-        <section className="contenedor pb-10 pt-8 sm:pb-12 sm:pt-10">
+        <section className="revela contenedor pb-10 pt-8 sm:pb-12 sm:pt-10">
           <EncabezadoSeccion
             compacto
             comoH1
@@ -218,7 +218,7 @@ export default async function Inicio() {
         // de arriba abajo: sin un cambio de fondo, cuatro secciones seguidas se
         // leen como una sola lista larga. Alternar da respiro y marca dónde
         // empieza cada cosa.
-        <section className="relative border-y border-linea bg-superficie">
+        <section className="revela relative border-y border-linea bg-superficie">
           <div
             aria-hidden="true"
             className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -258,7 +258,7 @@ export default async function Inicio() {
       {/* Eventos                                                           */}
       {/* ---------------------------------------------------------------- */}
       {eventos.length > 0 && (
-        <section className="contenedor py-14">
+        <section className="revela contenedor py-14">
           <EncabezadoSeccion
             titulo="Eventos y promociones"
             enlace={{ href: '/eventos', texto: 'Ver todos' }}
@@ -296,7 +296,7 @@ export default async function Inicio() {
       {/* ---------------------------------------------------------------- */}
       {/* Visítanos                                                         */}
       {/* ---------------------------------------------------------------- */}
-      <section className="contenedor py-14">
+      <section className="revela contenedor py-14">
         <div className="tarjeta relative grid gap-8 overflow-hidden p-8 sm:p-10 md:grid-cols-2">
           <div
             aria-hidden="true"
@@ -307,7 +307,7 @@ export default async function Inicio() {
             <address className="mt-5 space-y-3 not-italic text-tenue">
               <p className="text-tinta">{fullAddress()}</p>
               <p>
-                <a className="inline-block py-1 hover:text-cian" href={`tel:${SITE.phone}`}>
+                <a className="inline-flex min-h-11 items-center hover:text-cian" href={`tel:${SITE.phone}`}>
                   {SITE.phoneDisplay}
                 </a>
               </p>
@@ -318,7 +318,7 @@ export default async function Inicio() {
                 href={SITE.waze}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="rounded-xl bg-cian px-5 py-2.5 text-sm font-semibold text-white"
+                className="inline-flex min-h-11 items-center rounded-xl bg-cian px-5 text-sm font-semibold text-white"
               >
                 Abrir en Waze
               </a>
@@ -403,14 +403,16 @@ function EncabezadoSeccion({
         {nota && <p className="mt-2.5 text-sm text-tenue">{nota}</p>}
       </div>
       {enlace && (
-        // `inline-block py-1.5` para que la zona tocable llegue a 24px: el
-        // texto de 14px deja un enlace de 20px de alto. No es un enlace suelto
+        // 44px de alto, no 24.
+        //
+        // Estaba en 24 —  el mínimo AA de WCAG 2.2 —  y el razonamiento de
+        // entonces terminaba en "tiene que ser fácil de dar con el pulgar", que
+        // es justamente el argumento para subirlo. No es un enlace suelto
         // dentro de un párrafo (esos están exentos y estirarlos rompería el
-        // renglón), es el acceso a una sección entera y tiene que ser fácil de
-        // dar con el pulgar. Es el mismo arreglo del pie de página.
+        // renglón): es el acceso a una sección entera.
         <Link
           href={enlace.href}
-          className="inline-block py-1.5 text-sm font-medium text-cian underline-offset-4 hover:underline"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-cian underline-offset-4 hover:underline"
         >
           {enlace.texto} →
         </Link>

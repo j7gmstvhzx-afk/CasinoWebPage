@@ -268,7 +268,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={e.image_path} alt={e.title} className="aspect-[4/5] w-full object-cover" />
               ) : (
-                <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-br from-superficie to-linea">
+                <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-br from-superficie to-superficie-2">
                   <span className="px-4 text-center text-sm text-tenue">Sin arte todavía</span>
                 </div>
               )}
@@ -304,7 +304,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                   <button
                     type="button"
                     onClick={() => abrirEdicion(e)}
-                    className="rounded-lg border border-linea px-3 py-1.5 font-medium transition-colors hover:border-cian hover:text-cian"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-linea px-3 font-medium transition-colors hover:border-cian hover:text-cian"
                   >
                     Editar
                   </button>
@@ -312,7 +312,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                     type="button"
                     onClick={() => alternarPublicado(e)}
                     disabled={ocupado}
-                    className="rounded-lg border border-linea px-3 py-1.5 font-medium text-tenue disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-linea px-3 font-medium text-tenue disabled:opacity-50"
                   >
                     {e.published ? 'Ocultar' : 'Publicar'}
                   </button>
@@ -320,7 +320,7 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
                     type="button"
                     onClick={() => borrar(e)}
                     disabled={ocupado}
-                    className="rounded-lg border border-linea px-3 py-1.5 font-medium text-tenue transition-colors hover:border-pierde hover:text-pierde disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-linea px-3 font-medium text-tenue transition-colors hover:border-pierde hover:text-pierde disabled:opacity-50"
                   >
                     Borrar
                   </button>

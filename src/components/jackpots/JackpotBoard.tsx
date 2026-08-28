@@ -239,7 +239,14 @@ function Chip({
       // del 4.5:1 que hace falta para leerlo; y en este sitio el dorado
       // significa dinero — un filtro no es un premio. El azul relleno da 7.9:1
       // y además distingue el estado por relleno, no solo por color.
-      className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+      // `min-h-11` = 44px de alto real.
+      //
+      // Con `py-1.5` medían 34px. Cumplen el mínimo AA de WCAG 2.2 (24x24), así
+      // que no era un incumplimiento — pero estos tres chips son la interacción
+      // PRINCIPAL de la página de premios, y se usan de pie, con una mano y el
+      // teléfono en la otra. 44px es el tamaño que recomiendan Apple y el nivel
+      // AAA, y aquí sí vale la pena.
+      className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         activo
           ? 'border-marca bg-marca text-white'
           : 'border-linea bg-fondo text-tenue hover:border-tenue hover:text-tinta'

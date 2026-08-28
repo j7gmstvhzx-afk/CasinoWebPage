@@ -34,9 +34,9 @@ export default async function PaginaAdminEventos() {
       </p>
 
       {!almacenamientoListo() && (
-        <div className="mt-6 rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm text-dorado">
+        <div className="mt-6 rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm text-tinta">
           <p className="font-semibold">Falta configurar el almacenamiento de imágenes</p>
-          <p className="mt-1.5 text-dorado/80">
+          <p className="mt-1.5 text-tenue">
             Se pueden crear promociones con texto, pero todavía no subir artes.
             Hace falta definir <code>SUPABASE_URL</code> y{' '}
             <code>SUPABASE_SERVICE_ROLE_KEY</code>, y crear en Supabase un bucket

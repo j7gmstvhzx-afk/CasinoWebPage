@@ -254,7 +254,7 @@ export function FormularioRegistro({
         />
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 text-sm text-tenue">
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 py-1 text-sm text-tenue">
         <input
           id={`${ids}-acepta`}
           type="checkbox"
@@ -291,7 +291,7 @@ export function FormularioRegistro({
         <button
           type="button"
           onClick={alEntrar}
-          className="w-full py-2.5 text-center text-sm text-cian underline underline-offset-4"
+          className="flex min-h-11 w-full items-center justify-center text-sm text-cian underline underline-offset-4"
         >
           ¿Ya te registraste? Entra aquí
         </button>

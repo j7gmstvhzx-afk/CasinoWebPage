@@ -33,7 +33,7 @@ export function PanelJackpots({ maquinas }: { maquinas: MaquinaFila[] }) {
             role="tab"
             aria-selected={modo === valor}
             onClick={() => setModo(valor)}
-            className={`rounded-xl px-5 py-2.5 text-sm font-medium transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded-xl px-5 text-sm font-medium transition-colors ${
               modo === valor ? 'bg-cian text-white' : 'text-tenue hover:text-tinta'
             }`}
           >

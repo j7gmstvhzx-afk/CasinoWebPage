@@ -145,7 +145,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
                       onFocus={(e) => e.target.select()}
                       placeholder="0.00"
                       aria-label={`Premio de ${m.nombre}, banco ${m.banco}`}
-                      className="w-36 rounded-lg border border-linea bg-superficie px-3 py-2 text-right tabular focus:border-cian focus:outline-none"
+                      className="min-h-11 w-36 rounded-lg border border-linea bg-superficie px-3 text-right tabular focus:border-cian focus:outline-none"
                     />
                   </div>
                 </td>
@@ -165,7 +165,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
               onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })}
               placeholder="Nombre de la máquina"
               aria-label="Nombre de la máquina nueva"
-              className="rounded-lg border border-linea bg-superficie px-3 py-2 focus:border-cian focus:outline-none"
+              className="min-h-11 rounded-lg border border-linea bg-superficie px-3 focus:border-cian focus:outline-none"
             />
             <input
               value={nueva.banco}
@@ -187,7 +187,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
           <button
             type="button"
             onClick={() => setMostrarNueva(false)}
-            className="mt-3 text-sm text-tenue underline underline-offset-4"
+            className="mt-3 inline-flex min-h-11 items-center text-sm text-tenue underline underline-offset-4"
           >
             Cancelar
           </button>
@@ -196,7 +196,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
         <button
           type="button"
           onClick={() => setMostrarNueva(true)}
-          className="mt-6 text-sm font-medium text-cian underline-offset-4 hover:underline"
+          className="mt-6 inline-flex min-h-11 items-center text-sm font-medium text-cian underline-offset-4 hover:underline"
         >
           + Añadir una máquina
         </button>
