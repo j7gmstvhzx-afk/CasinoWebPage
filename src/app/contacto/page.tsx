@@ -20,7 +20,7 @@ export default function PaginaContacto() {
           <div className="tarjeta relative overflow-hidden p-8">
             <div
               aria-hidden="true"
-              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
             />
             <h2 className="relative font-display text-2xl font-bold">Visítanos</h2>
             <div aria-hidden="true" className="cinta-ficha relative mt-3 h-[3px] w-16" />

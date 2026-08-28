@@ -32,7 +32,18 @@
 
   /* --- Texto ------------------------------------------------------------ */
   --color-tinta: #0e2645; /* 14.8:1 sobre el fondo */
-  --color-tenue: #596c7f; /* secundario. 4.54:1 en la superficie más oscura */
+  /* Secundario. Oscurecido de #596c7f para dejar MARGEN AL TEJIDO DE PICAS.
+     El tono anterior daba 4.54:1 sobre la superficie más honda —  justo por
+     encima del mínimo, sin nada de sobra —  y al subir la visibilidad del
+     patrón, el texto que caía encima de una pica bajaba a 4.16:1. Con este,
+     el peor caso posible (la pica más clara, al 12%, sobre `superficie-2`)
+     queda en 4.75:1.
+
+     El detalle que hay que recordar: el comprobador de contraste NO ve esto.
+     Lee degradados, y el patrón es una imagen incrustada, así que un texto
+     sobre una pica le parece un texto sobre el fondo limpio. Se calculó a
+     mano. */
+  --color-tenue: #516375;
 
   /* --- Marca ------------------------------------------------------------ */
   --color-marca: #12386f; /* azul profundo. 11.2:1: sirve hasta para texto */
@@ -261,16 +272,26 @@ p {
    que la gente viene a leer.
    -------------------------------------------------------------------------- */
 
-/* Tejido de picas azul, para superficies claras. */
+/* Tejido de picas en TRES TONOS de azul.
+ *
+ * Antes era un solo azul a la misma opacidad y se veía como una trama plana —
+ * "casi no se aprecia", que es justo lo que se reportó. Un tejido de verdad no
+ * es homogéneo: tiene hilos que resaltan y otros que se hunden.
+ *
+ * Así que hay tres pesos: el AZUL CLARO son los más grandes y los que más se
+ * repiten; el MEDIO acompaña a tamaño intermedio; y el OSCURO son los menos y
+ * los más pequeños — puntúan el tejido sin ensuciarlo. La regla es esa: cuanto
+ * más oscuro, menos cantidad y menos tamaño. Al revés se convierte en manchas.
+ */
 @utility patron-picas {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22128%22%20height=%22128%22%20viewBox=%220%200%20128%20128%22%3E%3Cg%20fill=%22%2312386f%22%20fill-opacity=%22.6%22%3E%3Cg%20transform=%22translate(20%2020)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2084)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2020)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(24%2088)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  background-size: 128px 128px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22160%22%20height=%22160%22%20viewBox=%220%200%20160%20160%22%3E%3Cg%20transform=%22translate(14%2018)%20scale(1.25)%22%20fill=%22%235b8fd4%22%20fill-opacity=%22.85%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(96%2086)%20scale(1.25)%22%20fill=%22%235b8fd4%22%20fill-opacity=%22.85%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(58%20132)%20scale(1.0)%22%20fill=%22%235b8fd4%22%20fill-opacity=%22.85%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(104%2020)%20scale(0.85)%22%20fill=%22%232f6bb5%22%20fill-opacity=%22.75%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(20%2096)%20scale(0.85)%22%20fill=%22%232f6bb5%22%20fill-opacity=%22.75%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(62%2058)%20scale(0.55)%22%20fill=%22%23123a6f%22%20fill-opacity=%22.6%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(132%20110)%20scale(0.5)%22%20fill=%22%23123a6f%22%20fill-opacity=%22.6%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 160px 160px;
 }
 
-/* El mismo tejido en dorado, para las superficies azul oscuro. */
+/* El mismo tejido de tres pesos, en dorado, para las superficies azul oscuro. */
 @utility patron-picas-oro {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22128%22%20height=%22128%22%20viewBox=%220%200%20128%20128%22%3E%3Cg%20fill=%22%23f2b33d%22%20fill-opacity=%22.6%22%3E%3Cg%20transform=%22translate(20%2020)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2084)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(84%2020)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(24%2088)%20scale(.6)%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  background-size: 128px 128px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22160%22%20height=%22160%22%20viewBox=%220%200%20160%20160%22%3E%3Cg%20transform=%22translate(14%2018)%20scale(1.25)%22%20fill=%22%23ffd479%22%20fill-opacity=%22.85%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(96%2086)%20scale(1.25)%22%20fill=%22%23ffd479%22%20fill-opacity=%22.85%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(58%20132)%20scale(1.0)%22%20fill=%22%23ffd479%22%20fill-opacity=%22.85%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(104%2020)%20scale(0.85)%22%20fill=%22%23f2b33d%22%20fill-opacity=%22.75%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(20%2096)%20scale(0.85)%22%20fill=%22%23f2b33d%22%20fill-opacity=%22.75%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(62%2058)%20scale(0.55)%22%20fill=%22%23c8901a%22%20fill-opacity=%22.6%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3Cg%20transform=%22translate(132%20110)%20scale(0.5)%22%20fill=%22%23c8901a%22%20fill-opacity=%22.6%22%3E%3Cpath%20d=%22M12%203.2c0%200-6.6%206-6.6%209.6a3.3%203.3%200%200%200%205.8%202.15c-.25%201.4-.9%202.65-2%203.65h5.6c-1.1-1-1.75-2.25-2-3.65A3.3%203.3%200%200%200%2018.6%2012.8C18.6%209.2%2012%203.2%2012%203.2z%22/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 160px 160px;
 }
 
 /* Muescas del canto de la ficha, como cinta superior de una tarjeta. */

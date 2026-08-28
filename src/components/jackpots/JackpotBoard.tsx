@@ -127,7 +127,7 @@ export function JackpotBoard({
       <div className="tarjeta-plana relative mb-5 overflow-hidden p-4 sm:p-5">
         <div
           aria-hidden="true"
-          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
         />
 
         <div className="relative">
@@ -311,7 +311,7 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
       {/* Tejido de picas del logo. Al 8% es textura, no dibujo. */}
       <div
         aria-hidden="true"
-        className="patron-picas-oro pointer-events-none absolute inset-0 opacity-[0.08]"
+        className="patron-picas-oro pointer-events-none absolute inset-0 opacity-[0.14]"
       />
       {/* Anillos finos de billete, anclados a la esquina donde cae el monto. */}
       <div aria-hidden="true" className="guilloche pointer-events-none absolute inset-0" />
@@ -416,7 +416,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
           misma familia, no dos diseños pegados uno debajo del otro. */}
       <div
         aria-hidden="true"
-        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.055]"
+        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.11]"
       />
       <div
         aria-hidden="true"
@@ -483,7 +483,7 @@ function TarjetaCuarta({ j, puesto, max }: { j: JackpotVista; puesto: number; ma
     <li className="tarjeta relative min-w-0 overflow-hidden px-5 py-4 transition-transform hover:-translate-y-0.5">
       <div
         aria-hidden="true"
-        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
       />
 
       <div className="relative flex items-start gap-3">
@@ -537,7 +537,7 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
     <li className="tarjeta relative flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3 overflow-hidden px-5 py-4 transition-colors hover:border-marca/25 sm:px-6 sm:py-5">
       <div
         aria-hidden="true"
-        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.04]"
+        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.09]"
       />
 
       {/* basis-40 le da un ancho "deseado" al nombre: cuando el monto y la

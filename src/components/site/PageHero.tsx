@@ -30,7 +30,7 @@ export function PageHero({
           pide. */}
       <div
         aria-hidden="true"
-        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.06]"
+        className="patron-picas pointer-events-none absolute inset-0 opacity-[0.12]"
         style={{
           WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 85%)',
           maskImage: 'linear-gradient(180deg, #000 0%, transparent 85%)',

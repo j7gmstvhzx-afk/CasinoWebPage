@@ -77,7 +77,7 @@ export default async function Inicio() {
               <li key={j.id} className="tarjeta relative overflow-hidden p-5">
                 <div
                   aria-hidden="true"
-                  className="patron-picas pointer-events-none absolute inset-0 opacity-[0.04]"
+                  className="patron-picas pointer-events-none absolute inset-0 opacity-[0.09]"
                 />
                 <div className="relative flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2.5">
@@ -140,7 +140,7 @@ export default async function Inicio() {
             estaban vestidas. */}
         <div
           aria-hidden="true"
-          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.06]"
+          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.12]"
           style={{
             WebkitMaskImage: 'linear-gradient(180deg, #000 0%, transparent 88%)',
             maskImage: 'linear-gradient(180deg, #000 0%, transparent 88%)',
@@ -221,7 +221,7 @@ export default async function Inicio() {
         <section className="revela relative border-y border-linea bg-superficie">
           <div
             aria-hidden="true"
-            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
           />
           <div className="contenedor relative py-14">
           <EncabezadoSeccion
@@ -300,7 +300,7 @@ export default async function Inicio() {
         <div className="tarjeta relative grid gap-8 overflow-hidden p-8 sm:p-10 md:grid-cols-2">
           <div
             aria-hidden="true"
-            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
           />
           <div className="relative">
             <h2 className="font-display text-3xl font-bold">Visítanos</h2>

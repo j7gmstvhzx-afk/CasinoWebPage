@@ -369,7 +369,7 @@ export function PromoLauncher() {
           // Anclado arriba, el diálogo crece hacia abajo y su borde superior no
           // se mueve nunca. El overlay ya tenía scroll propio, así que un
           // contenido más alto que la pantalla sigue siendo alcanzable.
-          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-24 backdrop-blur-sm sm:pt-20"
+          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-tinta/45 p-4 pt-28 backdrop-blur-sm sm:pt-28"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) cerrar();
           }}
@@ -389,10 +389,10 @@ export function PromoLauncher() {
             <button
               type="button"
               onClick={cerrar}
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-linea bg-fondo text-tenue shadow-suave transition-colors hover:border-tenue hover:text-tinta"
+              className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-linea bg-fondo text-tinta shadow-alza transition-[background-color,border-color,transform] hover:border-tinta hover:bg-superficie-2 active:scale-95"
             >
               <span className="sr-only">Cerrar</span>
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
               </svg>
             </button>

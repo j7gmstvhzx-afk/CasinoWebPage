@@ -73,7 +73,7 @@ export default async function PaginaMenu() {
           <div className="tarjeta relative overflow-hidden p-6 sm:p-9">
             <div
               aria-hidden="true"
-              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.05]"
+              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
             />
             <div className="relative grid gap-10 lg:grid-cols-2 lg:gap-x-14">
             {secciones.map((s) => (

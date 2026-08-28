@@ -37,7 +37,7 @@ export function Marco({
       <div
         className={`relative flex ${proporcion} items-center justify-center overflow-hidden bg-superficie`}
       >
-        <div aria-hidden="true" className="patron-picas absolute inset-0 opacity-[0.13]" />
+        <div aria-hidden="true" className="patron-picas absolute inset-0 opacity-[0.18]" />
         {/* Decorativo entero: el nombre de la pieza ya va como título debajo,
             así que un lector de pantalla no se pierde nada saltándose esto. */}
         <div aria-hidden="true" className="relative flex flex-col items-center gap-2.5">

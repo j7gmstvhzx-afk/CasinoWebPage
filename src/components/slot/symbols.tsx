@@ -19,20 +19,32 @@ const box = (children: React.ReactNode) => (
   </svg>
 );
 
+/**
+ * POR QUÉ NO HAY NI UN SOLO CONTORNO OSCURO AQUÍ
+ *
+ * La versión anterior dibujaba cada figura con un borde oscuro de 2px, rellenos
+ * saturados y un par de círculos de brillo encima. Ese es el lenguaje de la
+ * calcomanía y del juguete: se reportó, con razón, como "parecen de plástico".
+ *
+ * Estas son siluetas PLANAS de dos tonos del mismo color: uno para la forma y
+ * otro más claro o más oscuro para el volumen, sin borde y sin brillos. El
+ * detalle se hace con hueco —  restando forma —  en vez de con línea. Es lo que
+ * distingue un símbolo de máquina de verdad de un dibujo animado, y además
+ * aguanta el tamaño pequeño: un contorno de 2px sobre una figura de 40px se
+ * come la figura.
+ *
+ * Los rolos son azul noche, así que todo se elige para leerse sobre oscuro.
+ */
+
 function Corona() {
   return box(
     <>
-      <path
-        d="M8 44 L4 18 L20 29 L32 10 L44 29 L60 18 L56 44 Z"
-        fill="#F2B33D"
-        stroke="#8A5A0B"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <rect x="8" y="44" width="48" height="9" rx="2.5" fill="#FFD479" stroke="#8A5A0B" strokeWidth="2" />
-      <circle cx="32" cy="24" r="3.2" fill="#E23B3B" />
-      <circle cx="15" cy="30" r="2.4" fill="#2BA9E0" />
-      <circle cx="49" cy="30" r="2.4" fill="#2BA9E0" />
+      {/* Cuerpo de la corona en una sola pieza: sin borde, la silueta manda. */}
+      <path d="M6 45 L3 17 L19.5 29 L32 9 L44.5 29 L61 17 L58 45 Z" fill="#F2B33D" />
+      {/* El tono oscuro no es un contorno: es la cara en sombra del metal. */}
+      <path d="M32 9 L44.5 29 L61 17 L58 45 L32 45 Z" fill="#C8901A" />
+      <rect x="6" y="46" width="52" height="9" rx="3" fill="#FFD479" />
+      <rect x="32" y="46" width="26" height="9" rx="3" fill="#F2B33D" />
     </>,
   );
 }
@@ -41,15 +53,12 @@ function Corona() {
 function Pava() {
   return box(
     <>
-      <ellipse cx="32" cy="43" rx="29" ry="9.5" fill="#E8C173" stroke="#8A5A0B" strokeWidth="2" />
-      <path
-        d="M14 43 C14 26 21 17 32 17 C43 17 50 26 50 43 Z"
-        fill="#F0D296"
-        stroke="#8A5A0B"
-        strokeWidth="2"
-      />
-      <path d="M14 40 C22 45 42 45 50 40" fill="none" stroke="#8A5A0B" strokeWidth="2" />
-      <path d="M20 33 C26 30 38 30 44 33" fill="none" stroke="#C79A4B" strokeWidth="1.6" />
+      <ellipse cx="32" cy="44" rx="30" ry="9" fill="#E8C173" />
+      <path d="M32 44 A30 9 0 0 0 62 44 Z" fill="#C79A4B" />
+      <path d="M13 44 C13 25 21 15 32 15 C43 15 51 25 51 44 Z" fill="#F5DBA6" />
+      <path d="M32 15 C43 15 51 25 51 44 L32 44 Z" fill="#E8C173" />
+      {/* La cinta se dibuja quitando, no añadiendo línea. */}
+      <path d="M14 39 C22 44 42 44 50 39 L50 34 C42 39 22 39 14 34 Z" fill="#C79A4B" />
     </>,
   );
 }
@@ -58,16 +67,16 @@ function Pava() {
 function Coqui() {
   return box(
     <>
-      <ellipse cx="32" cy="40" rx="20" ry="16" fill="#5FBF52" stroke="#2C6B25" strokeWidth="2" />
-      <ellipse cx="21" cy="24" rx="8.5" ry="8" fill="#5FBF52" stroke="#2C6B25" strokeWidth="2" />
-      <ellipse cx="43" cy="24" rx="8.5" ry="8" fill="#5FBF52" stroke="#2C6B25" strokeWidth="2" />
-      <circle cx="21" cy="24" r="4" fill="#FFF" />
-      <circle cx="43" cy="24" r="4" fill="#FFF" />
-      <circle cx="22" cy="25" r="2.2" fill="#0A2547" />
-      <circle cx="44" cy="25" r="2.2" fill="#0A2547" />
-      <path d="M25 43 Q32 49 39 43" fill="none" stroke="#2C6B25" strokeWidth="2.2" strokeLinecap="round" />
-      <ellipse cx="14" cy="51" rx="6" ry="3.6" fill="#7FD470" stroke="#2C6B25" strokeWidth="1.8" />
-      <ellipse cx="50" cy="51" rx="6" ry="3.6" fill="#7FD470" stroke="#2C6B25" strokeWidth="1.8" />
+      <ellipse cx="32" cy="41" rx="21" ry="16" fill="#4FB04A" />
+      <path d="M32 25 A21 16 0 0 1 53 41 A21 16 0 0 1 32 57 Z" fill="#3B8F38" />
+      <circle cx="21" cy="23" r="9" fill="#4FB04A" />
+      <circle cx="43" cy="23" r="9" fill="#3B8F38" />
+      {/* Los ojos son HUECO, no un círculo blanco con otro negro encima. */}
+      <circle cx="21" cy="23" r="4.2" fill="#071C37" />
+      <circle cx="43" cy="23" r="4.2" fill="#071C37" />
+      <path d="M23 45 Q32 51 41 45 Q32 48 23 45 Z" fill="#2C6B25" />
+      <ellipse cx="12" cy="52" rx="7" ry="4" fill="#6FC96A" />
+      <ellipse cx="52" cy="52" rx="7" ry="4" fill="#3B8F38" />
     </>,
   );
 }
@@ -75,15 +84,17 @@ function Coqui() {
 function Palma() {
   return box(
     <>
-      <path d="M30 56 C30 40 31 30 33 22 L37 22 C35 32 35 42 36 56 Z" fill="#8A5A0B" />
-      <g stroke="#2C6B25" strokeWidth="2" fill="#3FA83A">
-        <path d="M33 20 C22 12 12 14 6 22 C16 20 25 22 33 26 Z" />
-        <path d="M33 20 C44 12 54 14 60 22 C50 20 41 22 33 26 Z" />
-        <path d="M33 20 C28 9 18 5 10 7 C19 11 26 16 31 24 Z" />
-        <path d="M33 20 C38 9 48 5 56 7 C47 11 40 16 35 24 Z" />
+      <path d="M29 58 C29 42 30 31 32.5 21 L37 21 C34.5 32 34.5 43 36 58 Z" fill="#8A5A0B" />
+      <path d="M32.5 21 L37 21 C34.5 32 34.5 43 36 58 L33 58 C33 43 32.5 32 32.5 21 Z" fill="#6B440A" />
+      <g fill="#3FA83A">
+        <path d="M33 19 C22 10 11 12 4 21 C15 18 25 21 33 25 Z" />
+        <path d="M33 19 C27 7 17 3 8 5 C18 10 26 15 31 24 Z" />
       </g>
-      <circle cx="33" cy="21" r="3.6" fill="#F2B33D" stroke="#8A5A0B" strokeWidth="1.6" />
-      <ellipse cx="33" cy="57" rx="15" ry="3.5" fill="#1B4F9C" opacity="0.45" />
+      <g fill="#2F8A2C">
+        <path d="M33 19 C44 10 55 12 62 21 C51 18 41 21 33 25 Z" />
+        <path d="M33 19 C39 7 49 3 58 5 C48 10 40 15 35 24 Z" />
+      </g>
+      <circle cx="33" cy="20" r="4" fill="#F2B33D" />
     </>,
   );
 }
@@ -92,16 +103,11 @@ function Palma() {
 function Bandera() {
   return box(
     <>
-      <rect x="4" y="14" width="56" height="36" rx="2.5" fill="#E23B3B" />
-      <rect x="4" y="20" width="56" height="6" fill="#F7F4EE" />
-      <rect x="4" y="32" width="56" height="6" fill="#F7F4EE" />
-      <rect x="4" y="44" width="56" height="6" fill="#F7F4EE" />
-      <path d="M4 14 L34 32 L4 50 Z" fill="#1B4F9C" />
-      <path
-        d="M15 26 L17.2 31.2 L22.8 31.6 L18.5 35.2 L19.9 40.6 L15 37.6 L10.1 40.6 L11.5 35.2 L7.2 31.6 L12.8 31.2 Z"
-        fill="#F7F4EE"
-      />
-      <rect x="4" y="14" width="56" height="36" rx="2.5" fill="none" stroke="#0A2547" strokeWidth="2" />
+      <rect x="3" y="15" width="58" height="34" rx="3" fill="#E23B3B" />
+      <rect x="3" y="21.8" width="58" height="6.8" fill="#F4F9FF" />
+      <rect x="3" y="35.4" width="58" height="6.8" fill="#F4F9FF" />
+      <path d="M3 18 A3 3 0 0 1 6 15 L34 32 L6 49 A3 3 0 0 1 3 46 Z" fill="#12386F" />
+      <path d="M15 25.5 L17.4 31 L23.3 31.4 L18.8 35.3 L20.2 41 L15 37.8 L9.8 41 L11.2 35.3 L6.7 31.4 L12.6 31 Z" fill="#F4F9FF" />
     </>,
   );
 }
@@ -109,13 +115,13 @@ function Bandera() {
 function Coco() {
   return box(
     <>
-      <circle cx="32" cy="34" r="22" fill="#7A4A22" stroke="#452711" strokeWidth="2" />
-      <path d="M14 24 C22 19 42 19 50 24" fill="none" stroke="#5C3517" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M12 38 C22 43 42 43 52 38" fill="none" stroke="#5C3517" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="25" cy="27" r="2.6" fill="#452711" />
-      <circle cx="36" cy="25" r="2.6" fill="#452711" />
-      <circle cx="31" cy="34" r="2.6" fill="#452711" />
-      <path d="M32 12 C29 6 24 4 20 5 C25 8 28 10 30 13 Z" fill="#3FA83A" stroke="#2C6B25" strokeWidth="1.6" />
+      <circle cx="32" cy="35" r="22" fill="#8A5630" />
+      <path d="M32 13 A22 22 0 0 1 32 57 Z" fill="#6B4022" />
+      {/* Los tres ojos del coco, en hueco. */}
+      <circle cx="25" cy="28" r="3" fill="#4A2B14" />
+      <circle cx="37" cy="26" r="3" fill="#4A2B14" />
+      <circle cx="31" cy="36" r="3" fill="#4A2B14" />
+      <path d="M32 13 C29 6 23 3 18 4 C24 8 28 11 30 14 Z" fill="#3FA83A" />
     </>,
   );
 }
@@ -124,22 +130,24 @@ function Coco() {
 function Ficha() {
   return box(
     <>
-      <circle cx="32" cy="32" r="25" fill="#1B4F9C" stroke="#0A2547" strokeWidth="2" />
+      <circle cx="32" cy="32" r="26" fill="#12386F" />
+      <path d="M32 6 A26 26 0 0 1 32 58 Z" fill="#0D2A55" />
+      {/* Las muescas del canto: seis, en hueco claro. */}
       {[0, 60, 120, 180, 240, 300].map((deg) => (
         <rect
           key={deg}
-          x="29"
-          y="7"
-          width="6"
-          height="9"
-          rx="1.5"
-          fill="#F7F4EE"
+          x="29.5"
+          y="6"
+          width="5"
+          height="8"
+          rx="2.5"
+          fill="#F4F9FF"
           transform={`rotate(${deg} 32 32)`}
         />
       ))}
-      <circle cx="32" cy="32" r="16" fill="#2BA9E0" stroke="#F7F4EE" strokeWidth="2" />
-      <circle cx="32" cy="32" r="8" fill="#F7F4EE" />
-      <circle cx="32" cy="32" r="3.4" fill="#1B4F9C" />
+      <circle cx="32" cy="32" r="16.5" fill="#00A9C7" />
+      <path d="M32 15.5 A16.5 16.5 0 0 1 32 48.5 Z" fill="#0089A1" />
+      <circle cx="32" cy="32" r="7" fill="#F4F9FF" />
     </>,
   );
 }
