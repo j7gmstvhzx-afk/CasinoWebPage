@@ -120,54 +120,6 @@ export function JackpotBoard({
 
   return (
     <>
-      {/* La barra de control va dentro de una pieza con textura, no suelta
-          sobre el blanco. Con el buscador y los filtros flotando sin marco, la
-          página empezaba con un formulario; enmarcados, empieza con un
-          tablero. */}
-      <div className="tarjeta-plana relative mb-5 overflow-hidden p-4 sm:p-5">
-        <div
-          aria-hidden="true"
-          className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
-        />
-
-        <div className="relative">
-          <svg
-            viewBox="0 0 24 24"
-            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-tenue"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar máquina o número de banco…"
-            aria-label="Buscar máquina o número de banco"
-            className="w-full rounded-2xl border border-linea bg-fondo py-3.5 pl-11 pr-4 text-base text-tinta placeholder:text-tenue/60 focus:border-cian focus:outline-none"
-          />
-        </div>
-
-        <div
-          className="relative mt-3 flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Filtrar premios"
-        >
-          <Chip activo={filtro === 'todos'} onClick={() => setFiltro('todos')}>
-            Todos · {jackpots.length}
-          </Chip>
-          <Chip activo={filtro === 'calientes'} onClick={() => setFiltro('calientes')} disabled={calientes === 0}>
-            🔥 Calientes · {calientes}
-          </Chip>
-          <Chip activo={filtro === 'suben'} onClick={() => setFiltro('suben')} disabled={suben === 0}>
-            ↑ Subiendo · {suben}
-          </Chip>
-        </div>
-      </div>
-
       {filtrados.length === 0 ? (
         <p className="tarjeta px-6 py-12 text-center text-tenue">
           {jackpots.length === 0
@@ -178,7 +130,61 @@ export function JackpotBoard({
         </p>
       ) : (
         <>
-          {primero && <TarjetaHero j={primero} max={maxCentavos} />}
+          {primero && <TarjetaHero j={primero} />}
+
+          {/* El buscador va DESPUÉS del premio principal, no antes.
+          
+              Estaba arriba del todo y en un teléfono empujaba la primera cifra
+              fuera de la pantalla. Con dieciocho máquinas, buscar es la
+              excepción y mirar el premio más alto es la regla: lo primero que
+              se ve tiene que ser lo segundo. */}
+        {/* La barra de control va dentro de una pieza con textura, no suelta
+            sobre el blanco. Con el buscador y los filtros flotando sin marco, la
+            página empezaba con un formulario; enmarcados, empieza con un
+            tablero. */}
+        <div className="tarjeta-plana relative mb-5 overflow-hidden p-4 sm:p-5">
+          <div
+            aria-hidden="true"
+            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
+          />
+
+          <div className="relative">
+            <svg
+              viewBox="0 0 24 24"
+              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-tenue"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar máquina o número de banco…"
+              aria-label="Buscar máquina o número de banco"
+              className="w-full rounded-2xl border border-linea bg-fondo py-3.5 pl-11 pr-4 text-base text-tinta placeholder:text-tenue/60 focus:border-cian focus:outline-none"
+            />
+          </div>
+
+          <div
+            className="relative mt-3 flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Filtrar premios"
+          >
+            <Chip activo={filtro === 'todos'} onClick={() => setFiltro('todos')}>
+              Todos · {jackpots.length}
+            </Chip>
+            <Chip activo={filtro === 'calientes'} onClick={() => setFiltro('calientes')} disabled={calientes === 0}>
+              🔥 Calientes · {calientes}
+            </Chip>
+            <Chip activo={filtro === 'suben'} onClick={() => setFiltro('suben')} disabled={suben === 0}>
+              ↑ Subiendo · {suben}
+            </Chip>
+          </div>
+        </div>
 
           {podio2y3.length > 0 && (
             <ul className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -214,6 +220,89 @@ export function JackpotBoard({
         </>
       )}
     </>
+  );
+}
+
+/**
+ * La curva de las últimas lecturas.
+ *
+ * Un progresivo solo sube: la curva no informa de la dirección, informa del
+ * RITMO. Dos máquinas al mismo monto se ven distintas si una lleva semanas
+ * plana y la otra pegó un salto ayer, y eso es exactamente lo que decide a
+ * cuál sentarse.
+ *
+ * Se normaliza contra su propio mínimo y máximo, no contra el salón: si no,
+ * dieciocho curvas de máquinas de $400 al lado de una de $12,000 saldrían todas
+ * como una raya recta abajo.
+ */
+function Curva({
+  puntos,
+  oscuro = false,
+  alto = false,
+}: {
+  puntos: number[];
+  oscuro?: boolean;
+  alto?: boolean;
+}) {
+  // Con menos de tres lecturas no hay curva que enseñar, solo un adorno que
+  // insinúa un historial que no existe.
+  if (puntos.length < 3) return null;
+
+  const min = Math.min(...puntos);
+  const max = Math.max(...puntos);
+  const rango = max - min || 1;
+  const d = puntos
+    .map((v, i) => {
+      const x = (i / (puntos.length - 1)) * 100;
+      const y = 26 - ((v - min) / rango) * 22;
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  return (
+    <svg
+      viewBox="0 0 100 30"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      className={`w-full ${alto ? 'h-16' : 'h-7'} ${oscuro ? 'text-dorado-2' : 'text-cian-2'}`}
+    >
+      <path d={`${d} L100 30 L0 30 Z`} fill="currentColor" opacity={oscuro ? 0.22 : 0.14} />
+      <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** Cuánto subió desde la lectura anterior. Solo se enseña si SUBIÓ. */
+function Subida({ centavos, oscuro = false }: { centavos: number | null; oscuro?: boolean }) {
+  if (centavos === null || centavos <= 0) return null;
+  return (
+    <span
+      className={`whitespace-nowrap text-sm font-semibold tabular ${oscuro ? 'text-gana-claro' : 'text-gana'}`}
+    >
+      ▲ {money(centavos)}
+    </span>
+  );
+}
+
+/**
+ * Qué tan cerca está de su propio récord.
+ *
+ * Es un DATO, no un pronóstico. La tentación aquí es escribir "¡a punto de
+ * caer!", y sería mentira: nadie sabe cuándo cae un progresivo, y empujar a
+ * alguien a jugar con una promesa inventada es justo lo que un casino serio no
+ * hace. El texto dice lo que se puede comprobar en las lecturas: hoy está más
+ * alto de lo que ha estado casi siempre.
+ */
+function CercaDelRecord({ valor, oscuro = false }: { valor: number | null; oscuro?: boolean }) {
+  if (valor === null || valor < 0.75) return null;
+  const pct = Math.round(valor * 100);
+  return (
+    <span
+      title="Comparado con lo más alto que ha llegado esta máquina en los últimos 90 días"
+      className={`whitespace-nowrap text-xs font-medium ${oscuro ? 'text-[#dbe9f8]' : 'text-tenue'}`}
+    >
+      {pct}% de su récord
+    </span>
   );
 }
 
@@ -298,7 +387,9 @@ const MEDALLA = [
 /** El premio del día, en su propia franja. Es la primera cifra que alguien ve
  * al entrar a la página, y tiene que leerse como un titular, no como una fila
  * más de una lista. */
-function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
+// Sin `max`: la barra comparativa se quitó de esta tarjeta porque el máximo
+// del salón ES esta máquina y salía siempre llena.
+function TarjetaHero({ j }: { j: JackpotVista }) {
   return (
     // El premio más alto deja de ser una tarjeta blanca más: pasa a ser una
     // pieza AZUL OSCURA, como la carcasa de la tragamonedas. Sobre una página
@@ -392,15 +483,34 @@ function TarjetaHero({ j, max }: { j: JackpotVista; max: number }) {
                 className="font-display text-4xl font-bold tabular text-dorado-3 sm:text-6xl"
               />
               {j.tendencia === 'sube' && (
-                <span aria-label="Subió desde la última lectura" className="text-2xl text-emerald-300">
+                <span aria-label="Subió desde la última lectura" className="text-2xl text-gana-claro">
                   ↑
                 </span>
               )}
             </span>
+            {/* Cuánto subió y qué tan cerca está de su récord, juntos y debajo
+                de la cifra: son las dos preguntas que se hace quien mira un
+                progresivo, y antes no las contestaba nadie. */}
+            <span className="flex w-full items-center justify-start gap-3 sm:w-auto sm:justify-end">
+              <Subida centavos={j.subio} oscuro />
+              <CercaDelRecord valor={j.cercaDelRecord} oscuro />
+            </span>
           </div>
         </div>
 
-        <BarraRelativa centavos={j.centavos} max={max} oscuro className="mt-6 h-2" />
+        {/* El ritmo de las últimas lecturas.
+        
+            Aquí había además una BarraRelativa contra el máximo del salón. En
+            ESTA tarjeta el máximo del salón ES esta máquina, así que la barra
+            salía siempre llena: una raya dorada de lado a lado que no decía
+            nada y que, al lado de la curva, parecían dos gráficos iguales. Se
+            quita. En las filas de abajo sí compara y ahí se queda. */}
+        <div className="mt-6 border-t border-white/10 pt-4">
+          <p className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#dbe9f8]">
+            Últimas lecturas
+          </p>
+          <Curva puntos={j.serie} oscuro alto />
+        </div>
       </div>
     </div>
   );
@@ -451,16 +561,25 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
         </div>
       </div>
 
-      <div className="relative mt-3 flex items-center gap-2">
+      <div className="relative mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         <MontoAnimado centavos={j.centavos} className="font-display text-3xl font-bold tabular texto-dorado" />
         {j.tendencia === 'sube' && (
           <span aria-label="Subió desde la última lectura" className="text-gana">
             ↑
           </span>
         )}
+        {/* El 2.º y el 3.º enseñaban MENOS que el 8.º: sin la subida ni la
+            curva, los dos premios que más se miran después del principal eran
+            los únicos que no decían hacia dónde van. */}
+        <Subida centavos={j.subio} />
       </div>
 
-      <BarraRelativa centavos={j.centavos} max={max} className="relative mt-3" />
+      <CercaDelRecord valor={j.cercaDelRecord} />
+
+      <div className="relative mt-2">
+        <Curva puntos={j.serie} />
+      </div>
+      <BarraRelativa centavos={j.centavos} max={max} className="relative mt-1" />
     </li>
   );
 }
@@ -570,7 +689,10 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
               </span>
             )}
           </p>
-          <BarraRelativa centavos={j.centavos} max={max} className="mt-2.5 max-w-40" />
+          <div className="mt-2 max-w-40">
+            <Curva puntos={j.serie} />
+          </div>
+          <BarraRelativa centavos={j.centavos} max={max} className="mt-1 max-w-40" />
         </div>
       </div>
 
@@ -597,10 +719,15 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
             igualaba al 4.º y 5.º y rompía la escala. 20px en negrita sigue
             contando como texto grande, que es lo que el dorado necesita para
             cumplir el contraste. */}
-        <MontoAnimado
-          centavos={j.centavos}
-          className="font-display text-xl font-bold tabular text-dorado"
-        />
+        {/* El monto con su subida debajo: la fila deja de ser una etiqueta de
+            precio y pasa a decir hacia dónde va. */}
+        <span className="flex flex-col items-end">
+          <MontoAnimado
+            centavos={j.centavos}
+            className="font-display text-xl font-bold tabular text-dorado"
+          />
+          <Subida centavos={j.subio} />
+        </span>
       </div>
     </li>
   );

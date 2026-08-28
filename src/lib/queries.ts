@@ -2,6 +2,7 @@ import 'server-only';
 import { sql } from './db';
 
 export type Jackpot = {
+  puntos: (string | number)[] | null;
   id: string;
   name: string;
   bank_number: number;
@@ -25,6 +26,26 @@ export type JackpotVista = {
   tendencia: 'sube' | 'baja' | 'igual';
   /** Su monto no entró en la última actualización general. */
   desactualizado: boolean;
+  /** Cuánto subió desde la lectura anterior, en centavos. null si no hay con qué comparar. */
+  subio: number | null;
+  /**
+   * Qué tan cerca está de SU PROPIO máximo de los últimos 90 días, de 0 a 1.
+   *
+   * Es un HECHO, no un pronóstico. Un progresivo cerca de su récord no está
+   * "a punto de caer" —  nadie puede saber eso, y decirlo sería empujar a
+   * alguien a jugar con una promesa falsa. Lo que dice el número es
+   * comprobable: hoy está más alto de lo que ha estado casi nunca.
+   */
+  cercaDelRecord: number | null;
+  /** Últimas lecturas, de la más vieja a la más nueva, para dibujar la curva. */
+  serie: number[];
+};
+
+/** Lo que hay en juego en todo el salón, ahora mismo. */
+export type ResumenSalon = {
+  totalCentavos: number;
+  maquinas: number;
+  subioHoyCentavos: number;
 };
 
 /**
@@ -91,6 +112,21 @@ export async function getJackpots(): Promise<JackpotVista[]> {
        where r.amount_cents is not null and r.reading_at < u.reading_at
        order by r.machine_id, r.reading_at desc
     ),
+    -- Las últimas 14 lecturas de cada máquina, para la curva. Va agregado aquí
+    -- y no en una consulta por máquina: 19 consultas extra por visita para
+    -- pintar una línea de 40px no valen lo que cuestan.
+    serie as (
+      select machine_id, array_agg(amount_cents order by reading_at) as puntos
+        from (
+          select machine_id, amount_cents, reading_at,
+                 row_number() over (partition by machine_id order by reading_at desc) as n
+            from app.jackpot_readings
+           where amount_cents is not null
+             and reading_at > now() - interval '45 days'
+        ) t
+       where n <= 14
+       group by machine_id
+    ),
     historial as (
       select machine_id,
              max(amount_cents) as maximo,
@@ -103,11 +139,13 @@ export async function getJackpots(): Promise<JackpotVista[]> {
     select u.id, u.name, u.bank_number, u.amount_cents, u.reading_at,
            p.amount_cents as anterior,
            h.maximo, coalesce(h.lecturas, 0)::int as lecturas,
+           coalesce(s.puntos, array[]::bigint[]) as puntos,
            (u.reading_at < c.ultima - interval '12 hours') as desactualizado
       from ultimas u
       cross join corte c
       left join previas   p on p.machine_id = u.id
       left join historial h on h.machine_id = u.id
+      left join serie     s on s.machine_id = u.id
      order by u.amount_cents desc
   `;
 
@@ -132,8 +170,65 @@ export async function getJackpots(): Promise<JackpotVista[]> {
             ? 'sube'
             : 'baja',
       desactualizado: f.desactualizado,
+      subio: anterior === null ? null : centavos - anterior,
+      // Se exige el mismo historial mínimo que para CALIENTE: una máquina
+      // recién puesta estaría al 100% de su récord solo por no tener pasado.
+      cercaDelRecord:
+        maximo !== null && maximo > 0 && f.lecturas >= 10
+          ? Math.min(1, centavos / maximo)
+          : null,
+      serie: (f.puntos ?? []).map(Number),
     };
   });
+}
+
+/**
+ * El dinero que hay en el salón ahora mismo.
+ *
+ * Existe porque la pestaña de premios abría con un título y dos frases de
+ * relleno: había que bajar 700px para ver el primer número. Un tablero de
+ * jackpots tiene UNA cosa que decir de entrada, y es cuánto hay en juego.
+ *
+ * Suma las mismas lecturas que muestra el tablero —  la última de cada máquina
+ * activa dentro de la ventana de frescura —  para que el total cuadre con lo
+ * que el cliente puede sumar a mano si le da por hacerlo. Un total que no
+ * cuadra con la lista es peor que no tener total.
+ */
+export async function getResumenSalon(): Promise<ResumenSalon> {
+  const [fila] = await sql<{ total: string; maquinas: number; subio: string }[]>`
+    with corte as (
+      select max(reading_at) as ultima from app.jackpot_readings where amount_cents is not null
+    ),
+    ultimas as (
+      select distinct on (m.id) m.id, r.amount_cents, r.reading_at
+        from app.machines m
+        join app.jackpot_readings r on r.machine_id = m.id
+        cross join corte c
+       where m.active
+         and r.amount_cents is not null
+         and r.reading_at > c.ultima - interval '3 days'
+       order by m.id, r.reading_at desc
+    ),
+    previas as (
+      select distinct on (r.machine_id) r.machine_id, r.amount_cents
+        from app.jackpot_readings r
+        join ultimas u on u.id = r.machine_id
+       where r.amount_cents is not null and r.reading_at < u.reading_at
+       order by r.machine_id, r.reading_at desc
+    )
+    select coalesce(sum(u.amount_cents), 0)::text as total,
+           count(*)::int as maquinas,
+           -- Solo lo que SUBIÓ. Las bajadas son máquinas que alguien pegó, y
+           -- restarlas daría un total que no explica nada.
+           coalesce(sum(greatest(0, u.amount_cents - coalesce(p.amount_cents, u.amount_cents))), 0)::text as subio
+      from ultimas u
+      left join previas p on p.machine_id = u.id
+  `;
+  return {
+    totalCentavos: Number(fila?.total ?? 0),
+    maquinas: Number(fila?.maquinas ?? 0),
+    subioHoyCentavos: Number(fila?.subio ?? 0),
+  };
 }
 
 export type FilaEntrada = {

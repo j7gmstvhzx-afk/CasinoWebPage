@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
-import { PageHero } from '@/components/site/PageHero';
 import { JackpotBoard } from '@/components/jackpots/JackpotBoard';
 import {
   getJackpots,
   getJackpotsAlDia,
+  getResumenSalon,
   getUltimaActualizacion,
   seguro,
 } from '@/lib/queries';
-import { relativeUpdate, longDate } from '@/lib/format';
+import { money, relativeUpdate, longDate } from '@/lib/format';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -31,27 +31,57 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaJackpots() {
-  const [jackpots, ultima, alDia] = await Promise.all([
+  const [jackpots, ultima, alDia, salon] = await Promise.all([
     seguro(getJackpots, []),
     seguro(getUltimaActualizacion, null),
     seguro(getJackpotsAlDia, false),
+    seguro(getResumenSalon, { totalCentavos: 0, maquinas: 0, subioHoyCentavos: 0 }),
   ]);
 
   return (
     <>
-      <PageHero
-        titulo="Jackpots"
-        descripcion={
-          <>
-            <p>Nuestro listado de premios actualizados diariamente.</p>
-            <p className="mt-2">¡Ven y prueba tu suerte!</p>
-          </>
-        }
-      >
-        {ultima && (
-          <AvisoActualizacion ultima={ultima} alDia={alDia} />
-        )}
-      </PageHero>
+      {/* EL DINERO PRIMERO.
+      
+          Aquí había un titular "Jackpots" con dos frases de relleno —  "Nuestro
+          listado de premios actualizados diariamente. ¡Ven y prueba tu suerte!"
+          —  y había que bajar unos 700px en un teléfono para ver la primera
+          cifra. Un tablero de premios tiene UNA cosa que decir al abrirse, y es
+          cuánto hay en juego.
+
+          El bloque va en azul de marca y la cifra en dorado: es el único sitio
+          del sitio donde el dinero se enseña en grande, y tiene que pesar. */}
+      <section className="bloque-marca relative overflow-hidden">
+        <div className="patron-picas-oro pointer-events-none absolute inset-0 opacity-[0.14]" />
+        <div className="contenedor relative py-9 sm:py-12">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
+            En juego ahora mismo
+          </p>
+
+          <p className="mt-2 font-display text-5xl font-bold leading-none tabular text-dorado-3 sm:text-7xl">
+            {money(salon.totalCentavos)}
+          </p>
+
+          <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
+            repartidos en{' '}
+            <strong className="font-semibold text-white">
+              {salon.maquinas} {salon.maquinas === 1 ? 'máquina' : 'máquinas'}
+            </strong>{' '}
+            del salón
+            {/* El acumulado solo aparece si de verdad subió. Un "+$0.00" fijo
+                debajo de la cifra grande resta en vez de sumar. */}
+            {salon.subioHoyCentavos > 0 && (
+              <>
+                {' · '}
+                <span className="whitespace-nowrap font-semibold text-gana-claro">
+                  ▲ {money(salon.subioHoyCentavos)} desde la lectura anterior
+                </span>
+              </>
+            )}
+          </p>
+
+          {ultima && <AvisoActualizacion ultima={ultima} alDia={alDia} />}
+        </div>
+      </section>
 
       <section className="contenedor py-10 sm:py-14">
         <JackpotBoard jackpots={jackpots} />
@@ -87,10 +117,10 @@ function AvisoActualizacion({
 }) {
   if (alDia) {
     return (
-      <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-linea bg-superficie px-4 py-2 text-sm">
-        <span className="h-2 w-2 shrink-0 rounded-full bg-gana anim-brillo" />
-        <span className="text-tenue">Última actualización:</span>
-        <span className="font-medium text-tinta">{relativeUpdate(ultima)}</span>
+      <p className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 bg-maquina/45 px-4 text-sm text-white">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-gana-claro anim-brillo" />
+        <span className="text-[#dbe9f8]">Última actualización:</span>
+        <span className="font-medium">{relativeUpdate(ultima)}</span>
       </p>
     );
   }

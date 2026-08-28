@@ -76,6 +76,10 @@
   --color-maquina-3: #16447f;
 
   --color-gana: #0a7853;
+  /* Verde para SOBRE AZUL OSCURO. `gana` está oscurecido para leerse en fondo
+     claro y sobre el bloque de marca desaparece. Medido: 6.00:1 en la parada
+     más clara del bloque y 11.20:1 en la más honda. */
+  --color-gana-claro: #6ee7b7;
   --color-pierde: #c2372f;
 
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
