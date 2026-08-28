@@ -3,11 +3,13 @@ import { JackpotBoard } from '@/components/jackpots/JackpotBoard';
 import {
   getJackpots,
   getJackpotsAlDia,
+  getPremiosPagados,
   getResumenSalon,
   getUltimaActualizacion,
   seguro,
 } from '@/lib/queries';
 import { money, relativeUpdate, longDate } from '@/lib/format';
+import { Monto } from '@/components/site/Monto';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -31,11 +33,12 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaJackpots() {
-  const [jackpots, ultima, alDia, salon] = await Promise.all([
+  const [jackpots, ultima, alDia, salon, pagados] = await Promise.all([
     seguro(getJackpots, []),
     seguro(getUltimaActualizacion, null),
     seguro(getJackpotsAlDia, false),
     seguro(getResumenSalon, { totalCentavos: 0, maquinas: 0, subioHoyCentavos: 0 }),
+    seguro(getPremiosPagados, null),
   ]);
 
   return (
@@ -57,9 +60,7 @@ export default async function PaginaJackpots() {
             En juego ahora mismo
           </p>
 
-          <p className="mt-2 font-display text-5xl font-bold leading-none tabular text-dorado-3 sm:text-7xl">
-            {money(salon.totalCentavos)}
-          </p>
+          <Monto centavos={salon.totalCentavos} tam="xl" className="mt-2 font-display text-dorado-3" />
 
           <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
             repartidos en{' '}
@@ -82,6 +83,8 @@ export default async function PaginaJackpots() {
           {ultima && <AvisoActualizacion ultima={ultima} alDia={alDia} />}
         </div>
       </section>
+
+      {pagados && <PremiosPagadosPublico dato={pagados} />}
 
       <section className="contenedor py-10 sm:py-14">
         <JackpotBoard jackpots={jackpots} />
@@ -138,5 +141,57 @@ function AvisoActualizacion({
         altos. Pregunta en el casino por el monto del momento.
       </span>
     </p>
+  );
+}
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/**
+ * Lo que el casino pagó en premios.
+ *
+ * Es la cifra que más convence de venir, y por eso mismo es la que más cuidado
+ * pide: la escribe el personal en el panel y tiene que cuadrar con la caja. NO
+ * se deduce de las lecturas. Se puede deducir —  cuando un progresivo cae en
+ * picado, alguien lo pegó —  pero una caída también es un error de tecleo
+ * corregido, una máquina reiniciada por mantenimiento o una que salió del
+ * salón, y esto es una declaración pública de cuánto dinero paga el casino.
+ *
+ * Si el mes en curso todavía no tiene cifra, se enseña el último que la tenga
+ * CON SU NOMBRE — "En julio pagamos…" — en vez de dejar que una cifra vieja
+ * pase por la de este mes.
+ */
+function PremiosPagadosPublico({
+  dato,
+}: {
+  dato: { mes: string; totalCentavos: number; premios: number; esMesActual: boolean };
+}) {
+  const [anio, mes] = dato.mes.split('-');
+  const nombre = MESES[Number(mes) - 1];
+
+  return (
+    <section className="border-b border-linea bg-superficie">
+      <div className="contenedor flex flex-wrap items-center justify-center gap-x-8 gap-y-4 py-7 text-center sm:py-9">
+        <div>
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.24em] text-tenue">
+            {dato.esMesActual ? 'Pagado este mes' : `Pagado en ${nombre} de ${anio}`}
+          </p>
+          <Monto centavos={dato.totalCentavos} tam="lg" className="mt-1.5 font-display texto-dorado" />
+        </div>
+
+        <span aria-hidden="true" className="hidden h-12 w-px bg-linea sm:block" />
+
+        <div>
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.24em] text-tenue">
+            Premios entregados
+          </p>
+          <p className="mt-1.5 font-display text-4xl font-bold tabular text-marca sm:text-5xl">
+            {dato.premios}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }

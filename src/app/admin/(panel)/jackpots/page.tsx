@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { PanelJackpots } from './PanelJackpots';
+import { PremiosPagados } from './PremiosPagados';
 import {
+  getHistorialPagos,
   getJackpots,
   getMaquinasParaEntrada,
   getUltimaActualizacion,
@@ -19,10 +21,11 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaAdminJackpots() {
-  const [jackpots, maquinas, ultima] = await Promise.all([
+  const [jackpots, maquinas, ultima, pagos] = await Promise.all([
     seguro(getJackpots, []),
     seguro(getMaquinasParaEntrada, []),
     seguro(getUltimaActualizacion, null),
+    seguro(getHistorialPagos, []),
   ]);
 
   return (
@@ -36,6 +39,8 @@ export default async function PaginaAdminJackpots() {
       </p>
 
       <PanelJackpots maquinas={maquinas} />
+
+      <PremiosPagados historial={pagos} />
 
       {jackpots.length > 0 && (
         <>

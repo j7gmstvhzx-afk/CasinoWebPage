@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JackpotVista } from '@/lib/queries';
 import { money } from '@/lib/format';
 import { FichaPuesto, FICHA } from '@/components/site/FichaPuesto';
+import { Monto } from '@/components/site/Monto';
 
 /**
  * Tablero de jackpots.
@@ -478,10 +479,7 @@ function TarjetaHero({ j }: { j: JackpotVista }) {
               {/* dorado-3 y no dorado: el dorado de texto está oscurecido para
                   leerse sobre blanco y aquí el fondo es azul noche. El claro da
                   10:1 contra el azul y es el que de verdad brilla. */}
-              <MontoAnimado
-                centavos={j.centavos}
-                className="font-display text-4xl font-bold tabular text-dorado-3 sm:text-6xl"
-              />
+              <MontoAnimado centavos={j.centavos} tam="lg" className="font-display text-dorado-3" />
               {j.tendencia === 'sube' && (
                 <span aria-label="Subió desde la última lectura" className="text-2xl text-gana-claro">
                   ↑
@@ -562,7 +560,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
       </div>
 
       <div className="relative mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <MontoAnimado centavos={j.centavos} className="font-display text-3xl font-bold tabular texto-dorado" />
+        <MontoAnimado centavos={j.centavos} tam="md" className="font-display texto-dorado" />
         {j.tendencia === 'sube' && (
           <span aria-label="Subió desde la última lectura" className="text-gana">
             ↑
@@ -633,7 +631,7 @@ function TarjetaCuarta({ j, puesto, max }: { j: JackpotVista; puesto: number; ma
       </div>
 
       <div className="relative mt-2.5 flex items-center gap-2">
-        <MontoAnimado centavos={j.centavos} className="font-display text-2xl font-bold tabular texto-dorado" />
+        <MontoAnimado centavos={j.centavos} tam="md" className="font-display texto-dorado" />
         {j.tendencia === 'sube' && (
           <span aria-label="Subió desde la última lectura" className="text-gana">
             ↑
@@ -722,10 +720,7 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
         {/* El monto con su subida debajo: la fila deja de ser una etiqueta de
             precio y pasa a decir hacia dónde va. */}
         <span className="flex flex-col items-end">
-          <MontoAnimado
-            centavos={j.centavos}
-            className="font-display text-xl font-bold tabular text-dorado"
-          />
+          <MontoAnimado centavos={j.centavos} tam="sm" className="font-display text-dorado" />
           <Subida centavos={j.subio} />
         </span>
       </div>
@@ -745,37 +740,64 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
  * que sube. Además el valor se pinta ya correcto en el servidor, así que quien
  * llegue con JavaScript deshabilitado ve el monto igual.
  */
-function MontoAnimado({ centavos, className }: { centavos: number; className?: string }) {
+function MontoAnimado({
+  centavos,
+  tam,
+  className,
+}: {
+  centavos: number;
+  tam?: 'sm' | 'md' | 'lg' | 'xl';
+  className?: string;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const cont = ref.current;
+    if (!cont) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Se escriben las TRES piezas de <Monto> por separado.
+    //
+    // Antes esto hacía `el.textContent = money(...)` sobre un solo <span>. Con
+    // la tipografía nueva la cifra son tres nodos con tamaños distintos —
+    // signo, entero y centavos — y reescribir el textContent del contenedor los
+    // borraría todos, dejando el monto en un solo tamaño a mitad de la cuenta.
+    const entero = cont.querySelector<HTMLElement>('[data-entero]');
+    const cent = cont.querySelector<HTMLElement>('[data-cent]');
+    const sr = cont.querySelector<HTMLElement>('[data-sr]');
+    if (!entero || !cent) return;
+
+    const pintar = (v: number) => {
+      const e = Math.floor(v / 100).toLocaleString('en-US');
+      const c = String(v % 100).padStart(2, '0');
+      entero.textContent = e;
+      cent.textContent = `.${c}`;
+      if (sr) sr.textContent = `$${e}.${c}`;
+    };
 
     const duracion = 900;
     const inicio = performance.now();
     let raf = 0;
-
     const paso = (t: number) => {
       const p = Math.min(1, (t - inicio) / duracion);
       const e = 1 - Math.pow(1 - p, 3); // easeOutCubic: rápido y frena al final
-      el.textContent = money(Math.round(centavos * e));
+      pintar(Math.round(centavos * e));
       if (p < 1) raf = requestAnimationFrame(paso);
     };
 
     raf = requestAnimationFrame(paso);
     return () => {
       cancelAnimationFrame(raf);
-      // Al desmontar o cambiar de monto, se deja el valor final: si el efecto
-      // se corta a mitad de la cuenta, la fila se quedaría con un número falso.
-      el.textContent = money(centavos);
+      // Al desmontar o cambiar de monto se deja el valor final: si el efecto se
+      // corta a mitad de la cuenta, la fila se queda con un número falso.
+      pintar(Math.round(centavos));
     };
   }, [centavos]);
 
   return (
-    <span ref={ref} className={className}>
-      {money(centavos)}
+    <span ref={ref} className="inline-flex">
+      <Monto centavos={centavos} tam={tam} className={className} />
     </span>
   );
 }
+

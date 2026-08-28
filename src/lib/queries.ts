@@ -476,3 +476,60 @@ export async function seguro<T>(fn: () => Promise<T>, respaldo: T): Promise<T> {
     clearTimeout(temporizador);
   }
 }
+
+
+export type PremiosPagados = {
+  /** Día 1 del mes al que corresponde la cifra. */
+  mes: string;
+  totalCentavos: number;
+  premios: number;
+  /** true si es el mes en curso; false si es el último con datos. */
+  esMesActual: boolean;
+};
+
+/**
+ * Premios pagados del último mes que tenga cifra.
+ *
+ * Devuelve el ÚLTIMO mes con datos, no forzosamente el actual, y dice cuál es
+ * con `esMesActual`. Así, si todavía no se ha escrito el de este mes, la página
+ * puede leer "En agosto pagamos…" en vez de enseñar una cifra vieja haciéndose
+ * pasar por la de hoy. Un dato de dinero sin su fecha correcta es peor que no
+ * tener dato.
+ */
+export async function getPremiosPagados(): Promise<PremiosPagados | null> {
+  const [fila] = await sql<
+    { mes: string; total_cents: string; premios: number; es_actual: boolean }[]
+  >`
+    select mes::text, total_cents::text, premios,
+           (mes = date_trunc('month', now())::date) as es_actual
+      from app.monthly_payouts
+     order by mes desc
+     limit 1
+  `;
+  if (!fila) return null;
+  return {
+    mes: fila.mes,
+    totalCentavos: Number(fila.total_cents),
+    premios: Number(fila.premios),
+    esMesActual: fila.es_actual,
+  };
+}
+
+/** Los últimos meses, para el panel. */
+export async function getHistorialPagos(): Promise<PremiosPagados[]> {
+  const filas = await sql<
+    { mes: string; total_cents: string; premios: number; es_actual: boolean }[]
+  >`
+    select mes::text, total_cents::text, premios,
+           (mes = date_trunc('month', now())::date) as es_actual
+      from app.monthly_payouts
+     order by mes desc
+     limit 12
+  `;
+  return filas.map((f) => ({
+    mes: f.mes,
+    totalCentavos: Number(f.total_cents),
+    premios: Number(f.premios),
+    esMesActual: f.es_actual,
+  }));
+}
