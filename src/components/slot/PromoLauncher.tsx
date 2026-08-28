@@ -22,6 +22,38 @@ import { useAlgunOverlayActivo } from '@/lib/overlay-activo';
 const DEMORA_MS = 2200;
 const CLAVE_VISTO = 'cam:promo-vista';
 
+/**
+ * "Ya se mostró hoy" se apunta al ABRIRSE, no al cerrarse.
+ *
+ * Estaba solo dentro de `cerrar()`, o sea que únicamente contaba si la persona
+ * pulsaba la X o Escape. Cerrarlo navegando NO lo apuntaba, y ahí estaba el
+ * fallo que el dueño reportó cinco veces como "toco los tabs y no pasa nada":
+ *
+ *   menú móvil abierto  -> setOverlayActivo('menu-movil', true)
+ *   se toca una pestaña -> el onClick cierra el menú EN EL MISMO CLIC que navega
+ *                       -> algunOverlayActivo pasa a false
+ *                       -> el efecto de abajo se re-ejecuta
+ *                       -> el remanente ya estaba drenado a 0
+ *                       -> setTimeout(..., 0) y el pop-up se REABRE
+ *
+ * Medido: 152 de 152 fotogramas con el modal presente tras tocar la pestaña, el
+ * diálogo con el rectángulo idéntico antes y después, y `body{overflow:hidden}`
+ * en la página nueva. La URL cambiaba; la pantalla no. En 7 de las 8 pestañas.
+ *
+ * Apuntarlo al abrir cierra la clase entera: se haya cerrado como se haya
+ * cerrado —  X, Escape o navegando —  hoy ya no vuelve. El coste es que quien
+ * navegue medio segundo después de que aparezca no lo verá otra vez ese día;
+ * mucho más barato que dejarlo atrapado en un bucle del que solo se sale
+ * encontrando la X.
+ */
+function marcarVistoHoy() {
+  try {
+    window.localStorage.setItem(CLAVE_VISTO, new Date().toDateString());
+  } catch {
+    // Modo privado de Safari puede lanzar. No pasa nada: se verá otra vez.
+  }
+}
+
 export function PromoLauncher() {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
@@ -96,7 +128,10 @@ export function PromoLauncher() {
     if (visto === hoy) return;
 
     const inicio = Date.now();
-    const t = setTimeout(() => setAbierto(true), Math.max(0, restanteRef.current));
+    const t = setTimeout(() => {
+      marcarVistoHoy();
+      setAbierto(true);
+    }, Math.max(0, restanteRef.current));
     return () => {
       clearTimeout(t);
       restanteRef.current = Math.max(0, restanteRef.current - (Date.now() - inicio));
@@ -204,11 +239,10 @@ export function PromoLauncher() {
   const devolverFoco = useRef(false);
   const cerrar = useCallback(() => {
     setAbierto(false);
-    try {
-      window.localStorage.setItem(CLAVE_VISTO, new Date().toDateString());
-    } catch {
-      /* sin almacenamiento: se volverá a mostrar, y no pasa nada */
-    }
+    // Redundante desde que se apunta al abrir, y se deja a propósito: el botón
+    // flotante también abre el pop-up (más abajo), y así ninguna vía de cierre
+    // depende de que otra lo haya apuntado antes.
+    marcarVistoHoy();
     devolverFoco.current = true;
   }, []);
 
@@ -225,6 +259,9 @@ export function PromoLauncher() {
 
   const abrir = useCallback(() => {
     activoPrevio.current = document.activeElement as HTMLElement;
+    // También aquí: sin esto, abrir por el botón flotante y navegar sin cerrar
+    // reproduce el mismo bucle de reapertura por otra puerta.
+    marcarVistoHoy();
     setAbierto(true);
   }, []);
 

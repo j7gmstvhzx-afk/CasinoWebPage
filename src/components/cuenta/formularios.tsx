@@ -320,18 +320,6 @@ export function FormularioEntrar({
   const [verClave, setVerClave] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /**
-   * Cuentas de antes de que existieran las contraseñas.
-   *
-   * No se pide el nombre de entrada a todo el mundo: la inmensa mayoría ya
-   * tendrá contraseña y pedirle un dato de más sería fricción sin motivo. Solo
-   * cuando el servidor contesta FALTA_NOMBRE aparece el campo, con una
-   * explicación de por qué. Es el propio servidor quien sabe qué cuentas son
-   * heredadas —  el navegador no puede saberlo sin preguntar, y preguntar sería
-   * decirle a cualquiera qué números están registrados.
-   */
-  const [pideNombre, setPideNombre] = useState(false);
-
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -343,20 +331,14 @@ export function FormularioEntrar({
         body: JSON.stringify({
           celular,
           contrasena,
-          ...(pideNombre ? { nombre: nombre.trim() } : {}),
+          // Va siempre que esté escrito. El servidor lo ignora si la cuenta ya
+          // tiene contraseña.
+          ...(nombre.trim() ? { nombre: nombre.trim() } : {}),
         }),
       });
       onListo();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ERROR_GENERICO;
-      // El servidor responde con este mensaje cuando la cuenta es heredada.
-      if (/nombre completo para crear/i.test(msg)) {
-        setPideNombre(true);
-        setError(msg);
-        setTimeout(() => document.getElementById(`${ids}-nombre`)?.focus(), 0);
-      } else {
-        setError(msg);
-      }
+      setError(err instanceof Error ? err.message : ERROR_GENERICO);
     } finally {
       setEnviando(false);
     }
@@ -402,25 +384,29 @@ export function FormularioEntrar({
         </div>
       </Campo>
 
-      {pideNombre && (
-        <Campo etiqueta="Nombre completo" htmlFor={`${ids}-nombre`}>
-          <input
-            id={`${ids}-nombre`}
-            name="name"
-            autoComplete="name"
-            required
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej. María Rivera Colón"
-            className={estiloCampo}
-          />
-          <p className="mt-1.5 text-xs text-tenue">
-            Tu cuenta es de antes de que existieran las contraseñas. Escribe tu
-            nombre tal como te registraste y la contraseña de arriba queda
-            guardada para la próxima vez.
-          </p>
-        </Campo>
-      )}
+      {/* El nombre se enseña SIEMPRE, opcional.
+      
+          Antes solo aparecía cuando el servidor contestaba FALTA_NOMBRE, y esa
+          respuesta era un localizador: decía qué números son cuentas sin
+          contraseña, o sea cuáles se puede intentar abrir. Enseñando el campo
+          a todo el mundo, el servidor ya no tiene que decir de qué tipo es la
+          cuenta —  quien tiene contraseña lo deja vacío y no se entera de que
+          existe. */}
+      <Campo etiqueta="Nombre completo (opcional)" htmlFor={`${ids}-nombre`}>
+        <input
+          id={`${ids}-nombre`}
+          name="name"
+          autoComplete="name"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Ej. María Rivera Colón"
+          className={estiloCampo}
+        />
+        <p className="mt-1.5 text-xs text-tenue">
+          Si tu cuenta es de antes de que hubiera contraseñas, escribe tu nombre
+          y la de arriba queda guardada para la próxima vez.
+        </p>
+      </Campo>
 
       {error && (
         <p role="alert" className="text-sm text-pierde">

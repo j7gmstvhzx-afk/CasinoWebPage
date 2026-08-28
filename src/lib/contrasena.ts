@@ -52,7 +52,16 @@ export function contrasenaValida(c: string): boolean {
   // Solo largo. Las reglas de "una mayúscula y un símbolo" empujan a la gente
   // a `Casino1!` y a apuntarla en un papel; el largo es lo que de verdad
   // aguanta, y es lo que recomienda el NIST desde 2017.
-  return typeof c === 'string' && c.length >= 8 && c.length <= 200;
+  //
+  // Se mide DESPUÉS de normalizar, porque es lo que se va a guardar.
+  // Midiéndolo antes, `áéíóúñá` escrito en forma descompuesta (NFD) son 14
+  // unidades de código y pasaba el mínimo, pero al derivar el hash se
+  // normaliza a NFKC y quedan 7 caracteres: un secreto por debajo del mínimo
+  // que la propia pantalla anuncia. Comprobado: se aceptaba, y después entraba
+  // escribiendo sus 7 caracteres en forma compuesta.
+  if (typeof c !== 'string') return false;
+  const n = c.normalize('NFKC');
+  return n.length >= 8 && n.length <= 200;
 }
 
 export async function hashContrasena(clave: string): Promise<string> {

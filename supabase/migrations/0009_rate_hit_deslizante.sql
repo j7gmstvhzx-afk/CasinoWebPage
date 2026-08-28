@@ -26,10 +26,20 @@
 -- son cubos de un minuto: el contador ya no se reinicia nunca de golpe, solo
 -- expira el cubo más viejo cada minuto.
 --
--- Queda un resto de imprecisión de un cubo — un intento puede sobrevivir hasta
--- 59 segundos de más — y es deliberado: acotar la ráfaga de una hora a un
--- minuto es lo que había que resolver, y bajar más el tamaño del cubo solo
--- multiplica filas.
+-- Queda un resto de imprecisión de un cubo, y se resuelve MIRANDO UN CUBO MÁS
+-- ATRÁS de la ventana pedida.
+--
+-- Sin eso, el error caía del lado permisivo, que es el lado equivocado: un cubo
+-- deja de contarse exactamente en `window_start + ventana`, pero los intentos
+-- ocurren en `window_start + s` con s de 0 a 59, así que un intento vive
+-- `ventana - s` y no `ventana`. Medido: colocando la ráfaga al final del cubo,
+-- la ventana efectiva se quedaba en 59.02 minutos y se colaban 8 intentos de
+-- más sobre un límite de 8 POR HORA.
+--
+-- Sumando un cubo al periodo que se mira, la ventana efectiva pasa a estar
+-- entre 60 y 61 minutos: el error se va al lado estricto. Para un limitador que
+-- protege una contraseña, contar de más un minuto no le hace daño a nadie;
+-- contar de menos, sí.
 --
 -- POR QUÉ NO EL CONTADOR PONDERADO
 -- --------------------------------
@@ -69,7 +79,9 @@ declare
   v_gran  numeric     := greatest(1, floor(v_secs / 60));  -- 60 cubos por ventana
   v_epoch numeric     := extract(epoch from now());
   v_start timestamptz := to_timestamp(floor(v_epoch / v_gran) * v_gran);
-  v_desde timestamptz := to_timestamp(v_epoch - v_secs);
+  -- `+ v_gran`: un cubo más atrás. Ver la nota de arriba sobre por qué el error
+  -- tiene que caer del lado estricto.
+  v_desde timestamptz := to_timestamp(v_epoch - v_secs - v_gran);
   v_total bigint;
 begin
   insert into app.rate_events (bucket, key, window_start, count)

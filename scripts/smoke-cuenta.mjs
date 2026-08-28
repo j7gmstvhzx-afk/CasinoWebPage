@@ -85,7 +85,7 @@ async function main() {
   await pagina.getByLabel('Nombre completo').fill(NOMBRE);
   await pagina.getByLabel('Celular').fill(CELULAR);
   await pagina.getByLabel('Pueblo').selectOption({ label: 'Manatí' });
-  await pagina.getByLabel('Contraseña').fill(CLAVE);
+  await pagina.getByLabel('Contraseña', { exact: true }).fill(CLAVE);
   await pagina.getByRole('checkbox').check();
   await boton.click();
 
@@ -157,7 +157,7 @@ async function main() {
 
   await pagina.getByRole('button', { name: /Ya te registraste/i }).click();
   await pagina.getByLabel('Celular').fill(CELULAR);
-  await pagina.getByLabel('Contraseña').fill(CLAVE);
+  await pagina.getByLabel('Contraseña', { exact: true }).fill(CLAVE);
   await pagina.getByRole('button', { name: 'ENTRAR' }).click();
   await pagina.waitForSelector('text=Ya participaste hoy', { timeout: 10_000 });
   comprobar(true, 'entrar con celular y contraseña recupera la misma cuenta');
@@ -168,7 +168,7 @@ async function main() {
   await pagina.waitForSelector('text=Crea tu cuenta', { timeout: 10_000 });
   await pagina.getByRole('button', { name: /Ya te registraste/i }).click();
   await pagina.getByLabel('Celular').fill(CELULAR);
-  await pagina.getByLabel('Contraseña').fill(CLAVE + 'x');
+  await pagina.getByLabel('Contraseña', { exact: true }).fill(CLAVE + 'x');
   await pagina.getByRole('button', { name: 'ENTRAR' }).click();
   const rechazo = await pagina
     .waitForSelector('text=/No encontramos esa combinaci/', { timeout: 10_000 })

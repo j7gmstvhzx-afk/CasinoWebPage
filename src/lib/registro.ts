@@ -72,53 +72,86 @@ export async function registrarJugador(
     return { ok: false, codigo: 'DEMASIADOS_INTENTOS', mensaje: 'Demasiados registros desde esta conexión. Intenta más tarde.', status: 429 };
   }
 
-  // ¿Ya existe ese celular, y ya tiene contraseña?
+  // ¿Ya existe ese celular? Entonces AQUÍ NO SE ENTRA. Punto.
   //
-  // ESTO ES UNA COMPROBACIÓN DE SEGURIDAD, no una comodidad. Antes, registrarse
-  // con un celular ya existente simplemente devolvía la sesión de esa cuenta:
-  // con las contraseñas puestas, eso sería una puerta trasera perfecta —
-  // cualquiera que supiera un número se saltaría la contraseña rellenando el
-  // formulario de registro. Si la cuenta ya tiene contraseña, aquí NO se
-  // entrega sesión: se manda a entrar.
+  // La versión anterior de esto solo frenaba si la cuenta YA TENÍA contraseña,
+  // y razonaba así: "si no la tiene, se le pone la que acaba de escribir y se
+  // entra. No empeora nada: esa cuenta ya se abría con celular + nombre, que es
+  // exactamente lo que este formulario pide."
   //
-  // Si NO la tiene (cuenta creada antes de que existieran), se le pone la que
-  // acaba de escribir y se entra. No empeora nada: esa cuenta ya se abría con
-  // celular + nombre, que es exactamente lo que este formulario pide.
-  const [existente] = await sql<{ tiene_clave: boolean }[]>`
-    select password_hash is not null as tiene_clave
-      from app.players
-     where phone_e164 = ${tel.e164}
+  // La premisa era FALSA y el fallo, crítico. Este endpoint no comprueba el
+  // nombre en ningún momento: el UPSERT de abajo lo SOBRESCRIBE. Así que
+  // sabiendo solo un número de celular —  y ninguna cuenta de las que hay hoy
+  // tiene contraseña, porque la migración 0010 crea la columna en NULL —
+  // cualquiera se quedaba con la cuenta entera. Reproducido de punta a punta:
+  //
+  //   ANTES:   Carmen Delia Santiago | hash=NULL
+  //   POST /api/registrar con ese celular y un nombre inventado
+  //     -> 200 y cookie de sesión
+  //   DESPUÉS: Ladron De Cupones     | hash=scrypt$327...
+  //   el atacante lee el cupón de Carmen, y Carmen ya no entra
+  //
+  // Y se lleva el dinero: el nombre que ve el cajero al canjear pasa a ser el
+  // del atacante, así que CUADRA con su identificación con foto. Justo la
+  // defensa que este proyecto da por última.
+  //
+  // La regla correcta es más simple de decir y más fácil de no romper:
+  // registrarse CREA cuentas nuevas y nada más. Recuperar una cuenta que ya
+  // existe —  incluidas las heredadas, que crean su contraseña en el camino —
+  // es trabajo de /api/entrar, que sí comprueba el nombre contra el guardado.
+  const [existente] = await sql<{ id: string }[]>`
+    select id from app.players where phone_e164 = ${tel.e164}
   `;
-  if (existente?.tiene_clave) {
+  if (existente) {
+    // UN SOLO mensaje, tenga contraseña o no.
+    //
+    // Distinguirlos sería un localizador: diría qué números son cuentas
+    // heredadas, o sea cuáles se pueden intentar abrir sabiendo solo el
+    // nombre. El texto cubre los dos casos sin decir cuál es.
     return {
       ok: false,
       codigo: 'CUENTA_EXISTE',
-      mensaje: 'Ya tienes una cuenta con este número. Entra con tu contraseña.',
+      mensaje:
+        'Ya tienes una cuenta con este número. Entra con tu contraseña. ' +
+        'Si nunca creaste una, escribe también tu nombre completo al entrar.',
       status: 409,
     };
   }
 
   const hash = await hashContrasena(contrasena!);
 
-  // DO UPDATE, no DO NOTHING: con DO NOTHING un conflicto devuelve cero filas y
-  // RETURNING no da nada, así que haría falta un SELECT extra y un reintento.
-  // Así siempre vuelve la fila.
+  // INSERT a secas, sin ON CONFLICT DO UPDATE.
   //
-  // `coalesce` en password_hash cierra la carrera: si entre el SELECT de arriba
-  // y este INSERT alguien le puso contraseña a esa cuenta, la suya gana y esta
-  // no la pisa.
-  const [jugador] = await sql<{ id: string; blocked_at: string | null }[]>`
-    insert into app.players (phone_e164, full_name, municipality_id, consent_at,
-                             password_hash, password_set_at)
-    values (${tel.e164}, ${nombre}, ${puebloId}, now(), ${hash}, now())
-    on conflict (phone_e164) do update
-      set last_seen_at    = now(),
-          full_name       = excluded.full_name,
-          municipality_id = excluded.municipality_id,
-          password_hash   = coalesce(app.players.password_hash, excluded.password_hash),
-          password_set_at = coalesce(app.players.password_set_at, excluded.password_set_at)
-    returning id, blocked_at
-  `;
+  // El DO UPDATE era lo que convertía este endpoint en una vía para modificar
+  // cuentas ajenas. Ya no actualiza nada: si dos peticiones simultáneas
+  // intentan crear el mismo celular, la segunda choca contra la restricción
+  // única y se convierte en el mismo 409 de arriba —  que es la respuesta
+  // correcta, no un error.
+  let jugador: { id: string; blocked_at: string | null } | undefined;
+  try {
+    [jugador] = await sql<{ id: string; blocked_at: string | null }[]>`
+      insert into app.players (phone_e164, full_name, municipality_id, consent_at,
+                               password_hash, password_set_at)
+      values (${tel.e164}, ${nombre}, ${puebloId}, now(), ${hash}, now())
+      returning id, blocked_at
+    `;
+  } catch (e) {
+    // 23505 = unique_violation. Cierra la carrera contra el SELECT de arriba.
+    if ((e as { code?: string })?.code === '23505') {
+      return {
+        ok: false,
+        codigo: 'CUENTA_EXISTE',
+        mensaje:
+          'Ya tienes una cuenta con este número. Entra con tu contraseña. ' +
+          'Si nunca creaste una, escribe también tu nombre completo al entrar.',
+        status: 409,
+      };
+    }
+    throw e;
+  }
+  if (!jugador) {
+    return { ok: false, codigo: 'ERROR', mensaje: 'No pudimos crear tu cuenta. Intenta de nuevo.', status: 500 };
+  }
 
   // Un código de área de fuera de PR no se rechaza — puede ser un turista o
   // alguien que conserva su número de cuando vivía en Estados Unidos. Se deja
