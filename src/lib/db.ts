@@ -12,9 +12,30 @@ import postgres from 'postgres';
  *                   intermitente — el peor tipo de fallo, porque con poco
  *                   tráfico no se ve nunca.
  *
- *   max: 1          Cada lambda de Vercel atiende una petición a la vez. Un
- *                   pool mayor solo consume ranuras de conexión de Supabase
- *                   sin dar nada a cambio.
+ *   max: 4          Una lambda atiende UNA petición a la vez, y de ahí salió el
+ *                   `max: 1` que había aquí: "un pool mayor solo consume
+ *                   ranuras de Supabase sin dar nada a cambio". Es falso, y
+ *                   costó una cifra en cero en la página pública.
+ *
+ *                   Una petición no hace UNA consulta. La pestaña de premios
+ *                   lanza cinco a la vez con Promise.all. Con una sola
+ *                   conexión no corren en paralelo: hacen cola. Pero el
+ *                   límite de tiempo de `seguro()` arranca para las cinco en
+ *                   el mismo instante, así que la última de la fila tiene que
+ *                   caber en 2.5 s CONTANDO lo que tardaron las cuatro de
+ *                   delante más el saludo TLS del arranque en frío. La que
+ *                   pierde no es la lenta: es la última.
+ *
+ *                   Así se vio: el total del salón salió "$0.00 repartidos en
+ *                   0 máquinas" mientras la lista de debajo enseñaba sus
+ *                   quince máquinas con sus montos. La consulta del total
+ *                   corre en 40 ms contra la base de producción; nunca fue
+ *                   lenta, era la quinta.
+ *
+ *                   Cuatro conexiones es el ancho de la ráfaga más grande que
+ *                   hace este sitio. El pooler de Supabase en modo transacción
+ *                   está hecho justo para esto y las devuelve al acabar cada
+ *                   sentencia.
  *
  * La conexión se crea PEREZOSAMENTE. Si se creara al importar el módulo, el
  * build fallaría en cualquier entorno sin credenciales (CI, un `next build`
@@ -105,7 +126,7 @@ function crear(): Sql {
   }
 
   const cliente = postgres(corregida, {
-    max: 1,
+    max: 4,
     prepare: false,
     types: {
       // Las columnas `date` vuelven como CADENA 'YYYY-MM-DD', no como Date.

@@ -7,6 +7,8 @@ import {
   getResumenSalon,
   getUltimaActualizacion,
   seguro,
+  type PremiosPagados,
+  type ResumenSalon,
 } from '@/lib/queries';
 import { money, relativeUpdate, longDate } from '@/lib/format';
 import { Monto } from '@/components/site/Monto';
@@ -28,8 +30,8 @@ export const maxDuration = 15;
 export const metadata: Metadata = {
   title: 'Jackpots',
   description:
-    'Nuestro listado de premios actualizados a diario. Mira cuáles están más ' +
-    'altos y en qué banco encontrarlos.',
+    'Cuánto pagamos en premios este mes y qué máquinas tienen los progresivos ' +
+    'más altos del salón.',
 };
 
 export default async function PaginaJackpots() {
@@ -37,54 +39,22 @@ export default async function PaginaJackpots() {
     seguro(getJackpots, []),
     seguro(getUltimaActualizacion, null),
     seguro(getJackpotsAlDia, false),
-    seguro(getResumenSalon, { totalCentavos: 0, maquinas: 0, subioHoyCentavos: 0 }),
+    // El respaldo es `null` y NO `{ total: 0, maquinas: 0 }`.
+    //
+    // Con el cero por respaldo, una consulta que no vuelve a tiempo se pintaba
+    // igual que un salón sin una sola máquina: "$0.00 repartidos en 0
+    // máquinas", en letra grande y en la primera pantalla, mientras la lista de
+    // debajo enseñaba quince máquinas con sus montos. Pasó en producción.
+    //
+    // Un cero es una AFIRMACIÓN sobre el dinero del salón. Cuando no se sabe,
+    // hay que no decir nada; callar se entiende, mentir no.
+    seguro<ResumenSalon | null>(getResumenSalon, null),
     seguro(getPremiosPagados, null),
   ]);
 
   return (
     <>
-      {/* EL DINERO PRIMERO.
-      
-          Aquí había un titular "Jackpots" con dos frases de relleno —  "Nuestro
-          listado de premios actualizados diariamente. ¡Ven y prueba tu suerte!"
-          —  y había que bajar unos 700px en un teléfono para ver la primera
-          cifra. Un tablero de premios tiene UNA cosa que decir al abrirse, y es
-          cuánto hay en juego.
-
-          El bloque va en azul de marca y la cifra en dorado: es el único sitio
-          del sitio donde el dinero se enseña en grande, y tiene que pesar. */}
-      <section className="bloque-marca relative overflow-hidden">
-        <div className="patron-picas-oro pointer-events-none absolute inset-0 opacity-[0.14]" />
-        <div className="contenedor relative py-9 sm:py-12">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
-            En juego ahora mismo
-          </p>
-
-          <Monto centavos={salon.totalCentavos} tam="xl" className="mt-2 font-display text-dorado-3" />
-
-          <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
-            repartidos en{' '}
-            <strong className="font-semibold text-white">
-              {salon.maquinas} {salon.maquinas === 1 ? 'máquina' : 'máquinas'}
-            </strong>{' '}
-            del salón
-            {/* El acumulado solo aparece si de verdad subió. Un "+$0.00" fijo
-                debajo de la cifra grande resta en vez de sumar. */}
-            {salon.subioHoyCentavos > 0 && (
-              <>
-                {' · '}
-                <span className="whitespace-nowrap font-semibold text-gana-claro">
-                  ▲ {money(salon.subioHoyCentavos)} desde la lectura anterior
-                </span>
-              </>
-            )}
-          </p>
-
-          {ultima && <AvisoActualizacion ultima={ultima} alDia={alDia} />}
-        </div>
-      </section>
-
-      {pagados && <PremiosPagadosPublico dato={pagados} />}
+      <Portada salon={salon} pagados={pagados} ultima={ultima} alDia={alDia} />
 
       <section className="contenedor py-10 sm:py-14">
         <JackpotBoard jackpots={jackpots} />
@@ -94,6 +64,167 @@ export default async function PaginaJackpots() {
           de tu visita.
         </p>
       </section>
+    </>
+  );
+}
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/**
+ * "2026-08-01" -> "agosto".
+ *
+ * Se parte la cadena en vez de usar `new Date`: la columna es un DÍA DE
+ * CALENDARIO, y `new Date('2026-08-01')` lo lee como medianoche UTC, que desde
+ * Puerto Rico (UTC-4) es el 31 de julio a las 8 p.m. El mes se cambiaría solo.
+ */
+function nombreMes(iso: string): { mes: string; anio: string } {
+  const [anio, mes] = iso.split('-');
+  return { mes: MESES[Number(mes) - 1] ?? '', anio };
+}
+
+/**
+ * La primera pantalla de la pestaña de premios.
+ *
+ * QUÉ SE DICE PRIMERO
+ * -------------------
+ * Abría con "EN JUEGO AHORA MISMO" y el total de los progresivos. Es un buen
+ * número, pero dice cuánto hay ACUMULADO, no cuánto SALE. Lo que convence de
+ * manejar hasta Manatí es saber que aquí se paga, y eso es lo que pidió el
+ * dueño que fuera el titular.
+ *
+ * Así que el titular es lo pagado en el mes, con EL NOMBRE DEL MES puesto solo
+ * desde la fecha del propio dato. Nadie tiene que acordarse de cambiar un
+ * texto el día 1.
+ *
+ * El total en juego no se pierde: baja a la línea de apoyo, donde sigue
+ * sumando ("y además hay tanto acumulado ahora mismo") sin robarle el sitio al
+ * titular.
+ *
+ * CUANDO TODAVÍA NO HAY CIFRA DEL MES
+ * -----------------------------------
+ * No se enseña "$0.00 pagados", que es lo peor que podría decir esta página.
+ * Se cae al titular anterior —  el dinero en juego —  hasta que el panel tenga
+ * la cifra. Y si tampoco hay montos, no hay portada: nada mejor que una cifra
+ * inventada.
+ */
+function Portada({
+  salon,
+  pagados,
+  ultima,
+  alDia,
+}: {
+  salon: ResumenSalon | null;
+  pagados: PremiosPagados | null;
+  ultima: string | Date | null;
+  alDia: boolean;
+}) {
+  const hayJuego = salon !== null && salon.maquinas > 0;
+  if (!pagados && !hayJuego) return null;
+
+  return (
+    <section className="bloque-marca relative overflow-hidden">
+      <div className="patron-picas-oro pointer-events-none absolute inset-0 opacity-[0.14]" />
+      <div className="contenedor relative py-9 sm:py-12">
+        {pagados ? (
+          <TitularPagado pagados={pagados} />
+        ) : (
+          <TitularEnJuego salon={salon!} />
+        )}
+
+        {/* La línea de apoyo. Solo aparece si el titular es el de lo pagado —
+            si el titular YA es el dinero en juego, repetirlo aquí sobra. */}
+        {pagados && hayJuego && (
+          <p className="mt-5 max-w-2xl text-sm text-[#cfe0f5] sm:text-base">
+            Y ahora mismo hay{' '}
+            <strong className="whitespace-nowrap font-semibold text-dorado-3">
+              {money(salon!.totalCentavos)}
+            </strong>{' '}
+            acumulados en{' '}
+            <strong className="font-semibold text-white">
+              {salon!.maquinas} {salon!.maquinas === 1 ? 'máquina' : 'máquinas'}
+            </strong>{' '}
+            del salón
+            {salon!.subioHoyCentavos > 0 && (
+              <>
+                {' · '}
+                <span className="whitespace-nowrap font-semibold text-gana-claro">
+                  ▲ {money(salon!.subioHoyCentavos)} desde la lectura anterior
+                </span>
+              </>
+            )}
+          </p>
+        )}
+
+        {ultima && <AvisoActualizacion ultima={ultima} alDia={alDia} />}
+      </div>
+    </section>
+  );
+}
+
+/** El titular: lo que el casino pagó en premios, con su mes. */
+function TitularPagado({ pagados }: { pagados: PremiosPagados }) {
+  const { mes, anio } = nombreMes(pagados.mes);
+
+  return (
+    <>
+      <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
+        {/* El mes sale del dato, no de un texto escrito a mano. Si el panel
+            todavía no tiene el mes en curso, esto dice el que sí tiene y con
+            su nombre, para que una cifra vieja no pase por la de hoy. */}
+        Total de premios pagados {pagados.esMesActual ? `en ${mes}` : `en ${mes} de ${anio}`}
+      </p>
+
+      <Monto
+        centavos={pagados.totalCentavos}
+        tam="xl"
+        className="mt-2 font-display text-dorado-3"
+      />
+
+      {/* La cuenta de premios va EN UNA LÍNEA, no en un número grande al lado.
+          Se probó al lado, a 4xl: en un teléfono el "7" caía debajo del monto,
+          igual de grande y en blanco, y la pantalla abría con dos números
+          enormes peleándose por ser el titular. Un titular es uno. */}
+      <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
+        en{' '}
+        <strong className="font-display text-lg font-bold tabular text-white sm:text-xl">
+          {pagados.premios}
+        </strong>{' '}
+        {pagados.premios === 1 ? 'premio entregado' : 'premios entregados'}
+      </p>
+    </>
+  );
+}
+
+/** El titular de reserva, mientras no haya cifra de premios pagados. */
+function TitularEnJuego({ salon }: { salon: ResumenSalon }) {
+  return (
+    <>
+      <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
+        En juego ahora mismo
+      </p>
+
+      <Monto centavos={salon.totalCentavos} tam="xl" className="mt-2 font-display text-dorado-3" />
+
+      <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
+        repartidos en{' '}
+        <strong className="font-semibold text-white">
+          {salon.maquinas} {salon.maquinas === 1 ? 'máquina' : 'máquinas'}
+        </strong>{' '}
+        del salón
+        {/* El acumulado solo aparece si de verdad subió. Un "+$0.00" fijo
+            debajo de la cifra grande resta en vez de sumar. */}
+        {salon.subioHoyCentavos > 0 && (
+          <>
+            {' · '}
+            <span className="whitespace-nowrap font-semibold text-gana-claro">
+              ▲ {money(salon.subioHoyCentavos)} desde la lectura anterior
+            </span>
+          </>
+        )}
+      </p>
     </>
   );
 }
@@ -110,6 +241,19 @@ export default async function PaginaJackpots() {
  * El corte a las 20 horas y no a las 24: la hoja se sube por la mañana, así que
  * a las 24 h una subida de ayer temprano todavía contaría como "de hoy" bien
  * entrada la tarde siguiente.
+ *
+ * LOS COLORES DE ESTA CAJA
+ * ------------------------
+ * Iba en `text-tinta` (#0e2645) sobre un ámbar al 10%: los colores de un aviso
+ * pensado para fondo claro, que se quedaron cuando el bloque pasó a ser el
+ * azul de marca. Medido sobre el fondo real daba 1.54:1 con 4.5 exigido —
+ * texto azul oscuro sobre azul oscuro. Se veía en la página en vivo como una
+ * mancha sin letras.
+ *
+ * Se le escapó al comprobador de contraste porque esta caja SOLO existe cuando
+ * los montos están atrasados, y las bases de prueba siempre tenían lecturas del
+ * día: la rama nunca se llegó a pintar. La otra rama —  la del punto verde —  sí
+ * se midió, y esa estaba bien.
  */
 function AvisoActualizacion({
   ultima,
@@ -129,69 +273,17 @@ function AvisoActualizacion({
   }
 
   return (
-    <p className="mt-6 flex max-w-xl items-start gap-2.5 rounded-2xl border border-dorado/40 bg-dorado/10 px-4 py-3 text-sm text-tinta">
+    <p className="mt-6 flex max-w-xl items-start gap-2.5 rounded-2xl border border-dorado-2/45 bg-maquina/50 px-4 py-3 text-sm text-[#e2ecf8]">
       <span aria-hidden="true" className="mt-px shrink-0">
         ⏳
       </span>
       <span>
-        <strong className="font-semibold">
+        <strong className="font-semibold text-[#ffe9bf]">
           Estos montos son del {longDate(ultima)}.
         </strong>{' '}
         Todavía no hemos subido los de hoy; los de verdad pueden estar más
         altos. Pregunta en el casino por el monto del momento.
       </span>
     </p>
-  );
-}
-
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
-
-/**
- * Lo que el casino pagó en premios.
- *
- * Es la cifra que más convence de venir, y por eso mismo es la que más cuidado
- * pide: la escribe el personal en el panel y tiene que cuadrar con la caja. NO
- * se deduce de las lecturas. Se puede deducir —  cuando un progresivo cae en
- * picado, alguien lo pegó —  pero una caída también es un error de tecleo
- * corregido, una máquina reiniciada por mantenimiento o una que salió del
- * salón, y esto es una declaración pública de cuánto dinero paga el casino.
- *
- * Si el mes en curso todavía no tiene cifra, se enseña el último que la tenga
- * CON SU NOMBRE — "En julio pagamos…" — en vez de dejar que una cifra vieja
- * pase por la de este mes.
- */
-function PremiosPagadosPublico({
-  dato,
-}: {
-  dato: { mes: string; totalCentavos: number; premios: number; esMesActual: boolean };
-}) {
-  const [anio, mes] = dato.mes.split('-');
-  const nombre = MESES[Number(mes) - 1];
-
-  return (
-    <section className="border-b border-linea bg-superficie">
-      <div className="contenedor flex flex-wrap items-center justify-center gap-x-8 gap-y-4 py-7 text-center sm:py-9">
-        <div>
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.24em] text-tenue">
-            {dato.esMesActual ? 'Pagado este mes' : `Pagado en ${nombre} de ${anio}`}
-          </p>
-          <Monto centavos={dato.totalCentavos} tam="lg" className="mt-1.5 font-display texto-dorado" />
-        </div>
-
-        <span aria-hidden="true" className="hidden h-12 w-px bg-linea sm:block" />
-
-        <div>
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.24em] text-tenue">
-            Premios entregados
-          </p>
-          <p className="mt-1.5 font-display text-4xl font-bold tabular text-marca sm:text-5xl">
-            {dato.premios}
-          </p>
-        </div>
-      </div>
-    </section>
   );
 }
