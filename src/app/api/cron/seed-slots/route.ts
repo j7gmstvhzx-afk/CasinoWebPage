@@ -68,11 +68,20 @@ export async function GET(req: NextRequest) {
     select app.rate_events_gc() as borradas
   `.catch(() => [{ borradas: -1 }]);
 
+  // Y las excepciones de horario que ya pasaron. Un "cerrado por mantenimiento"
+  // del año pasado no lo mira nadie y solo ensucia la lista del panel, que es
+  // donde el dueño busca la de la semana que viene. Mismo trato: si falla, se
+  // ignora y la siembra sigue.
+  const excepciones = await sql<{ borradas: number }[]>`
+    select app.horario_excepciones_gc() as borradas
+  `.catch(() => [{ borradas: -1 }]);
+
   return NextResponse.json({
     ok: true,
     sembrados: nuevos,
     yaExistian: dias.length - nuevos,
     limiteLimpiado: limpiadas[0]?.borradas ?? 0,
+    excepcionesLimpiadas: excepciones[0]?.borradas ?? 0,
     // Jamás se devuelve winning_moment_at. Este endpoint está protegido, pero
     // un secreto filtrado no debe además regalar la respuesta del juego.
     hasta: dias[dias.length - 1]?.gaming_date ?? null,

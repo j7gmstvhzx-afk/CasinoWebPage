@@ -16,7 +16,13 @@ import { revalidatePath } from 'next/cache';
  * eventos, se quita de aquí y no queda nadie invalidando de más.
  */
 
-export type ContenidoEditable = 'eventos' | 'maquinas' | 'galeria' | 'menu' | 'jackpots';
+export type ContenidoEditable =
+  | 'eventos'
+  | 'maquinas'
+  | 'galeria'
+  | 'menu'
+  | 'jackpots'
+  | 'horario';
 
 const RUTAS: Record<ContenidoEditable, string[]> = {
   eventos: ['/', '/eventos'],
@@ -24,6 +30,10 @@ const RUTAS: Record<ContenidoEditable, string[]> = {
   galeria: ['/galeria'],
   menu: ['/menu'],
   jackpots: ['/', '/jackpots'],
+  // El horario sale en la portada (la banda del parte del día), en el pie de
+  // TODAS las páginas y en Contacto. El pie está en el layout, así que hay que
+  // refrescar cada página que lo lleve: por eso la lista es larga y explícita.
+  horario: ['/', '/jackpots', '/maquinas-nuevas', '/eventos', '/galeria', '/menu', '/contacto', '/cuenta'],
 };
 
 export function refrescarPublico(tipo: ContenidoEditable): void {

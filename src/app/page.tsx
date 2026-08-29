@@ -6,11 +6,16 @@ import {
   getJackpots,
   getMaquinasNuevas,
   getEventos,
+  getHorario,
+  getPrograma,
   getUltimaActualizacion,
   seguro,
 } from '@/lib/queries';
 import { money, relativeUpdate, longDate } from '@/lib/format';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
+import { ParteDelDia } from '@/components/site/ParteDelDia';
+import { HorarioTexto } from '@/components/site/HorarioTexto';
+import { estadoDelSalon, programaDelDia } from '@/lib/horario';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -27,17 +32,37 @@ export const revalidate = 60;
 export const maxDuration = 15;
 
 export default async function Inicio() {
-  const [jackpots, maquinas, eventos, ultima] = await Promise.all([
+  const [jackpots, maquinas, eventos, ultima, horario, programa] = await Promise.all([
     seguro(getJackpots, []),
     seguro(() => getMaquinasNuevas(6), []),
     seguro(() => getEventos(3), []),
     seguro(getUltimaActualizacion, null),
+    // Respaldo: una semana entera sin horario. La banda se esconde sola en vez
+    // de anunciar que el casino está cerrado porque una consulta falló.
+    seguro(getHorario, { semana: Array(7).fill(null), excepciones: {} }),
+    seguro(getPrograma, []),
   ]);
 
   const destacados = jackpots.slice(0, 4);
 
   return (
     <>
+      {/* EL PARTE DEL DÍA, ANTES QUE NADA.
+
+          Lo primero que quiere saber quien abre la página de un casino es si
+          está abierto ahora. Hasta ahora eso no se podía contestar: el horario
+          era una cadena de texto escrita a mano en site.ts.
+
+          El estado se calcula aquí para que la página tenga sentido sin
+          JavaScript, y se vuelve a calcular en el navegador porque esta página
+          se sirve de caché y "Abierto ahora" es la frase que más caro sale
+          equivocada. */}
+      <ParteDelDia
+        horario={horario}
+        programa={programa}
+        inicial={estadoDelSalon(horario)}
+        programaInicial={programaDelDia(programa)}
+      />
       {/* ---------------------------------------------------------------- */}
       {/* Premios más altos — LO PRIMERO DE LA PÁGINA                        */}
       {/*                                                                    */}
@@ -191,7 +216,7 @@ export default async function Inicio() {
             </div>
 
             <p className="mt-6 text-sm text-tenue">
-              {SITE.hours} · {SITE.address.city}, Puerto Rico
+              {SITE.address.city}, Puerto Rico
             </p>
           </div>
 
@@ -311,7 +336,7 @@ export default async function Inicio() {
                   {SITE.phoneDisplay}
                 </a>
               </p>
-              <p>{SITE.hours}</p>
+              <HorarioTexto />
             </address>
             <div className="mt-6 flex flex-wrap gap-3">
               <a

@@ -1,32 +1,15 @@
 import { PROMO } from './site';
+import { hoyEnPR } from './hora-pr';
 
 /**
- * La edad, contada en el calendario de Puerto Rico.
+ * La edad, contada en el calendario de Puerto Rico y no en el del servidor.
  *
- * POR QUÉ NO SE USA `new Date()` A SECAS
- * --------------------------------------
- * El servidor corre en UTC. A las 8:00 p.m. de Puerto Rico en UTC ya es el día
- * siguiente, así que "hoy" según el servidor y "hoy" según la persona que está
- * en Manatí no son el mismo día durante cuatro horas cada noche. Quien cumple
- * 18 años hoy sería mayor de edad para el servidor desde las 8 de la noche de
- * ayer.
- *
- * Puerto Rico está en UTC-4 y NO CAMBIA LA HORA en todo el año — no hay horario
- * de verano. Eso es lo que permite resolver esto con una resta de cuatro horas
- * en vez de con una librería de husos horarios: el desfase es constante. En
- * Nueva York este mismo cálculo necesitaría la base de datos de husos.
- *
- * La base de datos hace lo mismo con `at time zone 'America/Puerto_Rico'`, que
- * es la convención que ya usa `app.gaming_date()` desde la primera migración.
- * Aquí se replica para el lado de JavaScript, donde arrastrar esa dependencia
- * no compensa.
+ * El servidor corre en UTC, y a las 8:00 p.m. de Puerto Rico allí ya es el día
+ * siguiente: quien cumple 18 años hoy sería mayor de edad para el servidor
+ * desde las 8 de la noche de ayer. `hoyEnPR` vive en `hora-pr.ts`, que explica
+ * por qué esto se puede resolver con una resta constante.
  */
-const DESFASE_PR_MS = 4 * 60 * 60 * 1000;
-
-/** El día de calendario que es AHORA en Puerto Rico, como 'YYYY-MM-DD'. */
-export function hoyEnPR(ahora: number = Date.now()): string {
-  return new Date(ahora - DESFASE_PR_MS).toISOString().slice(0, 10);
-}
+export { hoyEnPR };
 
 /**
  * Cuántos años cumplidos tiene quien nació en `nacimiento`.

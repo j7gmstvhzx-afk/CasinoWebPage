@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql } from './db';
+import type { HorarioSitio, Programa, ReglaDia } from './horario';
 
 export type Jackpot = {
   puntos: (string | number)[] | null;
@@ -532,4 +533,73 @@ export async function getHistorialPagos(): Promise<PremiosPagados[]> {
     premios: Number(f.premios),
     esMesActual: f.es_actual,
   }));
+}
+
+// =============================================================================
+// El horario del salón y lo que pasa cada semana
+// =============================================================================
+
+/**
+ * El horario, para que el navegador calcule el estado.
+ *
+ * DEVUELVE EL HORARIO, NO SI ESTÁ ABIERTO. La diferencia es lo que hace que
+ * esto funcione con la caché: todas las páginas públicas son `revalidate = 60`,
+ * así que un "Abierto ahora" calculado aquí llegaría al visitante dentro de una
+ * página guardada y podría estar caducado. Un horario no caduca — "los sábados
+ * abrimos a las 8" sigue siendo cierto mañana— y el estado lo saca el navegador
+ * con el reloj del momento. Ver `src/lib/horario.ts`.
+ *
+ * Las excepciones se traen solo de una ventana corta alrededor de hoy: son las
+ * únicas que pueden cambiar lo que se pinta, y traerlas todas crecería para
+ * siempre. Desde AYER, porque una franja de ayer que cruza medianoche todavía
+ * puede tener el salón abierto a las dos de la mañana.
+ */
+export async function getHorario(): Promise<HorarioSitio> {
+  const [dias, excepciones] = await Promise.all([
+    sql<{ dia: number; abre: string | null; cierra: string | null }[]>`
+      select dia, abre::text, cierra::text from app.horario order by dia
+    `,
+    sql<{ fecha: string; abre: string | null; cierra: string | null; cerrado: boolean }[]>`
+      select fecha::text, abre::text, cierra::text, cerrado
+        from app.horario_excepcion
+       where fecha between (now() at time zone 'America/Puerto_Rico')::date - 1
+                       and (now() at time zone 'America/Puerto_Rico')::date + 8
+    `,
+  ]);
+
+  const semana: ReglaDia[] = Array(7).fill(null);
+  for (const d of dias) {
+    semana[d.dia] = d.abre && d.cierra ? { abre: d.abre, cierra: d.cierra } : null;
+  }
+
+  const mapa: Record<string, ReglaDia> = {};
+  for (const e of excepciones) {
+    // `null` en el mapa significa CERRADO ese día, que no es lo mismo que no
+    // tener excepción. Por eso `reglaDe` pregunta con `hasOwn`.
+    mapa[e.fecha] = e.cerrado || !e.abre || !e.cierra ? null : { abre: e.abre, cierra: e.cierra };
+  }
+
+  return { semana, excepciones: mapa };
+}
+
+/** Lo que se repite cada semana: cortesías, menú de fin de semana, música. */
+export async function getPrograma(): Promise<Programa[]> {
+  const filas = await sql<
+    {
+      id: string;
+      titulo: string;
+      detalle: string | null;
+      dias: number[];
+      desde: string;
+      hasta: string;
+      cortesia: boolean;
+      icono: string | null;
+    }[]
+  >`
+    select id, titulo, detalle, dias, desde::text, hasta::text, cortesia, icono
+      from app.programa
+     where activo
+     order by orden, desde
+  `;
+  return filas.map((f) => ({ ...f, dias: (f.dias ?? []).map(Number) }));
 }

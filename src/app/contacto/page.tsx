@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/site/PageHero';
 import { SITE, fullAddress } from '@/lib/site';
+import { HorarioTexto } from '@/components/site/HorarioTexto';
 
 export const metadata: Metadata = {
   title: 'Contacto',
@@ -37,7 +38,7 @@ export default function PaginaContacto() {
               </Dato>
 
               <Dato etiqueta="Horario">
-                <p>{SITE.hours}</p>
+                <HorarioTexto detallado />
               </Dato>
 
               <Dato etiqueta="Síguenos">

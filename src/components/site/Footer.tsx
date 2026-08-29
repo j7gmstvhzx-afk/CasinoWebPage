@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Logo } from './Logo';
 import { NAV, SITE, PROMO, fullAddress } from '@/lib/site';
 import { AYUDA } from '@/lib/juego-responsable';
+import { HorarioTexto } from './HorarioTexto';
 
 export function Footer() {
   return (
@@ -26,7 +27,7 @@ export function Footer() {
                 {SITE.phoneDisplay}
               </a>
             </p>
-            <p>{SITE.hours}</p>
+            <HorarioTexto />
           </address>
           <div className="mt-4 flex gap-2">
             <a
