@@ -15,8 +15,7 @@ export default async function PaginaGanadores() {
   const ganadores = await seguro(
     () =>
       sql<GanadorAdmin[]>`
-        select id, nombre, pueblo, maquina, monto_cents::text as monto_cents,
-               gano_on::text, image_path, consentimiento_nota, publicado, orden
+        select id, pueblo, monto_cents::text as monto_cents, gano_on::text, publicado
           from app.ganadores
          order by gano_on desc, orden, creado_en desc
          limit 100
@@ -28,8 +27,9 @@ export default async function PaginaGanadores() {
     <>
       <h1 className="font-display text-3xl font-bold">Ganadores</h1>
       <p className="mt-2 max-w-2xl text-sm text-tenue">
-        La página que más convence de venir: un vecino con su premio. Aquí van
-        tanto los del sorteo de $25 como los jackpots del salón.
+        El pueblo y la cantidad, nada más. Sin nombre ni foto no hay que pedirle
+        permiso a nadie, y sigue diciendo lo que importa: que aquí se paga y que
+        le tocó a alguien de al lado. La fecha se pone sola.
       </p>
 
       <GestorGanadores ganadores={ganadores} />

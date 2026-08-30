@@ -99,3 +99,24 @@ export function diaSemanaDe(fecha: string): number {
 export const DIAS = [
   'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado',
 ] as const;
+
+export const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+] as const;
+
+/**
+ * "2026-08-01" -> "agosto".
+ *
+ * Se parte la cadena en vez de usar `new Date`: la columna es un DÍA DE
+ * CALENDARIO, y `new Date('2026-08-01')` lo lee como medianoche UTC, que desde
+ * Puerto Rico es el 31 de julio a las 8 p.m. El mes se cambiaría solo.
+ *
+ * Esta función estaba copiada en tres archivos —la portada, el tablero de
+ * premios y el panel— con el mismo array de meses al lado. Tres copias de la
+ * misma trampa son tres sitios donde arreglarla.
+ */
+export function nombreMesDe(iso: string): { mes: string; anio: string } {
+  const [anio, mes] = iso.split('-');
+  return { mes: MESES[Number(mes) - 1] ?? '', anio };
+}

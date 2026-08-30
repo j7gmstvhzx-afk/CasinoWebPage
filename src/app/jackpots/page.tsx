@@ -12,6 +12,7 @@ import {
 } from '@/lib/queries';
 import { money, relativeUpdate, longDate } from '@/lib/format';
 import { Monto } from '@/components/site/Monto';
+import { nombreMesDe } from '@/lib/hora-pr';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -68,11 +69,6 @@ export default async function PaginaJackpots() {
   );
 }
 
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
-
 /**
  * "2026-08-01" -> "agosto".
  *
@@ -80,10 +76,6 @@ const MESES = [
  * CALENDARIO, y `new Date('2026-08-01')` lo lee como medianoche UTC, que desde
  * Puerto Rico (UTC-4) es el 31 de julio a las 8 p.m. El mes se cambiaría solo.
  */
-function nombreMes(iso: string): { mes: string; anio: string } {
-  const [anio, mes] = iso.split('-');
-  return { mes: MESES[Number(mes) - 1] ?? '', anio };
-}
 
 /**
  * La primera pantalla de la pestaña de premios.
@@ -166,7 +158,7 @@ function Portada({
 
 /** El titular: lo que el casino pagó en premios, con su mes. */
 function TitularPagado({ pagados }: { pagados: PremiosPagados }) {
-  const { mes, anio } = nombreMes(pagados.mes);
+  const { mes, anio } = nombreMesDe(pagados.mes);
 
   return (
     <>

@@ -4,17 +4,13 @@ import { useId, useState } from 'react';
 import { money } from '@/lib/format';
 import { pedirJson } from '@/lib/fetch-json';
 import type { PremiosPagados as Fila } from '@/lib/queries';
+import { nombreMesDe } from '@/lib/hora-pr';
 
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
-
-/** "2026-08-01" -> "agosto de 2026". Sin `new Date`, que corre el mes por huso. */
-function nombreMes(iso: string): string {
-  const [a, m] = iso.split('-');
-  return `${MESES[Number(m) - 1]} de ${a}`;
-}
+/** "2026-08-01" -> "agosto de 2026". */
+const nombreMes = (iso: string) => {
+  const { mes, anio } = nombreMesDe(iso);
+  return `${mes} de ${anio}`;
+};
 
 function mesActual(): string {
   const h = new Date();

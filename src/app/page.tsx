@@ -7,6 +7,7 @@ import {
   getMaquinasNuevas,
   getEventos,
   getHorario,
+  getPremiosPagados,
   getPrograma,
   getUltimaActualizacion,
   seguro,
@@ -15,6 +16,7 @@ import { money, relativeUpdate, longDate } from '@/lib/format';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
 import { ParteDelDia } from '@/components/site/ParteDelDia';
 import { HorarioTexto } from '@/components/site/HorarioTexto';
+import { PagadoEsteMes } from '@/components/site/PagadoEsteMes';
 import { estadoDelSalon, programaDelDia } from '@/lib/horario';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
@@ -32,7 +34,7 @@ export const revalidate = 60;
 export const maxDuration = 15;
 
 export default async function Inicio() {
-  const [jackpots, maquinas, eventos, ultima, horario, programa] = await Promise.all([
+  const [jackpots, maquinas, eventos, ultima, horario, programa, pagados] = await Promise.all([
     seguro(getJackpots, []),
     seguro(() => getMaquinasNuevas(6), []),
     seguro(() => getEventos(3), []),
@@ -41,9 +43,13 @@ export default async function Inicio() {
     // de anunciar que el casino está cerrado porque una consulta falló.
     seguro(getHorario, { semana: Array(7).fill(null), excepciones: {} }),
     seguro(getPrograma, []),
+    seguro(getPremiosPagados, null),
   ]);
 
-  const destacados = jackpots.slice(0, 4);
+  // CINCO, y salen ordenados de mayor a menor sin que nadie los ordene:
+  // `getJackpots` ya devuelve la lista por monto descendente, así que al entrar
+  // una lectura nueva desde el panel la máquina sube o baja de puesto sola.
+  const destacados = jackpots.slice(0, 5);
 
   return (
     <>
@@ -63,6 +69,17 @@ export default async function Inicio() {
         inicial={estadoDelSalon(horario)}
         programaInicial={programaDelDia(programa)}
       />
+
+      {/* LO PAGADO EN EL MES, ARRIBA DEL TODO.
+
+          Es la cifra que contesta la pregunta que trae a alguien a la página de
+          un casino: ¿este sitio paga? Sale sola la última entrada que hizo el
+          administrador —`getPremiosPagados` pide el mes más reciente con
+          datos— así que en cuanto se guarda una cifra nueva, es la que se ve.
+
+          Si todavía no hay ninguna, no se pinta nada: mejor que un "$0.00". */}
+      {pagados && <PagadoEsteMes dato={pagados} />}
+
       {/* ---------------------------------------------------------------- */}
       {/* Premios más altos — LO PRIMERO DE LA PÁGINA                        */}
       {/*                                                                    */}
@@ -78,7 +95,7 @@ export default async function Inicio() {
           <EncabezadoSeccion
             compacto
             comoH1
-            titulo="Premios más altos ahora"
+            titulo="Los cinco premios más altos ahora"
             enlace={{ href: '/jackpots', texto: 'Ver todos' }}
             nota={ultima ? `Actualizado ${relativeUpdate(ultima)}` : undefined}
           />
@@ -97,7 +114,7 @@ export default async function Inicio() {
               del 🔥 de al lado, dejando "Lightni🔥g Link". Por debajo de 380px
               se vuelve a una columna: en el teléfono más estrecho pesa más leer
               el nombre entero que ahorrar scroll. */}
-          <ul className="mt-6 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-6 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-5">
             {destacados.map((j, i) => (
               <li key={j.id} className="tarjeta relative overflow-hidden p-5">
                 <div

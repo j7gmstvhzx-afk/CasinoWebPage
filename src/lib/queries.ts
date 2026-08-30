@@ -610,33 +610,27 @@ export async function getPrograma(): Promise<Programa[]> {
 
 export type Ganador = {
   id: string;
-  nombre: string;
-  pueblo: string | null;
-  maquina: string | null;
-  montoCentavos: number | null;
+  pueblo: string;
+  montoCentavos: number;
   ganoEn: string;
-  imagen: string | null;
 };
 
 /**
  * Los ganadores publicados, del más reciente al más viejo.
  *
- * Solo salen los que tienen `publicado` en true, y la tabla solo deja guardar
- * filas con consentimiento — así que llegar aquí ya implica permiso por escrito.
+ * DOS DATOS Y NADA MÁS: pueblo y cantidad. No hay nombre, ni foto, ni máquina.
+ *
+ * Eso no es solo simplicidad: un pueblo y una cantidad NO IDENTIFICAN A NADIE,
+ * así que no hay dato personal que publicar y desaparece toda la cuestión del
+ * permiso — no hay que pedirlo, ni guardarlo, ni poder demostrarlo después. La
+ * prueba social se mantiene casi entera: "Vega Baja — $2,400" sigue diciendo
+ * que aquí se paga y que le tocó a alguien de al lado.
  */
 export async function getGanadores(limite = 24): Promise<Ganador[]> {
   const filas = await sql<
-    {
-      id: string;
-      nombre: string;
-      pueblo: string | null;
-      maquina: string | null;
-      monto_cents: string | null;
-      gano_on: string;
-      image_path: string | null;
-    }[]
+    { id: string; pueblo: string; monto_cents: string; gano_on: string }[]
   >`
-    select id, nombre, pueblo, maquina, monto_cents::text, gano_on::text, image_path
+    select id, pueblo, monto_cents::text, gano_on::text
       from app.ganadores
      where publicado
      order by gano_on desc, orden, creado_en desc
@@ -644,11 +638,8 @@ export async function getGanadores(limite = 24): Promise<Ganador[]> {
   `;
   return filas.map((f) => ({
     id: f.id,
-    nombre: f.nombre,
     pueblo: f.pueblo,
-    maquina: f.maquina,
-    montoCentavos: f.monto_cents === null ? null : Number(f.monto_cents),
+    montoCentavos: Number(f.monto_cents),
     ganoEn: f.gano_on,
-    imagen: f.image_path,
   }));
 }
