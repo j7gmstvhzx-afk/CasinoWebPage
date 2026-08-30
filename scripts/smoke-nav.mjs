@@ -30,7 +30,7 @@ const CHROMIUM = process.env.CHROMIUM_PATH;
 // Los nombres tienen que cuadrar con NAV en src/lib/site.ts. Cuando la pestaña
 // del menú pasó a llamarse "Comida", esta prueba falló — que es justo lo que
 // tenía que hacer.
-const PESTANAS = ['Jackpots', 'Máquinas Nuevas', 'Eventos', 'Galería', 'Comida', 'Contacto', 'Mi cuenta'];
+const PESTANAS = ['Jackpots', 'Máquinas Nuevas', 'Eventos', 'Galería', 'Ganadores', 'Comida', 'Contacto', 'Mi cuenta'];
 
 let fallos = 0;
 const comprobar = (ok, texto) => {

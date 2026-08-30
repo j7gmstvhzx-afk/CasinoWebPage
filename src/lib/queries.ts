@@ -603,3 +603,52 @@ export async function getPrograma(): Promise<Programa[]> {
   `;
   return filas.map((f) => ({ ...f, dias: (f.dias ?? []).map(Number) }));
 }
+
+// =============================================================================
+// El muro de ganadores
+// =============================================================================
+
+export type Ganador = {
+  id: string;
+  nombre: string;
+  pueblo: string | null;
+  maquina: string | null;
+  montoCentavos: number | null;
+  ganoEn: string;
+  imagen: string | null;
+};
+
+/**
+ * Los ganadores publicados, del más reciente al más viejo.
+ *
+ * Solo salen los que tienen `publicado` en true, y la tabla solo deja guardar
+ * filas con consentimiento — así que llegar aquí ya implica permiso por escrito.
+ */
+export async function getGanadores(limite = 24): Promise<Ganador[]> {
+  const filas = await sql<
+    {
+      id: string;
+      nombre: string;
+      pueblo: string | null;
+      maquina: string | null;
+      monto_cents: string | null;
+      gano_on: string;
+      image_path: string | null;
+    }[]
+  >`
+    select id, nombre, pueblo, maquina, monto_cents::text, gano_on::text, image_path
+      from app.ganadores
+     where publicado
+     order by gano_on desc, orden, creado_en desc
+     limit ${limite}
+  `;
+  return filas.map((f) => ({
+    id: f.id,
+    nombre: f.nombre,
+    pueblo: f.pueblo,
+    maquina: f.maquina,
+    montoCentavos: f.monto_cents === null ? null : Number(f.monto_cents),
+    ganoEn: f.gano_on,
+    imagen: f.image_path,
+  }));
+}

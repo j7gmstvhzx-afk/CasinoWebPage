@@ -22,7 +22,8 @@ export type ContenidoEditable =
   | 'galeria'
   | 'menu'
   | 'jackpots'
-  | 'horario';
+  | 'horario'
+  | 'ganadores';
 
 const RUTAS: Record<ContenidoEditable, string[]> = {
   eventos: ['/', '/eventos'],
@@ -33,6 +34,7 @@ const RUTAS: Record<ContenidoEditable, string[]> = {
   // El horario sale en la portada (la banda del parte del día), en el pie de
   // TODAS las páginas y en Contacto. El pie está en el layout, así que hay que
   // refrescar cada página que lo lleve: por eso la lista es larga y explícita.
+  ganadores: ['/ganadores', '/jackpots'],
   horario: ['/', '/jackpots', '/maquinas-nuevas', '/eventos', '/galeria', '/menu', '/contacto', '/cuenta'],
 };
 

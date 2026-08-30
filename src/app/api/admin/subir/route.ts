@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /** Carpetas permitidas. Lista cerrada para que no se pueda escribir en cualquier sitio del bucket. */
-const CARPETAS = new Set(['eventos', 'maquinas', 'galeria', 'menu']);
+const CARPETAS = new Set(['eventos', 'maquinas', 'galeria', 'menu', 'ganadores']);
 
 export async function POST(req: NextRequest) {
   if (!(await esAdmin())) {

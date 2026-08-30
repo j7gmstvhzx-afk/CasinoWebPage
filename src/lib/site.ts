@@ -47,6 +47,10 @@ export const NAV = [
   { href: '/maquinas-nuevas', label: 'Máquinas Nuevas' },
   { href: '/eventos', label: 'Eventos' },
   { href: '/galeria', label: 'Galería' },
+  // El muro de ganadores. Va en el menú y no escondido dentro de Jackpots: es
+  // la prueba social del salón, y en los casinos pequeños de EEUU es una
+  // sección de primer nivel en todos los que la tienen.
+  { href: '/ganadores', label: 'Ganadores' },
   // "Comida" y no "Menú": la pestaña ya no es la carta de un restaurante —el
   // casino no tiene— sino lo que la casa invita mientras juegas más el menú del
   // fin de semana. Y cabe mejor en una barra de ocho pestañas.
