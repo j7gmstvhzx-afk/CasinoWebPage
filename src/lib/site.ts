@@ -47,7 +47,10 @@ export const NAV = [
   { href: '/maquinas-nuevas', label: 'Máquinas Nuevas' },
   { href: '/eventos', label: 'Eventos' },
   { href: '/galeria', label: 'Galería' },
-  { href: '/menu', label: 'Menú' },
+  // "Comida" y no "Menú": la pestaña ya no es la carta de un restaurante —el
+  // casino no tiene— sino lo que la casa invita mientras juegas más el menú del
+  // fin de semana. Y cabe mejor en una barra de ocho pestañas.
+  { href: '/menu', label: 'Comida' },
   { href: '/contacto', label: 'Contacto' },
   // Va en el menú, y no solo dentro del pop-up, porque es la cuenta con la que
   // se participa en el sorteo: tiene que poder crearse y consultarse sin

@@ -27,7 +27,10 @@ const BASE = process.argv[2] ?? 'http://localhost:3000';
 // Sin CHROMIUM_PATH se usa el Chromium que instala Playwright. Antes había una
 // ruta de Linux fija aquí y la prueba no arrancaba fuera de aquel sandbox.
 const CHROMIUM = process.env.CHROMIUM_PATH;
-const PESTANAS = ['Jackpots', 'Máquinas Nuevas', 'Eventos', 'Galería', 'Menú', 'Contacto', 'Mi cuenta'];
+// Los nombres tienen que cuadrar con NAV en src/lib/site.ts. Cuando la pestaña
+// del menú pasó a llamarse "Comida", esta prueba falló — que es justo lo que
+// tenía que hacer.
+const PESTANAS = ['Jackpots', 'Máquinas Nuevas', 'Eventos', 'Galería', 'Comida', 'Contacto', 'Mi cuenta'];
 
 let fallos = 0;
 const comprobar = (ok, texto) => {

@@ -15,7 +15,7 @@ export function SubirImagen({
   onCambio,
   proporcion = 'aspect-[4/5]',
 }: {
-  carpeta: 'eventos' | 'maquinas' | 'galeria';
+  carpeta: 'eventos' | 'maquinas' | 'galeria' | 'menu';
   valor: string | null;
   onCambio: (ruta: string | null) => void;
   proporcion?: string;

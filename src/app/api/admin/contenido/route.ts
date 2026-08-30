@@ -55,8 +55,10 @@ const ESQUEMAS = {
     section_id: z.number().int().min(1).max(32767),
     name: z.string().trim().min(2).max(140),
     description: z.string().trim().max(500).nullable().optional(),
-    // NULL a propósito: es "precio del día", no "gratis".
+    // NULL a propósito: es "precio del día", no "gratis". En las secciones de
+    // cortesía no se enseña precio ninguno.
     price_cents: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    image_path: z.string().trim().max(500).nullable().optional(),
     available: z.boolean().optional(),
     sort_order: z.number().int().min(0).max(999).optional(),
   }),
@@ -82,7 +84,9 @@ const CON_IMAGEN: Record<Tipo, boolean> = {
   eventos: true,
   maquinas: true,
   galeria: true,
-  menu: false,
+  // Pasó a true con 0014: el menú del fin de semana lleva foto. Un plato sin
+  // foto no vende, y esta es la pestaña que enseña lo que el casino regala.
+  menu: true,
 };
 
 const esTipo = (t: unknown): t is Tipo => typeof t === 'string' && t in ESQUEMAS;

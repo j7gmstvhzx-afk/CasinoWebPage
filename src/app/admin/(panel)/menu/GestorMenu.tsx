@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { money } from '@/lib/format';
 import { pedirJson, ERROR_GENERICO } from '@/lib/fetch-json';
+import { SubirImagen } from '@/components/admin/SubirImagen';
 
 export type PlatoAdmin = {
   id: string;
@@ -11,11 +12,12 @@ export type PlatoAdmin = {
   name: string;
   description: string | null;
   price_cents: number | null;
+  image_path: string | null;
   available: boolean;
   sort_order: number;
 };
 
-export type SeccionMenu = { id: number; name: string };
+export type SeccionMenu = { id: number; name: string; cortesia: boolean; nota: string | null };
 
 type Borrador = {
   section_id: number;
@@ -23,6 +25,7 @@ type Borrador = {
   description: string;
   /** Se escribe en dólares, como lo piensa una persona. A centavos al guardar. */
   precio: string;
+  image_path: string | null;
   sort_order: number;
 };
 
@@ -31,6 +34,7 @@ const vacio = (seccionId: number): Borrador => ({
   name: '',
   description: '',
   precio: '',
+  image_path: null,
   sort_order: 0,
 });
 
@@ -39,6 +43,7 @@ const aBorrador = (p: PlatoAdmin): Borrador => ({
   name: p.name,
   description: p.description ?? '',
   precio: p.price_cents === null ? '' : (p.price_cents / 100).toFixed(2),
+  image_path: p.image_path,
   sort_order: p.sort_order,
 });
 
@@ -99,6 +104,7 @@ export function GestorMenu({
       name: borrador.name.trim(),
       description: borrador.description.trim() || null,
       price_cents: centavos,
+      image_path: borrador.image_path,
       sort_order: borrador.sort_order,
     };
 
@@ -129,6 +135,8 @@ export function GestorMenu({
     if (fallo) return setError(fallo);
     router.refresh();
   }
+
+  const esCortesia = secciones.find((s) => s.id === borrador.section_id)?.cortesia ?? false;
 
   const porSeccion = secciones.map((s) => ({
     ...s,
@@ -173,7 +181,15 @@ export function GestorMenu({
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">
-                Precio <span className="font-normal text-tenue">(vacío = precio del día)</span>
+                Precio{' '}
+                <span className="font-normal text-tenue">
+                  {/* En una sección de cortesía el precio no se enseña en la
+                      página: lo que va por cuenta de la casa no lleva número,
+                      y poner "$0.00" convertiría un regalo en una
+                      transacción. Se dice aquí para que nadie se pregunte por
+                      qué lo que escribió no sale. */}
+                  {esCortesia ? '(esta sección es gratis: no sale precio)' : '(vacío = precio del día)'}
+                </span>
               </span>
               <input
                 inputMode="decimal"
@@ -205,6 +221,21 @@ export function GestorMenu({
                 className={estiloCampo}
               />
             </label>
+
+            <div className="sm:col-span-2">
+              <p className="mb-1.5 block text-sm font-medium text-tinta">
+                Foto <span className="font-normal text-tenue">(opcional)</span>
+              </p>
+              <SubirImagen
+                carpeta="menu"
+                valor={borrador.image_path}
+                onCambio={(ruta) => setBorrador({ ...borrador, image_path: ruta })}
+              />
+              <p className="mt-2 text-xs text-tenue">
+                Sobre todo para el menú del fin de semana: con foto se pinta en
+                tarjetas y sin foto queda como una lista.
+              </p>
+            </div>
           </div>
 
           {error && (
