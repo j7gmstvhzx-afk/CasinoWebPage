@@ -68,9 +68,16 @@ create table if not exists app.horario (
 comment on table app.horario is
   'Horario semanal del salón. Siete filas fijas que se editan, nunca se crean ni se borran. Si cierra < abre, el cierre es del día siguiente.';
 
--- Las siete filas nacen aquí para que el panel tenga siempre qué enseñar. Los
--- valores son los que estaban escritos a mano en site.ts, que EL DUEÑO TIENE
--- QUE CONFIRMAR: venían de un directorio público, no del casino.
+-- Las siete filas nacen aquí para que el panel tenga siempre qué enseñar.
+--
+-- Estos valores CONFIRMADOS POR EL DUEÑO: 8:00 a.m. a 12:00 a.m., los siete
+-- días de la semana. Coinciden con lo que estaba escrito a mano en site.ts, que
+-- venía de un directorio público — así que la cifra vieja resultó ser correcta,
+-- pero eso no se sabía cuando se escribió esta migración y no se podía dar por
+-- bueno. Ahora sí.
+--
+-- Que el cierre sea a las 12:00 a.m. es justamente el caso que obliga a la
+-- regla de "si cierra < abre, el cierre es del día siguiente" de más arriba.
 insert into app.horario (dia, abre, cierra)
 values (0, '08:00', '00:00'), (1, '08:00', '00:00'), (2, '08:00', '00:00'),
        (3, '08:00', '00:00'), (4, '08:00', '00:00'), (5, '08:00', '00:00'),

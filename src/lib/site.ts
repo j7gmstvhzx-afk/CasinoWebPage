@@ -1,9 +1,20 @@
 /**
  * Datos del negocio.
  *
- * PENDIENTE DE CONFIRMAR con el cliente antes de salir en vivo. Estos valores
- * vienen de directorios públicos (Discover Puerto Rico, InfoPáginas), no de una
- * fuente del casino.
+ * OJO CON QUÉ ESTÁ CONFIRMADO Y QUÉ NO. Estos valores salieron de directorios
+ * públicos (Discover Puerto Rico, InfoPáginas), no de una fuente del casino, y
+ * solo se han ido confirmando de uno en uno:
+ *
+ *   HORARIO   Confirmado por el dueño: 8:00 a.m. a 12:00 a.m., los siete días.
+ *             Coincide con lo que ya había, pero ahora se sabe que es cierto y
+ *             no una coincidencia afortunada. El horario que ve el visitante ya
+ *             NO sale de aquí: vive en `app.horario` y se edita en
+ *             /admin/horario. El `hours` de abajo es solo el respaldo para
+ *             cuando la consulta falla (ver HorarioTexto.tsx).
+ *
+ *   TELÉFONO, DIRECCIÓN, REDES   SIN CONFIRMAR todavía. Salen en el pie de
+ *             todas las páginas, en Contacto y en el mapa. Un teléfono
+ *             equivocado es un cliente que no llama.
  */
 export const SITE = {
   name: 'Casino Atlántico Manatí',
