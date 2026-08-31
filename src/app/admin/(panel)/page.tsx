@@ -16,6 +16,8 @@ export const metadata: Metadata = {
 };
 
 type Resumen = {
+  /** Ojo: un `count(*)` llega como CADENA. Hay que pasarlo por Number(). */
+  pagados_del_mes: string | number;
   clientes: number;
   clientes_hoy: number;
   tiradas_hoy: number;
@@ -48,7 +50,14 @@ export default async function PaginaResumen() {
               where status = 'issued' and expires_at > now())         as pendientes,
             (select count(*) from app.machines where active)          as maquinas,
             (select max(reading_at) from app.jackpot_readings
-              where amount_cents is not null)                         as ultima_lectura
+              where amount_cents is not null)                         as ultima_lectura,
+            -- ¿Hay cifra de premios pagados del mes EN CURSO? Se compara contra
+            -- el mes de Puerto Rico, no el del servidor: el día 1 a la 1 de la
+            -- mañana en UTC todavía es día 31 en Manatí, y el aviso saldría un
+            -- día antes de tiempo.
+            (select count(*) from app.monthly_payouts
+              where mes = date_trunc('month',
+                          (now() at time zone 'America/Puerto_Rico'))::date) as pagados_del_mes
         `;
         return r;
       },
@@ -70,7 +79,13 @@ export default async function PaginaResumen() {
     <>
       <h1 className="font-display text-3xl font-bold">Resumen</h1>
 
-      <Pendientes />
+      {/* `Number(...)`: un `count(*)` de Postgres es un bigint, y el driver lo
+          devuelve como CADENA. Sin la conversión, `"0" === 0` es false y el
+          aviso no sale nunca — que es exactamente lo que pasó al probarlo. El
+          tipo `Resumen` dice `number` y miente; el resto de los contadores se
+          libran porque solo se pintan o se comparan con `>`, que sí convierte
+          sola. */}
+      <Pendientes faltaPagados={Number(resumen?.pagados_del_mes ?? 1) === 0} />
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tarjeta n={resumen?.clientes ?? 0} t="Clientes registrados" sub={`+${resumen?.clientes_hoy ?? 0} hoy`} />
@@ -187,8 +202,30 @@ function Estado({ estado, vence }: { estado: string; vence: string }) {
  * El recordatorio hace falta —si desaparece del todo, se olvida— pero le hace
  * falta al dueño, no al cliente. Así que vive aquí.
  */
-function Pendientes() {
+function Pendientes({ faltaPagados }: { faltaPagados: boolean }) {
   const avisos: { titulo: string; texto: string }[] = [];
+
+  // ESTE AVISO EXISTE POR UN FALLO DE DISEÑO MÍO.
+  //
+  // La cifra de premios pagados del mes la escribe el personal. Si no está, la
+  // portada NO PINTA el bloque —mejor eso que un "$0.00"— y el tablero de
+  // premios cae a enseñar el total EN JUEGO, que es la suma de los progresivos
+  // disponibles. Las dos cosas son correctas por separado, pero juntas dejan al
+  // dueño mirando un total que no es el que esperaba SIN NINGUNA PISTA de qué
+  // falta ni dónde ponerlo. Eso pasó de verdad.
+  //
+  // El aviso va aquí, en lo primero que se ve al entrar al panel, y no en la
+  // página pública: el cliente no tiene nada que hacer con esta información.
+  if (faltaPagados) {
+    avisos.push({
+      titulo: 'Falta la cifra de premios pagados de este mes',
+      texto:
+        'Hasta que la pongas, la portada no enseña el bloque de "pagado este mes" ' +
+        'y la pestaña de Jackpots abre con el total EN JUEGO —la suma de los ' +
+        'progresivos disponibles—, que no es lo mismo. Ponla en Jackpots → ' +
+        'Premios pagados del mes y aparece en las dos al instante.',
+    });
+  }
 
   if (process.env.TERMINOS_APROBADOS !== 'si') {
     avisos.push({

@@ -195,17 +195,24 @@ function TitularEnJuego({ salon }: { salon: ResumenSalon }) {
   return (
     <>
       <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
-        En juego ahora mismo
+        Acumulado en las máquinas ahora mismo
       </p>
 
       <Monto centavos={salon.totalCentavos} tam="xl" className="mt-2 font-display text-dorado-3" />
 
+      {/* "Acumulado" y no "en juego", y se dice que TODAVÍA NO HA CAÍDO.
+
+          Es la suma de los progresivos disponibles: dinero esperando dentro de
+          las máquinas, no dinero que el casino haya pagado. Se leyó como un
+          total de premios pagados, y la confusión no es del lector — son dos
+          cifras grandes y doradas en el mismo sitio. Vale más una línea de
+          texto que dejarlo a la interpretación. */}
       <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
-        repartidos en{' '}
+        esperando en{' '}
         <strong className="font-semibold text-white">
           {salon.maquinas} {salon.maquinas === 1 ? 'máquina' : 'máquinas'}
         </strong>{' '}
-        del salón
+        del salón. Todavía no ha caído: es lo que hay para ganar
         {/* El acumulado solo aparece si de verdad subió. Un "+$0.00" fijo
             debajo de la cifra grande resta en vez de sumar. */}
         {salon.subioHoyCentavos > 0 && (
