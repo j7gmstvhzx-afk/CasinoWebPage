@@ -4,6 +4,7 @@ import {
   getJackpots,
   getJackpotsAlDia,
   getPremiosPagados,
+  pagosEnCero,
   getResumenSalon,
   getUltimaActualizacion,
   seguro,
@@ -50,7 +51,7 @@ export default async function PaginaJackpots() {
     // Un cero es una AFIRMACIÓN sobre el dinero del salón. Cuando no se sabe,
     // hay que no decir nada; callar se entiende, mentir no.
     seguro<ResumenSalon | null>(getResumenSalon, null),
-    seguro(getPremiosPagados, null),
+    seguro(getPremiosPagados, pagosEnCero()),
   ]);
 
   return (
@@ -97,10 +98,18 @@ export default async function PaginaJackpots() {
  *
  * CUANDO TODAVÍA NO HAY CIFRA DEL MES
  * -----------------------------------
- * No se enseña "$0.00 pagados", que es lo peor que podría decir esta página.
- * Se cae al titular anterior —  el dinero en juego —  hasta que el panel tenga
- * la cifra. Y si tampoco hay montos, no hay portada: nada mejor que una cifra
- * inventada.
+ * Se enseña el mes en curso en cero. Antes se caía al titular del dinero EN
+ * JUEGO —la suma de los progresivos disponibles— y eso resultó peor que el
+ * cero que trataba de evitar: son dos cifras grandes y doradas en el mismo
+ * sitio, y el total acumulado dentro de las máquinas se leyó como el total
+ * pagado. Lo reportó el dueño desde una captura.
+ *
+ * Ahora el titular contesta SIEMPRE la misma pregunta —cuánto se ha pagado— y
+ * lo acumulado baja a la línea de apoyo, donde ya dice que todavía no ha caído.
+ *
+ * El titular es el `h1` de la página. No es decoración: `/jackpots` no tenía
+ * NINGÚN encabezado, así que quien llega con un lector de pantalla a la página
+ * que es el reclamo principal del sitio no tenía por dónde entrar.
  */
 function Portada({
   salon,
@@ -109,36 +118,32 @@ function Portada({
   alDia,
 }: {
   salon: ResumenSalon | null;
-  pagados: PremiosPagados | null;
+  pagados: PremiosPagados;
   ultima: string | Date | null;
   alDia: boolean;
 }) {
   const hayJuego = salon !== null && salon.maquinas > 0;
-  if (!pagados && !hayJuego) return null;
 
   return (
     <section className="bloque-marca relative overflow-hidden">
       <div className="patron-picas-oro pointer-events-none absolute inset-0 opacity-[0.14]" />
       <div className="contenedor relative py-9 sm:py-12">
-        {pagados ? (
-          <TitularPagado pagados={pagados} />
-        ) : (
-          <TitularEnJuego salon={salon!} />
-        )}
+        <TitularPagado pagados={pagados} />
 
-        {/* La línea de apoyo. Solo aparece si el titular es el de lo pagado —
-            si el titular YA es el dinero en juego, repetirlo aquí sobra. */}
-        {pagados && hayJuego && (
+        {/* La línea de apoyo: lo que hay ACUMULADO en las máquinas ahora. Es
+            dinero esperando dentro de ellas, no dinero pagado, y por eso va
+            aquí abajo y con su aclaración, nunca como titular. */}
+        {hayJuego && (
           <p className="mt-5 max-w-2xl text-sm text-[#cfe0f5] sm:text-base">
             Y ahora mismo hay{' '}
             <strong className="whitespace-nowrap font-semibold text-dorado-3">
               {money(salon!.totalCentavos)}
             </strong>{' '}
-            acumulados en{' '}
+            acumulados sin caer en{' '}
             <strong className="font-semibold text-white">
               {salon!.maquinas} {salon!.maquinas === 1 ? 'máquina' : 'máquinas'}
             </strong>{' '}
-            del salón
+            del salón: es lo que hay para ganar
             {salon!.subioHoyCentavos > 0 && (
               <>
                 {' · '}
@@ -156,18 +161,25 @@ function Portada({
   );
 }
 
-/** El titular: lo que el casino pagó en premios, con su mes. */
+/**
+ * El titular de la página: lo que el casino lleva pagado este mes.
+ *
+ * Es el `h1` de /jackpots. La página no tenía ningún encabezado —ni uno— así
+ * que en un lector de pantalla no había forma de saber de qué iba ni de saltar
+ * a su contenido. El titular ya era visualmente el encabezado; ahora también lo
+ * es en el marcado.
+ */
 function TitularPagado({ pagados }: { pagados: PremiosPagados }) {
-  const { mes, anio } = nombreMesDe(pagados.mes);
+  const { mes } = nombreMesDe(pagados.mes);
+  const sinCifra = pagados.premios === 0 && pagados.totalCentavos === 0;
 
   return (
     <>
-      <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
-        {/* El mes sale del dato, no de un texto escrito a mano. Si el panel
-            todavía no tiene el mes en curso, esto dice el que sí tiene y con
-            su nombre, para que una cifra vieja no pase por la de hoy. */}
-        Total de premios pagados {pagados.esMesActual ? `en ${mes}` : `en ${mes} de ${anio}`}
-      </p>
+      <h1 className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
+        {/* El mes sale del dato, no de un texto escrito a mano, y el dato es
+            SIEMPRE el mes en curso en Puerto Rico. */}
+        Total de premios pagados en {mes}, hasta hoy
+      </h1>
 
       <Monto
         centavos={pagados.totalCentavos}
@@ -179,81 +191,34 @@ function TitularPagado({ pagados }: { pagados: PremiosPagados }) {
           Se probó al lado, a 4xl: en un teléfono el "7" caía debajo del monto,
           igual de grande y en blanco, y la pantalla abría con dos números
           enormes peleándose por ser el titular. Un titular es uno. */}
-      <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
-        en{' '}
-        <strong className="font-display text-lg font-bold tabular text-white sm:text-xl">
-          {pagados.premios}
-        </strong>{' '}
-        {pagados.premios === 1 ? 'premio entregado' : 'premios entregados'}
-      </p>
+      {sinCifra ? (
+        <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
+          Todavía no hay premios registrados este mes.
+          {pagados.anterior && (
+            <>
+              {' '}
+              En {nombreMesDe(pagados.anterior.mes).mes} se pagaron{' '}
+              <strong className="whitespace-nowrap font-semibold text-dorado-3">
+                {money(pagados.anterior.totalCentavos)}
+              </strong>{' '}
+              en {pagados.anterior.premios}{' '}
+              {pagados.anterior.premios === 1 ? 'premio' : 'premios'}.
+            </>
+          )}
+        </p>
+      ) : (
+        <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
+          en{' '}
+          <strong className="font-display text-lg font-bold tabular text-white sm:text-xl">
+            {pagados.premios}
+          </strong>{' '}
+          {pagados.premios === 1 ? 'premio entregado' : 'premios entregados'}
+        </p>
+      )}
     </>
   );
 }
 
-/** El titular de reserva, mientras no haya cifra de premios pagados. */
-function TitularEnJuego({ salon }: { salon: ResumenSalon }) {
-  return (
-    <>
-      <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
-        Acumulado en las máquinas ahora mismo
-      </p>
-
-      <Monto centavos={salon.totalCentavos} tam="xl" className="mt-2 font-display text-dorado-3" />
-
-      {/* "Acumulado" y no "en juego", y se dice que TODAVÍA NO HA CAÍDO.
-
-          Es la suma de los progresivos disponibles: dinero esperando dentro de
-          las máquinas, no dinero que el casino haya pagado. Se leyó como un
-          total de premios pagados, y la confusión no es del lector — son dos
-          cifras grandes y doradas en el mismo sitio. Vale más una línea de
-          texto que dejarlo a la interpretación. */}
-      <p className="mt-3 text-sm text-[#cfe0f5] sm:text-base">
-        esperando en{' '}
-        <strong className="font-semibold text-white">
-          {salon.maquinas} {salon.maquinas === 1 ? 'máquina' : 'máquinas'}
-        </strong>{' '}
-        del salón. Todavía no ha caído: es lo que hay para ganar
-        {/* El acumulado solo aparece si de verdad subió. Un "+$0.00" fijo
-            debajo de la cifra grande resta en vez de sumar. */}
-        {salon.subioHoyCentavos > 0 && (
-          <>
-            {' · '}
-            <span className="whitespace-nowrap font-semibold text-gana-claro">
-              ▲ {money(salon.subioHoyCentavos)} desde la lectura anterior
-            </span>
-          </>
-        )}
-      </p>
-    </>
-  );
-}
-
-/**
- * Cuándo se actualizaron estos montos.
- *
- * Si son de hoy, basta con el punto verde y la hora: es la señal de "esto está
- * vivo". Si NO son de hoy hay que decirlo con todas las letras y con la fecha,
- * porque son cantidades de dinero por las que alguien maneja hasta Manatí.
- * Enseñar montos de hace una semana con el mismo puntito verde de siempre es
- * dejar que el visitante crea algo que no es.
- *
- * El corte a las 20 horas y no a las 24: la hoja se sube por la mañana, así que
- * a las 24 h una subida de ayer temprano todavía contaría como "de hoy" bien
- * entrada la tarde siguiente.
- *
- * LOS COLORES DE ESTA CAJA
- * ------------------------
- * Iba en `text-tinta` (#0e2645) sobre un ámbar al 10%: los colores de un aviso
- * pensado para fondo claro, que se quedaron cuando el bloque pasó a ser el
- * azul de marca. Medido sobre el fondo real daba 1.54:1 con 4.5 exigido —
- * texto azul oscuro sobre azul oscuro. Se veía en la página en vivo como una
- * mancha sin letras.
- *
- * Se le escapó al comprobador de contraste porque esta caja SOLO existe cuando
- * los montos están atrasados, y las bases de prueba siempre tenían lecturas del
- * día: la rama nunca se llegó a pintar. La otra rama —  la del punto verde —  sí
- * se midió, y esa estaba bien.
- */
 function AvisoActualizacion({
   ultima,
   alDia,

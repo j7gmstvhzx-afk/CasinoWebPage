@@ -35,7 +35,13 @@ const RUTAS: Record<ContenidoEditable, string[]> = {
   // TODAS las páginas y en Contacto. El pie está en el layout, así que hay que
   // refrescar cada página que lo lleve: por eso la lista es larga y explícita.
   ganadores: ['/ganadores', '/jackpots'],
-  horario: ['/', '/jackpots', '/maquinas-nuevas', '/eventos', '/galeria', '/menu', '/contacto', '/cuenta'],
+  // Faltaban /ganadores y /terminos, que también llevan el pie: al guardar un
+  // horario nuevo esas dos seguían anunciando el viejo hasta que expirara el
+  // minuto de caché. Si se añade una página con pie, va aquí.
+  horario: [
+    '/', '/jackpots', '/maquinas-nuevas', '/eventos', '/galeria',
+    '/ganadores', '/menu', '/contacto', '/cuenta', '/terminos',
+  ],
 };
 
 export function refrescarPublico(tipo: ContenidoEditable): void {

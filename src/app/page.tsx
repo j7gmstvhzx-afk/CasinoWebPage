@@ -8,6 +8,7 @@ import {
   getEventos,
   getHorario,
   getPremiosPagados,
+  pagosEnCero,
   getPrograma,
   getUltimaActualizacion,
   seguro,
@@ -43,7 +44,7 @@ export default async function Inicio() {
     // de anunciar que el casino está cerrado porque una consulta falló.
     seguro(getHorario, { semana: Array(7).fill(null), excepciones: {} }),
     seguro(getPrograma, []),
-    seguro(getPremiosPagados, null),
+    seguro(getPremiosPagados, pagosEnCero()),
   ]);
 
   // CINCO, y salen ordenados de mayor a menor sin que nadie los ordene:
@@ -73,12 +74,16 @@ export default async function Inicio() {
       {/* LO PAGADO EN EL MES, ARRIBA DEL TODO.
 
           Es la cifra que contesta la pregunta que trae a alguien a la página de
-          un casino: ¿este sitio paga? Sale sola la última entrada que hizo el
-          administrador —`getPremiosPagados` pide el mes más reciente con
-          datos— así que en cuanto se guarda una cifra nueva, es la que se ve.
+          un casino: ¿este sitio paga? Sale sola la entrada del mes en curso que
+          haya hecho el administrador, así que en cuanto se guarda una cifra
+          nueva, es la que se ve.
 
-          Si todavía no hay ninguna, no se pinta nada: mejor que un "$0.00". */}
-      {pagados && <PagadoEsteMes dato={pagados} />}
+          SE PINTA SIEMPRE, AUNQUE SEA CERO. Antes se escondía cuando no había
+          cifra —"mejor que un $0.00"— y el resultado fue que el dueño abrió la
+          portada tres veces buscándola sin encontrar ni la cifra ni el motivo
+          de su ausencia. El hueco se le enseñaba a él igual que a un cliente,
+          así que escondía justo la señal de que faltaba teclearla. */}
+      <PagadoEsteMes dato={pagados} />
 
       {/* ---------------------------------------------------------------- */}
       {/* Premios más altos — LO PRIMERO DE LA PÁGINA                        */}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { formatPhone } from '@/lib/phone';
+import { hoyEnPR } from '@/lib/hora-pr';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -79,7 +80,7 @@ export async function GET() {
     ),
   ];
 
-  const fecha = new Date().toISOString().slice(0, 10);
+  const fecha = hoyEnPR();
 
   return new NextResponse('﻿' + lineas.join('\r\n'), {
     headers: {

@@ -1,3 +1,4 @@
+import { hoyEnPR } from '@/lib/hora-pr';
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { Marco } from '@/components/site/Marco';
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
 export default async function PaginaEventos() {
   const eventos = await seguro(() => getEventos(60), []);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyEnPR();
   const activos = eventos.filter((e) => !e.starts_on || e.starts_on <= hoy);
   const proximos = eventos.filter((e) => e.starts_on && e.starts_on > hoy);
 

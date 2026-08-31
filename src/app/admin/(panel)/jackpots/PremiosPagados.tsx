@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 import { money } from '@/lib/format';
 import { pedirJson } from '@/lib/fetch-json';
-import type { PremiosPagados as Fila } from '@/lib/queries';
+import type { PagoMensual as Fila } from '@/lib/queries';
 import { nombreMesDe } from '@/lib/hora-pr';
 
 /** "2026-08-01" -> "agosto de 2026". */

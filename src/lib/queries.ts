@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql } from './db';
+import { hoyEnPR } from './hora-pr';
 import type { HorarioSitio, Programa, ReglaDia } from './horario';
 
 export type Jackpot = {
@@ -479,50 +480,102 @@ export async function seguro<T>(fn: () => Promise<T>, respaldo: T): Promise<T> {
 }
 
 
-export type PremiosPagados = {
+export type PagoMensual = {
   /** Día 1 del mes al que corresponde la cifra. */
   mes: string;
   totalCentavos: number;
   premios: number;
-  /** true si es el mes en curso; false si es el último con datos. */
+  /** true si es el mes en curso; false si es un mes pasado. */
   esMesActual: boolean;
 };
 
+export type PremiosPagados = {
+  /** Día 1 del MES EN CURSO en Puerto Rico. Siempre, aunque no haya cifra. */
+  mes: string;
+  totalCentavos: number;
+  premios: number;
+  /** El último mes cerrado que sí tenga cifra, para no dejar el cero solo. */
+  anterior: PagoMensual | null;
+};
+
+/** El mes en curso sin cifra todavía. Es un dato válido, no un hueco. */
+export function pagosEnCero(anterior: PagoMensual | null = null): PremiosPagados {
+  return { mes: `${hoyEnPR().slice(0, 7)}-01`, totalCentavos: 0, premios: 0, anterior };
+}
+
 /**
- * Premios pagados del último mes que tenga cifra.
+ * Lo pagado en premios en el MES EN CURSO. Nunca devuelve null.
  *
- * Devuelve el ÚLTIMO mes con datos, no forzosamente el actual, y dice cuál es
- * con `esMesActual`. Así, si todavía no se ha escrito el de este mes, la página
- * puede leer "En agosto pagamos…" en vez de enseñar una cifra vieja haciéndose
- * pasar por la de hoy. Un dato de dinero sin su fecha correcta es peor que no
- * tener dato.
+ * POR QUÉ SIEMPRE HAY DATO, AUNQUE SEA CERO
+ * -----------------------------------------
+ * Antes esto devolvía `null` cuando no había fila, y las dos páginas que lo
+ * usan reaccionaban escondiendo el bloque: la portada no pintaba nada y
+ * /jackpots ascendía a titular la SUMA DE LOS PROGRESIVOS, que es dinero
+ * esperando dentro de las máquinas y no dinero pagado.
+ *
+ * Se hizo así por una idea razonable —un casino anunciando "$0.00 pagados"
+ * suena mal— y resultó equivocada por dos motivos que se vieron en uso:
+ *
+ *   1. Un hueco no dice nada. El dueño abrió la página tres veces buscando la
+ *      cifra y no encontró ni la cifra ni una explicación de su ausencia.
+ *   2. El hueco se le enseña A ÉL igual que a un cliente. Escondiendo el cero,
+ *      la única señal de "falta teclear la cifra" desaparecía justo para quien
+ *      podía arreglarlo. Un cero sí lo dice.
+ *
+ * Un cero es además correcto: el día 1 de cada mes lo pagado en ese mes ES
+ * cero, y este contador dice "en el mes hasta hoy".
+ *
+ * EL MES SALE DE `hoyEnPR()`, NO DE `now()`
+ * -----------------------------------------
+ * El servidor corre en UTC. Las noches del día 31, a partir de las 8 p.m. de
+ * Manatí, `date_trunc('month', now())` ya está en el mes siguiente: el bloque
+ * se pondría en cero cuatro horas antes de tiempo, borrando de la portada el
+ * mes que todavía está corriendo.
  */
-export async function getPremiosPagados(): Promise<PremiosPagados | null> {
-  const [fila] = await sql<
-    { mes: string; total_cents: string; premios: number; es_actual: boolean }[]
+export async function getPremiosPagados(): Promise<PremiosPagados> {
+  const mesActual = `${hoyEnPR().slice(0, 7)}-01`;
+
+  // Los dos meses más recientes de una vez: el en curso (si está) y el último
+  // cerrado con cifra, que es lo que acompaña al cero para que no parezca que
+  // la página está rota.
+  const filas = await sql<
+    { mes: string; total_cents: string; premios: number }[]
   >`
-    select mes::text, total_cents::text, premios,
-           (mes = date_trunc('month', now())::date) as es_actual
+    select mes::text, total_cents::text, premios
       from app.monthly_payouts
+     where mes <= ${mesActual}::date
      order by mes desc
-     limit 1
+     limit 2
   `;
-  if (!fila) return null;
+
+  const aFila = (f: (typeof filas)[number], esMesActual: boolean): PagoMensual => ({
+    mes: f.mes,
+    totalCentavos: Number(f.total_cents),
+    premios: Number(f.premios),
+    esMesActual,
+  });
+
+  const enCurso = filas.find((f) => f.mes === mesActual);
+  const anterior = filas.find((f) => f.mes !== mesActual);
+  const previo = anterior ? aFila(anterior, false) : null;
+
+  if (!enCurso) return pagosEnCero(previo);
+
   return {
-    mes: fila.mes,
-    totalCentavos: Number(fila.total_cents),
-    premios: Number(fila.premios),
-    esMesActual: fila.es_actual,
+    mes: mesActual,
+    totalCentavos: Number(enCurso.total_cents),
+    premios: Number(enCurso.premios),
+    anterior: previo,
   };
 }
 
 /** Los últimos meses, para el panel. */
-export async function getHistorialPagos(): Promise<PremiosPagados[]> {
+export async function getHistorialPagos(): Promise<PagoMensual[]> {
+  const mesActual = `${hoyEnPR().slice(0, 7)}-01`;
   const filas = await sql<
-    { mes: string; total_cents: string; premios: number; es_actual: boolean }[]
+    { mes: string; total_cents: string; premios: number }[]
   >`
-    select mes::text, total_cents::text, premios,
-           (mes = date_trunc('month', now())::date) as es_actual
+    select mes::text, total_cents::text, premios
       from app.monthly_payouts
      order by mes desc
      limit 12
@@ -531,7 +584,7 @@ export async function getHistorialPagos(): Promise<PremiosPagados[]> {
     mes: f.mes,
     totalCentavos: Number(f.total_cents),
     premios: Number(f.premios),
-    esMesActual: f.es_actual,
+    esMesActual: f.mes === mesActual,
   }));
 }
 

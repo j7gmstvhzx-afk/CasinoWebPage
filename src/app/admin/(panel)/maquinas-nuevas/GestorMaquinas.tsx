@@ -1,5 +1,6 @@
 'use client';
 
+import { hoyEnPR } from '@/lib/hora-pr';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
@@ -23,7 +24,7 @@ type Borrador = {
   bank_number: string;
 };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => hoyEnPR();
 
 const vacio = (): Borrador => ({
   name: '',

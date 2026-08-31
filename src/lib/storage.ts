@@ -1,5 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { hoyEnPR } from './hora-pr';
 
 /**
  * Subida de imágenes a Supabase Storage.
@@ -57,7 +58,7 @@ export async function subirImagen(archivo: File, carpeta: string): Promise<Subid
   // Nombre nuevo siempre. Si se conservara el del archivo, dos flyers llamados
   // "promo.jpg" se pisarían entre sí, y el nombre original puede traer acentos
   // y espacios que rompen la URL.
-  const ruta = `${carpeta}/${new Date().toISOString().slice(0, 10)}-${randomUUID()}.${ext}`;
+  const ruta = `${carpeta}/${hoyEnPR()}-${randomUUID()}.${ext}`;
 
   const res = await fetch(`${cfg.url}/storage/v1/object/${BUCKET}/${ruta}`, {
     method: 'POST',

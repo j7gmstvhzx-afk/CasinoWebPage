@@ -1,4 +1,5 @@
 import { Monto } from './Monto';
+import { money } from '@/lib/format';
 import { nombreMesDe } from '@/lib/hora-pr';
 import type { PremiosPagados } from '@/lib/queries';
 
@@ -9,27 +10,24 @@ import type { PremiosPagados } from '@/lib/queries';
  * es la cifra que contesta la pregunta que trae a alguien a la página: ¿este
  * sitio paga?
  *
- * ES AUTOMÁTICA EN EL ÚNICO SENTIDO QUE PUEDE SERLO
- * -------------------------------------------------
- * Sale sola la ÚLTIMA entrada que hizo el administrador: `getPremiosPagados`
- * pide el mes más reciente que tenga datos, así que en cuanto se guarda una
- * cifra nueva, esta es la que se enseña. Nadie tiene que tocar la portada.
+ * SIEMPRE ES EL MES EN CURSO, Y SIEMPRE SE PINTA
+ * ----------------------------------------------
+ * Aunque la cifra sea cero. La versión anterior enseñaba el último mes que
+ * tuviera datos y se escondía entera si no había ninguno; las dos cosas se
+ * cambiaron por lo mismo: el letrero dice "en el mes hasta hoy", así que tiene
+ * que hablar de ESTE mes, y un hueco no le dice a nadie —tampoco al dueño, que
+ * es quien puede arreglarlo— que lo que falta es teclear una cantidad.
  *
- * Lo que NO se puede automatizar es de dónde sale el número: no se deduce de
- * las lecturas de las máquinas. Una caída de un progresivo puede ser un premio
- * pagado, pero también un error de tecleo corregido al día siguiente o una
- * máquina que salió del salón — y esto es una declaración pública de cuánto
- * dinero paga el casino, así que tiene que cuadrar con la caja.
- *
- * EL NOMBRE DEL MES SALE DEL DATO
- * -------------------------------
- * Si todavía no se ha escrito la cifra de este mes, se enseña el último mes que
- * la tenga CON SU NOMBRE — "Pagado en julio"— en vez de dejar que una cantidad
- * vieja pase por la de hoy. Nadie tiene que acordarse de cambiar un texto el
- * día 1.
+ * EL CERO SE REDACTA
+ * ------------------
+ * "en 0 premios" se lee como una avería. "Todavía no hay premios registrados
+ * en septiembre" se lee como lo que es: el mes acaba de empezar. Y si el mes
+ * pasado sí tiene cifra, se enseña debajo, para que el cero no quede solo
+ * pareciendo que aquí no se paga nunca.
  */
 export function PagadoEsteMes({ dato }: { dato: PremiosPagados }) {
-  const { mes, anio } = nombreMesDe(dato.mes);
+  const { mes } = nombreMesDe(dato.mes);
+  const sinCifra = dato.premios === 0 && dato.totalCentavos === 0;
 
   return (
     <section className="bloque-marca relative overflow-hidden">
@@ -40,9 +38,7 @@ export function PagadoEsteMes({ dato }: { dato: PremiosPagados }) {
       <div className="contenedor relative flex flex-wrap items-end gap-x-10 gap-y-4 py-8 sm:py-10">
         <div>
           <p className="font-display text-xs font-semibold uppercase tracking-[0.28em] text-[#8ce8f6]">
-            {dato.esMesActual
-              ? `Pagado en ${mes}, hasta hoy`
-              : `Pagado en ${mes} de ${anio}`}
+            Total de premios pagados en {mes}, hasta hoy
           </p>
           <Monto
             centavos={dato.totalCentavos}
@@ -51,13 +47,31 @@ export function PagadoEsteMes({ dato }: { dato: PremiosPagados }) {
           />
         </div>
 
-        <p className="pb-2 text-sm text-[#cfe0f5] sm:text-base">
-          en{' '}
-          <strong className="font-display text-lg font-bold tabular text-white sm:text-xl">
-            {dato.premios}
-          </strong>{' '}
-          {dato.premios === 1 ? 'premio' : 'premios'}
-        </p>
+        {sinCifra ? (
+          <p className="pb-2 text-sm text-[#cfe0f5] sm:text-base">
+            Todavía no hay premios registrados este mes.
+            {dato.anterior && (
+              <>
+                {' '}
+                <span className="whitespace-nowrap">
+                  En {nombreMesDe(dato.anterior.mes).mes} se pagaron{' '}
+                  <strong className="font-semibold text-dorado-3">
+                    {money(dato.anterior.totalCentavos)}
+                  </strong>
+                  .
+                </span>
+              </>
+            )}
+          </p>
+        ) : (
+          <p className="pb-2 text-sm text-[#cfe0f5] sm:text-base">
+            en{' '}
+            <strong className="font-display text-lg font-bold tabular text-white sm:text-xl">
+              {dato.premios}
+            </strong>{' '}
+            {dato.premios === 1 ? 'premio' : 'premios'}
+          </p>
+        )}
       </div>
     </section>
   );
