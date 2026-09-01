@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { pedirJson } from '@/lib/fetch-json';
 import { DIAS } from '@/lib/hora-pr';
 
@@ -215,7 +216,17 @@ const VACIA: Omit<Entrada, 'id'> & { id?: string } = {
   orden: 0,
 };
 
+/**
+ * Lo que se repite cada semana.
+ *
+ * Se refresca con `router.refresh()` y no con `window.location.reload()`: la
+ * recarga entera volvía a pedir la página al servidor —que aquí es
+ * `force-dynamic`, o sea otra consulta a la base— con su parpadeo en blanco, y
+ * de paso BORRABA EL AVISO de que había salido bien. Se guardaba algo y no se
+ * veía ninguna confirmación, sólo la pantalla saltando.
+ */
 function Programa({ entradas }: { entradas: Entrada[] }) {
+  const router = useRouter();
   const [edicion, setEdicion] = useState<(Omit<Entrada, 'id'> & { id?: string }) | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -233,7 +244,10 @@ function Programa({ entradas }: { entradas: Entrada[] }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ que: 'programa', ...edicion, detalle: edicion.detalle || null }),
       });
-      window.location.reload();
+      setEdicion(null);
+      setAviso({ ok: true, texto: 'Guardado. Ya sale en la portada.' });
+      setGuardando(false);
+      router.refresh();
     } catch (e) {
       setAviso({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo guardar.' });
       setGuardando(false);
@@ -244,7 +258,8 @@ function Programa({ entradas }: { entradas: Entrada[] }) {
     if (!confirm(`¿Borrar "${titulo}"?`)) return;
     try {
       await pedirJson(`/api/admin/horario?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      window.location.reload();
+      setAviso({ ok: true, texto: `Borrado "${titulo}".` });
+      router.refresh();
     } catch (e) {
       setAviso({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo borrar.' });
     }
@@ -423,7 +438,17 @@ function Programa({ entradas }: { entradas: Entrada[] }) {
 // -----------------------------------------------------------------------------
 // Días sueltos que no siguen el horario
 // -----------------------------------------------------------------------------
+/**
+ * Los días sueltos que no siguen el horario semanal.
+ *
+ * `guardando` no estaba y sí lo tenían Semana y Programa: el botón se podía
+ * pulsar dos veces seguidas, sin quedar desactivado ni dar señal de estar
+ * trabajando. Igual que los otros dos bloques, ahora se cierra mientras va la
+ * petición.
+ */
 function Excepciones({ filas }: { filas: Excepcion[] }) {
+  const router = useRouter();
+  const [guardando, setGuardando] = useState(false);
   const [fecha, setFecha] = useState('');
   const [cerrado, setCerrado] = useState(true);
   const [abre, setAbre] = useState('08:00');
@@ -434,6 +459,7 @@ function Excepciones({ filas }: { filas: Excepcion[] }) {
   async function guardar() {
     setAviso(null);
     if (!fecha) return setAviso({ ok: false, texto: 'Escoge la fecha.' });
+    setGuardando(true);
     try {
       await pedirJson('/api/admin/horario', {
         method: 'POST',
@@ -447,16 +473,20 @@ function Excepciones({ filas }: { filas: Excepcion[] }) {
           motivo: motivo || null,
         }),
       });
-      window.location.reload();
+      setAviso({ ok: true, texto: `Guardado el ${fecha}.` });
+      setGuardando(false);
+      router.refresh();
     } catch (e) {
       setAviso({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo guardar.' });
+      setGuardando(false);
     }
   }
 
   async function borrar(f: string) {
     try {
       await pedirJson(`/api/admin/horario?fecha=${encodeURIComponent(f)}`, { method: 'DELETE' });
-      window.location.reload();
+      setAviso({ ok: true, texto: `Quitado el ${f}.` });
+      router.refresh();
     } catch (e) {
       setAviso({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo borrar.' });
     }
@@ -493,9 +523,10 @@ function Excepciones({ filas }: { filas: Excepcion[] }) {
         <button
           type="button"
           onClick={guardar}
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cian px-5 text-sm font-semibold text-white"
+          disabled={guardando}
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cian px-5 text-sm font-semibold text-white disabled:opacity-50"
         >
-          Guardar
+          {guardando ? 'Guardando…' : 'Guardar'}
         </button>
       </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { pedirJson } from '@/lib/fetch-json';
 import { money } from '@/lib/format';
 
@@ -27,6 +28,7 @@ const CAMPO =
  * dos cosas y sale en la página. Cuantos más campos, menos veces se hace.
  */
 export function GestorGanadores({ ganadores }: { ganadores: GanadorAdmin[] }) {
+  const router = useRouter();
   const [pueblo, setPueblo] = useState('');
   const [dolares, setDolares] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -47,7 +49,25 @@ export function GestorGanadores({ ganadores }: { ganadores: GanadorAdmin[] }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ pueblo: pueblo.trim(), dolares: d, publicado: true }),
       });
-      window.location.reload();
+      // `router.refresh()` y no `window.location.reload()`.
+      //
+      // La recarga entera volvía a pedir la página al servidor —que aquí es
+      // `force-dynamic`, o sea otra consulta a la base— con su parpadeo en
+      // blanco, y de paso BORRABA ESTE MISMO AVISO: se guardaba un ganador y no
+      // se veía ninguna confirmación, sólo la pantalla saltando. El refresco
+      // trae la lista nueva del servidor sin tirar el estado de React, así que
+      // el "Guardado" se queda en pantalla el tiempo suficiente para leerlo.
+      setPueblo('');
+      setDolares('');
+      setAviso({
+        ok: true,
+        // `money()` y no `toFixed(2)`: el resto del sitio escribe las cifras
+        // con separador de miles, y "$1200.99" al lado de "$1,200.99" se lee
+        // como dos formatos distintos para el mismo dinero.
+        texto: `Guardado. ${money(Math.round(d * 100))} de ${pueblo.trim()} ya sale en la página.`,
+      });
+      setGuardando(false);
+      router.refresh();
     } catch (err) {
       setAviso({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo guardar.' });
       setGuardando(false);
@@ -58,7 +78,8 @@ export function GestorGanadores({ ganadores }: { ganadores: GanadorAdmin[] }) {
     if (!confirm(`¿Quitar ${money(Number(g.monto_cents))} de ${g.pueblo}?`)) return;
     try {
       await pedirJson(`/api/admin/ganadores?id=${encodeURIComponent(g.id)}`, { method: 'DELETE' });
-      window.location.reload();
+      setAviso({ ok: true, texto: `Quitado el premio de ${g.pueblo}.` });
+      router.refresh();
     } catch (err) {
       setAviso({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo borrar.' });
     }
