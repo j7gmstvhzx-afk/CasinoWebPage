@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { esAdmin } from '@/lib/admin-auth';
 import { BotonSalir } from './BotonSalir';
+import { NavPanel } from './NavPanel';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -22,32 +22,10 @@ export const maxDuration = 15;
 export default async function LayoutPanel({ children }: { children: React.ReactNode }) {
   if (!(await esAdmin())) redirect('/admin/entrar');
 
-  const enlaces = [
-    { href: '/admin', label: 'Resumen' },
-    { href: '/admin/canjear', label: 'Canjear' },
-    { href: '/admin/jackpots', label: 'Jackpots' },
-    { href: '/admin/eventos', label: 'Promociones' },
-    { href: '/admin/maquinas-nuevas', label: 'Máquinas nuevas' },
-    { href: '/admin/menu', label: 'Menú' },
-    { href: '/admin/horario', label: 'Horario' },
-    { href: '/admin/ganadores', label: 'Ganadores' },
-    { href: '/admin/clientes', label: 'Clientes' },
-  ];
-
   return (
     <div className="contenedor py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-linea pb-5">
-        <nav className="flex flex-wrap gap-1.5" aria-label="Panel">
-          {enlaces.map((e) => (
-            <Link
-              key={e.href}
-              href={e.href}
-              className="rounded-full px-4 py-2 text-sm font-medium text-tenue transition-colors hover:bg-marca/10 hover:text-tinta"
-            >
-              {e.label}
-            </Link>
-          ))}
-        </nav>
+        <NavPanel />
         <BotonSalir />
       </div>
 
