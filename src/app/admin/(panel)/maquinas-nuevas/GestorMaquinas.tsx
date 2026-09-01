@@ -40,6 +40,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
   const [b, setB] = useState<Borrador>(vacio());
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<string | null>(null);
 
   async function llamar(metodo: 'POST' | 'PATCH' | 'DELETE', cuerpo: unknown) {
     return (await fetch('/api/admin/contenido', {
@@ -59,6 +60,7 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
 
     setOcupado(true);
     setError(null);
+    setHecho(null);
 
     const datos = {
       name: b.name.trim(),
@@ -76,27 +78,75 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
     setOcupado(false);
     if (!r.ok) return setError(r.error ?? 'No pudimos guardar.');
 
+    // SE CONFIRMA POR ESCRITO, con el nombre.
+    //
+    // Antes esto sólo cerraba el formulario y refrescaba: si la lista tardaba
+    // en repintarse, o si la máquina caía más abajo de lo que se estaba
+    // mirando, no quedaba NINGUNA señal de que se hubiera guardado. El dueño lo
+    // reportó como "las máquinas nuevas se guardan y no aparecen". Un aviso con
+    // el nombre convierte "no la veo" en "está guardada, búscala en la lista",
+    // que son dos problemas muy distintos.
     setEditando(null);
+    setHecho(
+      editando === 'nuevo'
+        ? `Guardada "${datos.name}". Ya sale en la lista y en la página.`
+        : `Cambios guardados en "${datos.name}".`,
+    );
     router.refresh();
   }
 
+  // `alternar` y `borrar` NO MIRABAN si la petición había fallado: se descartaba
+  // la respuesta y se refrescaba igual. Una máquina que no se podía ocultar
+  // —sesión caducada, base caída— se quedaba igual que estaba, sin un solo
+  // mensaje. Para quien lo usa, eso es el botón que "no hace nada".
   async function alternar(m: MaquinaAdmin) {
     setOcupado(true);
-    await llamar('PATCH', { tipo: 'maquinas', id: m.id, datos: { published: !m.published } });
+    setError(null);
+    const r = await llamar('PATCH', {
+      tipo: 'maquinas',
+      id: m.id,
+      datos: { published: !m.published },
+    });
     setOcupado(false);
+    if (!r.ok) return setError(r.error ?? 'No pudimos cambiarla.');
+    setHecho(m.published ? `"${m.name}" ya no se publica.` : `"${m.name}" ya se publica.`);
     router.refresh();
   }
 
   async function borrar(m: MaquinaAdmin) {
     if (!confirm(`¿Borrar "${m.name}"? Esto no se puede deshacer.`)) return;
     setOcupado(true);
-    await llamar('DELETE', { tipo: 'maquinas', id: m.id });
+    setError(null);
+    const r = await llamar('DELETE', { tipo: 'maquinas', id: m.id });
     setOcupado(false);
+    if (!r.ok) return setError(r.error ?? 'No pudimos borrarla.');
+    setHecho(`Borrada "${m.name}".`);
     router.refresh();
   }
 
   return (
     <>
+      {/* LOS AVISOS VAN AQUÍ ARRIBA, FUERA DEL FORMULARIO.
+          El de error vivía dentro del formulario, así que un fallo al ocultar o
+          al borrar —que pasan con el formulario cerrado— no se veía en ningún
+          sitio: el botón parecía no hacer nada. */}
+      {hecho && (
+        <p
+          role="status"
+          className="mt-6 rounded-2xl border border-gana/40 bg-gana/10 p-4 text-sm text-gana"
+        >
+          {hecho}
+        </p>
+      )}
+      {error && editando === null && (
+        <p
+          role="alert"
+          className="mt-6 rounded-2xl border border-pierde/40 bg-pierde/10 p-4 text-sm text-pierde"
+        >
+          {error}
+        </p>
+      )}
+
       {editando === null && (
         <button
           type="button"
