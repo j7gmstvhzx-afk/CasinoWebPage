@@ -42,6 +42,68 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
     [valores],
   );
 
+  // Corregir el nombre/banco de una máquina, y quitarla del tablero.
+  //
+  // Faltaban las dos: el nombre y el banco se tecleaban UNA vez al crear la
+  // máquina y no había forma de arreglarlos, y una máquina que salía del salón
+  // se quedaba publicada para siempre. Es lo que reportó el dueño como "no se
+  // puede borrar o editar el premio que ya existe".
+  const [editando, setEditando] = useState<string | null>(null);
+  const [edicion, setEdicion] = useState({ nombre: '', banco: '' });
+
+  function abrirEdicion(m: MaquinaFila) {
+    setEditando(m.id);
+    setEdicion({ nombre: m.nombre, banco: String(m.banco) });
+    setAviso(null);
+  }
+
+  async function guardarEdicion(id: string) {
+    if (edicion.nombre.trim().length < 2) {
+      return setAviso({ tipo: 'mal', texto: 'Escribe el nombre de la máquina.' });
+    }
+    setGuardando(true);
+    const r = await fetch('/api/admin/jackpots/manual', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        nombre: edicion.nombre.trim(),
+        banco: Number.parseInt(edicion.banco, 10) || 0,
+      }),
+    })
+      .then((x) => x.json())
+      .catch(() => ({ ok: false, error: 'No hay conexión.' }));
+    setGuardando(false);
+
+    if (!r.ok) return setAviso({ tipo: 'mal', texto: r.error ?? 'No pudimos guardar.' });
+    setEditando(null);
+    setAviso({ tipo: 'ok', texto: 'Máquina corregida.' });
+    router.refresh();
+  }
+
+  async function quitar(m: MaquinaFila) {
+    // Se avisa de que el historial NO se borra: es dinero, y quien lo quita
+    // tiene que saber que puede volver a añadirla sin perder nada.
+    if (
+      !confirm(
+        `¿Quitar "${m.nombre}" del tablero?\n\n` +
+          'Deja de publicarse en la página. El historial de montos se guarda, ' +
+          'así que se puede volver a añadir más adelante.',
+      )
+    ) {
+      return;
+    }
+    setGuardando(true);
+    const r = await fetch(`/api/admin/jackpots/manual?id=${m.id}`, { method: 'DELETE' })
+      .then((x) => x.json())
+      .catch(() => ({ ok: false, error: 'No hay conexión.' }));
+    setGuardando(false);
+
+    if (!r.ok) return setAviso({ tipo: 'mal', texto: r.error ?? 'No pudimos quitarla.' });
+    setAviso({ tipo: 'ok', texto: `"${m.nombre}" ya no se publica.` });
+    router.refresh();
+  }
+
   function aCentavos(v: string): number | null {
     const limpio = v.replace(/[^0-9.]/g, '');
     if (!limpio) return null;
@@ -103,8 +165,9 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
         <div>
           <h2 className="font-display text-2xl font-bold">Montos de hoy</h2>
           <p className="mt-1.5 text-sm text-tenue">
-            Escribe el premio de cada máquina. Lo que dejes en blanco no se
-            publica. El tablero los ordena solo, de mayor a menor.
+            Escribe el premio de cada máquina. El tablero los ordena solo, de
+            mayor a menor. Para quitar un premio del tablero, <strong>borra la
+            casilla y guarda</strong>.
           </p>
         </div>
         <p className="text-sm text-tenue">
@@ -120,14 +183,40 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
               <th className="pb-3 pr-4 font-semibold">Máquina</th>
               <th className="pb-3 pr-4 font-semibold">Banco</th>
               <th className="pb-3 pr-4 font-semibold">Ayer</th>
-              <th className="pb-3 font-semibold">Premio de hoy</th>
+              <th className="pb-3 pr-4 font-semibold">Premio de hoy</th>
+              <th className="pb-3 font-semibold"><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
             {maquinas.map((m, i) => (
               <tr key={m.id} className="border-b border-linea/50">
-                <td className="py-2 pr-4 font-medium">{m.nombre}</td>
-                <td className="py-2 pr-4 tabular text-tenue">{m.banco}</td>
+                <td className="py-2 pr-4 font-medium">
+                  {editando === m.id ? (
+                    <input
+                      value={edicion.nombre}
+                      onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })}
+                      aria-label={`Nombre de ${m.nombre}`}
+                      className="min-h-11 w-44 rounded-lg border border-cian bg-superficie px-3 focus:outline-none"
+                    />
+                  ) : (
+                    m.nombre
+                  )}
+                </td>
+                <td className="py-2 pr-4 tabular text-tenue">
+                  {editando === m.id ? (
+                    <input
+                      value={edicion.banco}
+                      onChange={(e) =>
+                        setEdicion({ ...edicion, banco: e.target.value.replace(/[^0-9]/g, '') })
+                      }
+                      inputMode="numeric"
+                      aria-label={`Banco de ${m.nombre}`}
+                      className="min-h-11 w-20 rounded-lg border border-cian bg-superficie px-3 tabular focus:outline-none"
+                    />
+                  ) : (
+                    m.banco
+                  )}
+                </td>
                 <td className="py-2 pr-4 tabular text-tenue">
                   {m.centavosPrevio === null ? '—' : money(m.centavosPrevio)}
                 </td>
@@ -147,6 +236,47 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
                       aria-label={`Premio de ${m.nombre}, banco ${m.banco}`}
                       className="min-h-11 w-36 rounded-lg border border-linea bg-superficie px-3 text-right tabular focus:border-cian focus:outline-none"
                     />
+                  </div>
+                </td>
+                <td className="py-2">
+                  <div className="flex items-center justify-end gap-1">
+                    {editando === m.id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void guardarEdicion(m.id)}
+                          disabled={guardando}
+                          className="min-h-11 rounded-lg bg-cian px-3 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditando(null)}
+                          className="min-h-11 rounded-lg px-3 text-xs font-semibold text-tenue hover:text-tinta"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => abrirEdicion(m)}
+                          className="min-h-11 rounded-lg px-3 text-xs font-semibold text-tenue hover:text-tinta"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void quitar(m)}
+                          disabled={guardando}
+                          className="min-h-11 rounded-lg px-3 text-xs font-semibold text-pierde hover:underline disabled:opacity-50"
+                        >
+                          Quitar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

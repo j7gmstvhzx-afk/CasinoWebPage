@@ -66,18 +66,27 @@ export async function POST(req: NextRequest) {
       filas = [...filas, { id: m.id, centavos: nueva.centavos }];
     }
 
+    // Fuera la lectura de hoy de TODAS las máquinas que vienen en la petición,
+    // tengan monto o no: una por máquina por día.
+    //
+    // EL `any` VA SOBRE TODAS Y NO SÓLO SOBRE LAS QUE TRAEN MONTO.
+    // Antes sólo borraba las que traían cifra, y eso hacía imposible corregir
+    // un tecleo hacia abajo: vaciar la casilla de una máquina y guardar no
+    // hacía nada — la cifra equivocada seguía publicada y no había forma de
+    // quitarla desde el panel. Es la mitad del "no se puede borrar el premio
+    // que ya existe" que reportó el dueño.
+    const todos = filas.map((f) => f.id);
+    await tx`
+      delete from app.jackpot_readings
+       where machine_id = any(${todos}::uuid[])
+         and app.gaming_date(reading_at) = app.gaming_date(now())
+    `;
+
     const conMonto = filas.filter((f) => f.centavos !== null && f.centavos > 0);
     if (conMonto.length === 0) return 0;
 
     const ids = conMonto.map((f) => f.id);
     const valores = conMonto.map((f) => f.centavos as number);
-
-    // Fuera la lectura de hoy, si ya había: una por máquina por día.
-    await tx`
-      delete from app.jackpot_readings
-       where machine_id = any(${ids}::uuid[])
-         and app.gaming_date(reading_at) = app.gaming_date(now())
-    `;
 
     await tx`
       insert into app.jackpot_readings (machine_id, amount_cents, reading_at)
@@ -90,4 +99,88 @@ export async function POST(req: NextRequest) {
 
   refrescarPublico('jackpots');
   return NextResponse.json({ ok: true, guardados });
+}
+
+/**
+ * Corregir el nombre o el banco de una máquina.
+ *
+ * Hacía falta porque el nombre y el banco se teclean UNA vez, al crear la
+ * máquina, y hasta ahora no había forma de arreglarlos: una errata en "Lightning
+ * Link" se quedaba publicada para siempre en la portada.
+ */
+const Editar = z.object({
+  id: z.string().uuid(),
+  nombre: z.string().trim().min(2).max(80).optional(),
+  banco: z.number().int().min(0).max(32767).optional(),
+});
+
+export async function PATCH(req: NextRequest) {
+  if (!(await esAdmin())) {
+    return NextResponse.json({ ok: false, error: 'No autorizado.' }, { status: 401 });
+  }
+
+  const parsed = Editar.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, error: 'Datos inválidos.' }, { status: 400 });
+  }
+
+  const { id, nombre, banco } = parsed.data;
+  if (nombre === undefined && banco === undefined) {
+    return NextResponse.json({ ok: false, error: 'Nada que cambiar.' }, { status: 400 });
+  }
+
+  // `machines_identity` es único sobre (name, bank_number): dos máquinas con el
+  // mismo nombre y banco reventarían la consulta con un error de Postgres que
+  // no le dice nada a quien está en el mostrador. Se comprueba antes y se
+  // contesta en español.
+  const [choque] = await sql<{ id: string }[]>`
+    select m.id from app.machines m
+     where m.name = coalesce(${nombre ?? null}, m.name)
+       and m.bank_number = coalesce(${banco ?? null}, m.bank_number)
+       and m.id <> ${id}::uuid
+     limit 1
+  `;
+  if (choque) {
+    return NextResponse.json(
+      { ok: false, error: 'Ya hay otra máquina con ese nombre y ese banco.' },
+      { status: 409 },
+    );
+  }
+
+  await sql`
+    update app.machines
+       set name        = coalesce(${nombre ?? null}, name),
+           bank_number = coalesce(${banco ?? null}, bank_number)
+     where id = ${id}::uuid
+  `;
+
+  refrescarPublico('jackpots');
+  return NextResponse.json({ ok: true });
+}
+
+/**
+ * Quitar una máquina del tablero.
+ *
+ * NO SE BORRA LA FILA: se marca `active = false`.
+ *
+ * `jackpot_readings` cuelga de `machines` con `on delete cascade`, así que un
+ * borrado de verdad se llevaría por delante todo el historial de montos de esa
+ * máquina — y ese historial es lo que sostiene la flecha de "subió desde la
+ * lectura anterior" y cualquier cuenta que se quiera hacer después. Una máquina
+ * que sale del salón deja de publicarse; lo que ya pasó no se reescribe.
+ */
+export async function DELETE(req: NextRequest) {
+  if (!(await esAdmin())) {
+    return NextResponse.json({ ok: false, error: 'No autorizado.' }, { status: 401 });
+  }
+
+  const id = new URL(req.url).searchParams.get('id');
+  if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+    return NextResponse.json({ ok: false, error: 'Identificador inválido.' }, { status: 400 });
+  }
+
+  await sql`update app.machines set active = false where id = ${id}::uuid`;
+
+  refrescarPublico('jackpots');
+  return NextResponse.json({ ok: true });
 }
