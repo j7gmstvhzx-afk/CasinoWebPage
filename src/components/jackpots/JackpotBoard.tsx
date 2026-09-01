@@ -121,16 +121,14 @@ export function JackpotBoard({
 
   return (
     <>
-      {filtrados.length === 0 ? (
-        <p className="tarjeta px-6 py-12 text-center text-tenue">
-          {jackpots.length === 0
-            ? 'Los premios se están actualizando. Vuelve en un rato.'
-            : busqueda
-              ? `No encontramos nada para "${busqueda}".`
-              : 'Ninguno cumple con ese filtro ahora mismo.'}
-        </p>
-      ) : (
-        <>
+      {/* EL HERO Y LA BARRA DE CONTROL VAN FUERA DEL CONDICIONAL.
+      
+          Estaban dentro de la rama "hay resultados", así que una búsqueda que
+          no encontraba nada DESMONTABA EL PROPIO BUSCADOR: el usuario se
+          quedaba encerrado en la pantalla de "no encontramos nada para «xyz»"
+          sin ninguna forma de borrar lo que había escrito ni de quitar el
+          filtro, salvo recargar la página. Los controles que producen un estado
+          tienen que seguir en pantalla dentro de ese estado. */}
           {primero && <TarjetaHero j={primero} />}
 
           {/* El buscador va DESPUÉS del premio principal, no antes.
@@ -143,50 +141,64 @@ export function JackpotBoard({
             sobre el blanco. Con el buscador y los filtros flotando sin marco, la
             página empezaba con un formulario; enmarcados, empieza con un
             tablero. */}
-        <div className="tarjeta-plana relative mb-5 overflow-hidden p-4 sm:p-5">
-          <div
-            aria-hidden="true"
-            className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
-          />
-
-          <div className="relative">
-            <svg
-              viewBox="0 0 24 24"
-              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-tenue"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-            </svg>
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar máquina o número de banco…"
-              aria-label="Buscar máquina o número de banco"
-              className="w-full rounded-2xl border border-linea bg-fondo py-3.5 pl-11 pr-4 text-base text-tinta placeholder:text-tenue/60 focus:border-cian focus:outline-none"
+        {/* Con el tablero entero vacío no hay nada que buscar: la barra
+            sobraría y solo añadiría ruido al mensaje de "vuelve en un rato". */}
+        {jackpots.length > 0 && (
+          <div className="tarjeta-plana relative mb-5 overflow-hidden p-4 sm:p-5">
+            <div
+              aria-hidden="true"
+              className="patron-picas pointer-events-none absolute inset-0 opacity-[0.10]"
             />
-          </div>
 
-          <div
-            className="relative mt-3 flex flex-wrap items-center gap-2"
-            role="group"
-            aria-label="Filtrar premios"
-          >
-            <Chip activo={filtro === 'todos'} onClick={() => setFiltro('todos')}>
-              Todos · {jackpots.length}
-            </Chip>
-            <Chip activo={filtro === 'calientes'} onClick={() => setFiltro('calientes')} disabled={calientes === 0}>
-              🔥 Calientes · {calientes}
-            </Chip>
-            <Chip activo={filtro === 'suben'} onClick={() => setFiltro('suben')} disabled={suben === 0}>
-              ↑ Subiendo · {suben}
-            </Chip>
-          </div>
-        </div>
+            <div className="relative">
+              <svg
+                viewBox="0 0 24 24"
+                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-tenue"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+              </svg>
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar máquina o número de banco…"
+                aria-label="Buscar máquina o número de banco"
+                className="w-full rounded-2xl border border-linea bg-fondo py-3.5 pl-11 pr-4 text-base text-tinta placeholder:text-tenue/60 focus:border-cian focus:outline-none"
+              />
+            </div>
 
+            <div
+              className="relative mt-3 flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label="Filtrar premios"
+            >
+              <Chip activo={filtro === 'todos'} onClick={() => setFiltro('todos')}>
+                Todos · {jackpots.length}
+              </Chip>
+              <Chip activo={filtro === 'calientes'} onClick={() => setFiltro('calientes')} disabled={calientes === 0}>
+                🔥 Calientes · {calientes}
+              </Chip>
+              <Chip activo={filtro === 'suben'} onClick={() => setFiltro('suben')} disabled={suben === 0}>
+                ↑ Subiendo · {suben}
+              </Chip>
+            </div>
+          </div>
+        )}
+
+      {filtrados.length === 0 ? (
+        <p className="tarjeta px-6 py-12 text-center text-tenue">
+          {jackpots.length === 0
+            ? 'Los premios se están actualizando. Vuelve en un rato.'
+            : busqueda
+              ? `No encontramos nada para "${busqueda}".`
+              : 'Ninguno cumple con ese filtro ahora mismo.'}
+        </p>
+      ) : (
+        <>
           {podio2y3.length > 0 && (
             <ul className="mb-4 grid gap-3 sm:grid-cols-2">
               {podio2y3.map((j, i) => (

@@ -20,9 +20,29 @@ export { hoyEnPR };
  *
  * Devuelve null si la fecha no tiene forma de fecha.
  */
+/**
+ * ¿Existe de verdad esa fecha en el calendario?
+ *
+ * La expresión regular sola acepta `1990-13-45`: cuatro dígitos, guion, dos,
+ * guion, dos. Con eso, `edadValida` daba por buena una fecha imposible y el
+ * INSERT reventaba en Postgres con un `22008` que NADIE atrapa —solo se captura
+ * el `23505` de clave duplicada—, así que quien se equivocara tecleando su fecha
+ * de nacimiento se llevaba un error 500 en vez de "revisa la fecha".
+ *
+ * Se construye la fecha en UTC y se comprueba que los tres campos sobrevivan:
+ * así el 29 de febrero de un año no bisiesto también cae, que es el caso que se
+ * escapa a cualquier comprobación de "el día está entre 1 y 31".
+ */
+function fechaReal(a: number, m: number, d: number): boolean {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const f = new Date(Date.UTC(a, m - 1, d));
+  return f.getUTCFullYear() === a && f.getUTCMonth() === m - 1 && f.getUTCDate() === d;
+}
+
 export function anosCumplidos(nacimiento: string, hoy: string = hoyEnPR()): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(nacimiento);
   if (!m) return null;
+  if (!fechaReal(Number(m[1]), Number(m[2]), Number(m[3]))) return null;
 
   const [, an, mn, dn] = m;
   const [ah, mh, dh] = hoy.split('-');

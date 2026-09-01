@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { sql } from '@/lib/db';
 import { seguro } from '@/lib/queries';
@@ -169,13 +168,22 @@ function SeccionDePago({ seccion }: { seccion: Seccion }) {
             {seccion.platos.map((p) => (
               <li key={p.id} className="hueco overflow-hidden">
                 {p.image_path && (
-                  <div className="relative aspect-[4/3] bg-superficie-2">
-                    <Image
+                  <div className="aspect-[4/3] bg-superficie-2">
+                    {/* <img> y no next/image, igual que en Marco.tsx y en el
+                        resto del sitio: las fotos vienen de Supabase Storage y
+                        next/image EXIGE declarar el dominio en
+                        `images.remotePatterns`. No está declarado, así que en
+                        cuanto un plato de pago tuviera foto esta página
+                        reventaba entera con "hostname is not configured" — y
+                        `seguro()` no cubre el pintado, solo la consulta.
+                        Cuando se fije el dominio definitivo se migra y se gana
+                        el redimensionado automático. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={urlPublica(p.image_path)}
                       alt={p.name}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 33vw"
-                      className="object-cover"
+                      loading="lazy"
+                      className="h-full w-full object-cover"
                     />
                   </div>
                 )}

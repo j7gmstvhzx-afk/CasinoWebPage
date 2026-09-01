@@ -72,6 +72,23 @@ export async function POST(req: NextRequest) {
     return error('Escribe tu celular y tu nombre completo.');
   }
 
+  // LA REGLA DE LA CONTRASEÑA SE MIRA AQUÍ, ANTES DE TOCAR LA BASE.
+  //
+  // Estaba más abajo, dentro de la rama de las cuentas heredadas, y ahí volvía a
+  // crear el oráculo que el resto de este archivo se dedica a evitar: una
+  // contraseña corta contestaba `400 REGLA_CONTRASENA` SOLO cuando el celular
+  // existía, no tenía contraseña y el nombre cuadraba. Esa respuesta distinta
+  // confirmaba las tres cosas de golpe, que es justo el mapa que necesita quien
+  // intenta abrir cuentas ajenas.
+  //
+  // Comprobarlo antes no deja fuera a nadie: `registro.ts` exige la misma regla
+  // al crear la cuenta, así que NINGUNA contraseña guardada tiene menos de ocho
+  // caracteres. Una más corta no puede ser la correcta de nadie, exista el
+  // celular o no — y ahora contesta lo mismo en los dos casos.
+  if (!contrasenaValida(parsed.data.contrasena)) {
+    return error(REGLA_CONTRASENA);
+  }
+
   const tel = normalizePhone(parsed.data.celular);
   if (!tel.ok) return error(PHONE_ERROR_ES[tel.reason]);
 
@@ -139,9 +156,10 @@ export async function POST(req: NextRequest) {
   } else if (parsed.data.nombre && jugador.nombre_cuadra) {
     // Cuenta heredada: el nombre hace de segundo dato, como toda la vida, y la
     // contraseña que acaba de escribir queda guardada para la próxima.
-    autenticado = contrasenaValida(parsed.data.contrasena);
-    hayQueGuardarClave = autenticado;
-    if (!autenticado) return error(REGLA_CONTRASENA);
+    // La regla ya se comprobó arriba, igual para todo el mundo: aquí basta con
+    // que el nombre cuadre.
+    autenticado = true;
+    hayQueGuardarClave = true;
   } else {
     // Heredada sin nombre, o con un nombre que no cuadra. Se gasta el mismo
     // tiempo que una comprobación de contraseña real: sin esto, esta rama

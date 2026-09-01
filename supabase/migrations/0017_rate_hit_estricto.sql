@@ -1,59 +1,35 @@
 -- =============================================================================
--- El limitador de intentos pasa de ventana fija a ventana móvil
+-- El limitador de intentos redondea al lado ESTRICTO, no al permisivo
 --
--- EL PROBLEMA
--- -----------
--- La versión anterior contaba dentro de un cubo alineado al reloj:
+-- POR QUÉ ESTO ES UNA MIGRACIÓN NUEVA Y NO UNA EDICIÓN DE 0009
+-- ------------------------------------------------------------
+-- El arreglo se escribió primero editando `0009_rate_hit_deslizante.sql` en su
+-- sitio. Eso no llega nunca a producción: los ejecutores de migraciones llevan
+-- la cuenta de los archivos YA APLICADOS y se los saltan por nombre, así que
+-- una base que ya corrió 0009 no vuelve a mirarlo por mucho que cambie su
+-- contenido. El arreglo se quedaba en el repositorio, con la base real
+-- corriendo todavía la versión permisiva, y el diff daba a entender lo
+-- contrario. Una migración aplicada es historia: se corrige con otra detrás.
 --
---     window_start = floor(epoch / ventana) * ventana
+-- QUÉ SE CORRIGE
+-- --------------
+-- El contador va por cubos de un minuto, y un cubo deja de contarse
+-- exactamente en `window_start + ventana`. Pero los intentos no ocurren al
+-- principio del cubo: ocurren en `window_start + s`, con s de 0 a 59. O sea que
+-- un intento vive `ventana - s` y no `ventana`, y el error cae del lado
+-- PERMISIVO — el lado equivocado para algo que protege una contraseña.
 --
--- El contador se reiniciaba de golpe al cambiar la hora, así que quien agotara
--- el límite al final de una ventana volvía a tenerlo entero un segundo después.
--- En el borde caben DOS límites seguidos:
+-- Medido: poniendo la ráfaga al final del cubo, la ventana efectiva se quedaba
+-- en 59.02 minutos y se colaban 8 intentos de más sobre un límite de 8 POR
+-- HORA. O sea el doble.
 --
---     contraseña de admin   8  ->  8 + 8 = 16 intentos en dos minutos
---     registro             12  ->  24
---     entrar               20  ->  40
+-- Mirando un cubo MÁS ATRÁS (`- v_gran`), la ventana efectiva queda entre 60 y
+-- 61 minutos: el error se va al lado estricto. Para un limitador que defiende
+-- una contraseña, contar de más durante un minuto no le hace daño a nadie;
+-- contar de menos, sí.
 --
--- Un límite que se duplica eligiendo la hora no es el límite que dice la
--- constante, y lo peor es que parece que sí.
---
--- LA SOLUCIÓN: CUBOS FINOS SUMADOS HACIA ATRÁS
--- --------------------------------------------
--- Se sigue contando en cubos, pero de un sesentavo de la ventana en vez de la
--- ventana entera, y la decisión suma TODOS los cubos que caen dentro del
--- intervalo que mira hacia atrás desde ahora. Para una ventana de una hora eso
--- son cubos de un minuto: el contador ya no se reinicia nunca de golpe, solo
--- expira el cubo más viejo cada minuto.
---
--- Queda un resto de imprecisión de un cubo — un intento puede sobrevivir hasta
--- 59 segundos de más — y es deliberado: acotar la ráfaga de una hora a un
--- minuto es lo que había que resolver, y bajar más el tamaño del cubo solo
--- multiplica filas.
---
--- POR QUÉ NO EL CONTADOR PONDERADO
--- --------------------------------
--- La receta habitual para esto es ponderar la ventana anterior por la fracción
--- que aún cae dentro:  estimado = actual + anterior * (1 - transcurrido/ventana).
--- Se escribió primero así y HAY QUE NO VOLVER A ESCRIBIRLA: esa fórmula asume
--- que los intentos anteriores están repartidos por igual dentro de su ventana,
--- y un ataque los amontona justo al final, que es el caso entero. Medido: con
--- 8 gastados y a solo 9 minutos de la hora, el peso ya bajaba a 0.844 y el
--- estimado daba 7.75 sobre un límite de 8 — permitía. Cierra el borde exacto y
--- se va abriendo el resto de la hora, que es la peor clase de arreglo: el que
--- pasa la prueba si se corre a la hora oportuna.
---
--- POR QUÉ NO UNA FILA POR INTENTO
--- -------------------------------
--- Daría la cuenta exacta, pero obliga a cambiar la clave primaria de
--- `app.rate_events` — migración de esquema sobre una tabla en uso — y pierde
--- el incremento atómico: contar filas con `select count(*)` bajo READ
--- COMMITTED no ve las inserciones de transacciones que aún no confirmaron, así
--- que varias peticiones a la vez se cuelan. El `on conflict do update` de aquí
--- serializa cada cubo por el candado de su fila.
---
--- Esto de aquí no toca el esquema: misma tabla, misma clave primaria, mismos
--- tipos. Solo cambia la granularidad de `window_start` y la lectura.
+-- Es `create or replace`, así que se puede correr sobre una base que ya tenga
+-- la función y sobre una recién creada.
 -- =============================================================================
 
 create or replace function app.rate_hit(
@@ -69,7 +45,9 @@ declare
   v_gran  numeric     := greatest(1, floor(v_secs / 60));  -- 60 cubos por ventana
   v_epoch numeric     := extract(epoch from now());
   v_start timestamptz := to_timestamp(floor(v_epoch / v_gran) * v_gran);
-  v_desde timestamptz := to_timestamp(v_epoch - v_secs);
+  -- `- v_gran`: un cubo más atrás, para que el redondeo sobre-cuente en vez de
+  -- sub-contar. Ver la explicación de arriba.
+  v_desde timestamptz := to_timestamp(v_epoch - v_secs - v_gran);
   v_total bigint;
 begin
   insert into app.rate_events (bucket, key, window_start, count)

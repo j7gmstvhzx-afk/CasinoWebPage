@@ -3,6 +3,13 @@ import { PageHero } from '@/components/site/PageHero';
 import { SITE, fullAddress } from '@/lib/site';
 import { HorarioTexto } from '@/components/site/HorarioTexto';
 
+// Esta página pide el horario a la base (`HorarioTexto`), así que necesita lo
+// mismo que las demás: caché de un minuto —sin esto se hornea en el build y se
+// queda con el respaldo escrito a mano para siempre— y el techo de 15 s, porque
+// por defecto Vercel deja llegar a 300 y ahí fue donde se colgaron las pestañas.
+export const revalidate = 60;
+export const maxDuration = 15;
+
 export const metadata: Metadata = {
   title: 'Contacto',
   description: `Dirección, teléfono y horario de ${SITE.name}.`,

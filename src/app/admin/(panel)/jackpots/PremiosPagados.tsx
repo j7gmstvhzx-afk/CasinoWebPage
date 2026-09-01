@@ -4,7 +4,7 @@ import { useId, useState } from 'react';
 import { money } from '@/lib/format';
 import { pedirJson } from '@/lib/fetch-json';
 import type { PagoMensual as Fila } from '@/lib/queries';
-import { nombreMesDe } from '@/lib/hora-pr';
+import { hoyEnPR, nombreMesDe } from '@/lib/hora-pr';
 
 /** "2026-08-01" -> "agosto de 2026". */
 const nombreMes = (iso: string) => {
@@ -12,9 +12,16 @@ const nombreMes = (iso: string) => {
   return `${mes} de ${anio}`;
 };
 
+/**
+ * El mes en curso EN PUERTO RICO.
+ *
+ * `new Date()` daba dos respuestas distintas: en el servidor es UTC —así que
+ * las últimas cuatro horas de cada mes proponía ya el siguiente— y en el
+ * navegador es el huso de quien mire, que no tiene por qué ser el del salón.
+ * Además las dos no coincidían, que es una discrepancia de hidratación.
+ */
 function mesActual(): string {
-  const h = new Date();
-  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`;
+  return hoyEnPR().slice(0, 7);
 }
 
 /**

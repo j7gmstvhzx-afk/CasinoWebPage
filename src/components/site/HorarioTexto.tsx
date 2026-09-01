@@ -28,10 +28,21 @@ import { SITE } from '@/lib/site';
  */
 export async function HorarioTexto({ detallado = false }: { detallado?: boolean }) {
   const horario = await seguro<HorarioSitio | null>(getHorario, null);
-  const filas = horario ? resumenSemana(horario) : [];
-  const hayDatos = filas.some((f) => f.horas !== 'Cerrado');
 
-  if (!hayDatos) return <p>{SITE.hours}</p>;
+  // EL RESPALDO SE USA SOLO SI LA CONSULTA FALLÓ, no si el salón está cerrado.
+  //
+  // Antes la condición era "ningún día tiene horas", y eso mete en el mismo saco
+  // dos cosas opuestas: que no se pudo leer el horario, y que el horario dice
+  // que está cerrado toda la semana. Con la segunda —un cierre por reforma, por
+  // ejemplo— la página publicaba `SITE.hours`, o sea ANUNCIABA QUE ESTABA
+  // ABIERTO. Un cierre mal anunciado le cuesta el viaje a quien venga.
+  //
+  // `seguro()` devuelve `null` exactamente cuando la consulta no salió, así que
+  // ese es el único caso que merece el texto de respaldo.
+  if (horario === null) return <p>{SITE.hours}</p>;
+
+  const filas = resumenSemana(horario);
+  if (filas.length === 0) return <p>{SITE.hours}</p>;
 
   if (!detallado) {
     return (

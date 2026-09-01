@@ -133,10 +133,28 @@ export async function PATCH(req: NextRequest) {
   // mismo nombre y banco reventarían la consulta con un error de Postgres que
   // no le dice nada a quien está en el mostrador. Se comprueba antes y se
   // contesta en español.
+  // Se compara contra los valores QUE VA A TENER la fila editada, no contra las
+  // columnas de la fila candidata.
+  //
+  // Con `coalesce(${'$'}{nombre}, m.name)` la condición degeneraba en `m.name = m.name`
+  // cuando sólo se mandaba uno de los dos campos: siempre cierta, así que
+  // cualquier máquina con ese banco valía como choque y salía un 409 falso.
+  // Ahora se lee la fila que se está editando y se rellena el hueco con lo que
+  // ya tiene, que es lo que quedará guardado.
+  const [actual] = await sql<{ name: string; bank_number: number }[]>`
+    select name, bank_number from app.machines where id = ${id}::uuid
+  `;
+  if (!actual) {
+    return NextResponse.json({ ok: false, error: 'Esa máquina ya no existe.' }, { status: 404 });
+  }
+
+  const nombreFinal = nombre ?? actual.name;
+  const bancoFinal = banco ?? actual.bank_number;
+
   const [choque] = await sql<{ id: string }[]>`
     select m.id from app.machines m
-     where m.name = coalesce(${nombre ?? null}, m.name)
-       and m.bank_number = coalesce(${banco ?? null}, m.bank_number)
+     where m.name = ${nombreFinal}
+       and m.bank_number = ${bancoFinal}
        and m.id <> ${id}::uuid
      limit 1
   `;
@@ -149,8 +167,7 @@ export async function PATCH(req: NextRequest) {
 
   await sql`
     update app.machines
-       set name        = coalesce(${nombre ?? null}, name),
-           bank_number = coalesce(${banco ?? null}, bank_number)
+       set name = ${nombreFinal}, bank_number = ${bancoFinal}
      where id = ${id}::uuid
   `;
 

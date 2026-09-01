@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { sql } from './db';
 import { hoyEnPR } from './hora-pr';
 import type { HorarioSitio, Programa, ReglaDia } from './horario';
@@ -607,7 +608,21 @@ export async function getHistorialPagos(): Promise<PagoMensual[]> {
  * siempre. Desde AYER, porque una franja de ayer que cruza medianoche todavía
  * puede tener el salón abierto a las dos de la mañana.
  */
-export async function getHorario(): Promise<HorarioSitio> {
+/**
+ * El horario, memorizado POR PETICIÓN con `cache()` de React.
+ *
+ * Se pedía TRES VECES al pintar la portada —la banda del parte del día, el
+ * bloque de horario de la página y el pie, que sale en todas— y cada llamada
+ * eran dos consultas. Seis consultas para el mismo dato, compitiendo por un
+ * pool de cuatro conexiones con las otras siete de la portada; y `seguro()` le
+ * pone un plazo de 2.5 s a todas a la vez, así que las que se quedan haciendo
+ * cola son las que se caen. Fue exactamente la forma del fallo que dejó
+ * "$0.00 repartidos en 0 máquinas" en producción.
+ *
+ * `cache()` es por petición, no una caché compartida: dos visitantes distintos
+ * siguen consultando cada uno lo suyo, y `revalidatePath` sigue mandando.
+ */
+export const getHorario = cache(async function getHorario(): Promise<HorarioSitio> {
   const [dias, excepciones] = await Promise.all([
     sql<{ dia: number; abre: string | null; cierra: string | null }[]>`
       select dia, abre::text, cierra::text from app.horario order by dia
@@ -633,7 +648,7 @@ export async function getHorario(): Promise<HorarioSitio> {
   }
 
   return { semana, excepciones: mapa };
-}
+})
 
 /** Lo que se repite cada semana: cortesías, menú de fin de semana, música. */
 export async function getPrograma(): Promise<Programa[]> {

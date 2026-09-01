@@ -61,6 +61,13 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
     if (edicion.nombre.trim().length < 2) {
       return setAviso({ tipo: 'mal', texto: 'Escribe el nombre de la máquina.' });
     }
+    // El banco se exige explícitamente. Con `parseInt(...) || 0`, dejar la
+    // casilla vacía escribía un banco 0 EN SILENCIO: el cliente iba a buscar la
+    // máquina al banco 0, que no existe.
+    const banco = Number.parseInt(edicion.banco, 10);
+    if (!Number.isFinite(banco) || banco < 0) {
+      return setAviso({ tipo: 'mal', texto: 'Escribe el número de banco.' });
+    }
     setGuardando(true);
     const r = await fetch('/api/admin/jackpots/manual', {
       method: 'PATCH',
@@ -68,7 +75,7 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
       body: JSON.stringify({
         id,
         nombre: edicion.nombre.trim(),
-        banco: Number.parseInt(edicion.banco, 10) || 0,
+        banco,
       }),
     })
       .then((x) => x.json())
