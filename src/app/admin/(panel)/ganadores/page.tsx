@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
 import { GestorGanadores, type GanadorAdmin } from './GestorGanadores';
+import { FalloDeCarga } from '../FalloDeCarga';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaGanadores() {
-  const ganadores = await seguro(
+  const r = await intentar(
     () =>
       sql<GanadorAdmin[]>`
         select id, pueblo, monto_cents::text as monto_cents, gano_on::text, publicado
@@ -21,7 +22,9 @@ export default async function PaginaGanadores() {
          limit 100
       `.then((f) => [...f]),
     [] as GanadorAdmin[],
+    LIMITE_PANEL_MS,
   );
+  const ganadores = r.datos;
 
   return (
     <>
@@ -31,6 +34,8 @@ export default async function PaginaGanadores() {
         permiso a nadie, y sigue diciendo lo que importa: que aquí se paga y que
         le tocó a alguien de al lado. La fecha se pone sola.
       </p>
+
+      {!r.ok && <FalloDeCarga que="los ganadores" />}
 
       <GestorGanadores ganadores={ganadores} />
     </>

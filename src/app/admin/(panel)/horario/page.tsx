@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS, algunoFallo } from '@/lib/queries';
 import { GestorHorario } from './GestorHorario';
+import { FalloDeCarga } from '../FalloDeCarga';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -12,14 +13,15 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaHorario() {
-  const [semana, excepciones, programa] = await Promise.all([
-    seguro(
+  const [rSemana, rExcep, rPrograma] = await Promise.all([
+    intentar(
       () => sql<{ dia: number; abre: string | null; cierra: string | null }[]>`
         select dia, abre::text, cierra::text from app.horario order by dia
       `.then((f) => [...f]),
       [],
+      LIMITE_PANEL_MS,
     ),
-    seguro(
+    intentar(
       () => sql<
         { fecha: string; abre: string | null; cierra: string | null; cerrado: boolean; motivo: string | null }[]
       >`
@@ -29,8 +31,9 @@ export default async function PaginaHorario() {
          order by fecha
       `.then((f) => [...f]),
       [],
+      LIMITE_PANEL_MS,
     ),
-    seguro(
+    intentar(
       () => sql<
         {
           id: string; titulo: string; detalle: string | null; dias: number[];
@@ -43,8 +46,13 @@ export default async function PaginaHorario() {
           from app.programa order by orden, desde
       `.then((f) => f.map((x) => ({ ...x, dias: (x.dias ?? []).map(Number) }))),
       [],
+      LIMITE_PANEL_MS,
     ),
   ]);
+  const semana = rSemana.datos;
+  const excepciones = rExcep.datos;
+  const programa = rPrograma.datos;
+  const fallo = algunoFallo(rSemana, rExcep, rPrograma);
 
   return (
     <>
@@ -53,6 +61,8 @@ export default async function PaginaHorario() {
         Esto es lo que hace que la página sepa si el casino está abierto ahora
         mismo. Sale en la portada, en el pie de todas las páginas y en Contacto.
       </p>
+
+      {fallo && <FalloDeCarga que="el horario" />}
 
       <GestorHorario semana={semana} excepciones={excepciones} programa={programa} />
     </>

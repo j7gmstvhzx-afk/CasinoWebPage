@@ -34,7 +34,14 @@ const vacio = (): Borrador => ({
   bank_number: '',
 });
 
-export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
+export function GestorMaquinas({
+  maquinas,
+  cargaFallida = false,
+}: {
+  maquinas: MaquinaAdmin[];
+  /** true cuando la consulta no llegó a correr: la lista NO es de fiar. */
+  cargaFallida?: boolean;
+}) {
   const router = useRouter();
   const [editando, setEditando] = useState<string | 'nuevo' | null>(null);
   const [b, setB] = useState<Borrador>(vacio());
@@ -257,11 +264,17 @@ export function GestorMaquinas({ maquinas }: { maquinas: MaquinaAdmin[] }) {
         </div>
       )}
 
+      {/* El conteo se calla cuando la lista no es de fiar: un "(0)" grande es
+          una afirmación, y aquí no se puede afirmar nada. */}
       <h2 className="mt-12 font-display text-2xl font-bold">
-        Máquinas ({maquinas.length})
+        Máquinas{cargaFallida ? '' : ` (${maquinas.length})`}
       </h2>
 
-      {maquinas.length === 0 ? (
+      {cargaFallida ? (
+        <p className="tarjeta mt-5 px-6 py-12 text-center text-tenue">
+          No se pudo leer la lista. Recarga la página para verla.
+        </p>
+      ) : maquinas.length === 0 ? (
         <p className="tarjeta mt-5 px-6 py-12 text-center text-tenue">
           Todavía no has añadido ninguna máquina nueva.
         </p>

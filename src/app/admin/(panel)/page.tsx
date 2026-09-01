@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS, algunoFallo } from '@/lib/queries';
 import { money, dateTime, relativeUpdate } from '@/lib/format';
 import { formatVoucherCode } from '@/lib/voucher';
+import { FalloDeCarga } from './FalloDeCarga';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -36,8 +37,8 @@ type Cupon = {
 };
 
 export default async function PaginaResumen() {
-  const [resumen, cupones] = await Promise.all([
-    seguro(
+  const [rResumen, rCupones] = await Promise.all([
+    intentar(
       async () => {
         const [r] = await sql<Resumen[]>`
           select
@@ -62,8 +63,9 @@ export default async function PaginaResumen() {
         return r;
       },
       null as Resumen | null,
+      LIMITE_PANEL_MS,
     ),
-    seguro(
+    intentar(
       () => sql<Cupon[]>`
         select v.code, p.full_name, v.amount_cents, v.status, v.issued_at, v.expires_at
           from app.vouchers v
@@ -72,12 +74,22 @@ export default async function PaginaResumen() {
          limit 12
       `,
       [] as Cupon[],
+      LIMITE_PANEL_MS,
     ),
   ]);
+  const resumen = rResumen.datos;
+  const cupones = rCupones.datos;
+  const fallo = algunoFallo(rResumen, rCupones);
 
   return (
     <>
       <h1 className="font-display text-3xl font-bold">Resumen</h1>
+
+      {/* Antes, si la consulta fallaba, esta pantalla pintaba CUATRO CEROS
+          —"0 clientes registrados, 0 máquinas activas"— como si el casino
+          estuviera vacío. Es la peor pantalla del panel donde mentir: es la
+          primera que se abre. */}
+      {fallo && <FalloDeCarga que="los contadores del resumen" />}
 
       {/* `Number(...)`: un `count(*)` de Postgres es un bigint, y el driver lo
           devuelve como CADENA. Sin la conversión, `"0" === 0` es false y el
@@ -116,7 +128,7 @@ export default async function PaginaResumen() {
       <h2 className="mt-12 font-display text-2xl font-bold">Cupones recientes</h2>
       {cupones.length === 0 ? (
         <p className="tarjeta mt-5 px-6 py-10 text-center text-tenue">
-          Todavía no se ha emitido ningún cupón.
+          {fallo ? 'No se pudo leer la lista de cupones.' : 'Todavía no se ha emitido ningún cupón.'}
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">

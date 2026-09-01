@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
+import { FalloDeCarga } from '../FalloDeCarga';
 import { almacenamientoListo } from '@/lib/storage';
 import { GestorMaquinas, type MaquinaAdmin } from './GestorMaquinas';
 
@@ -15,14 +16,23 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaAdminMaquinasNuevas() {
-  const maquinas = await seguro(
+  // `intentar` y no `seguro`: hace falta SABER si la consulta falló.
+  //
+  // Esta consulta no lleva filtro —pide todas las filas—, así que ver cero
+  // mientras la página pública enseña una máquina es imposible... salvo que la
+  // consulta no llegara a correr. Eso es lo que pasaba: se agotaba el tiempo,
+  // el respaldo vacío llegaba a la pantalla y se pintaba como "no has añadido
+  // ninguna". Ahora se distingue, y se espera más (ver LIMITE_PANEL_MS).
+  const r = await intentar(
     () => sql<MaquinaAdmin[]>`
       select id, name, description, image_path, arrived_on, bank_number, published
         from app.new_machines
        order by published desc, arrived_on desc
     `,
     [] as MaquinaAdmin[],
+    LIMITE_PANEL_MS,
   );
+  const maquinas = r.datos;
 
   return (
     <>
@@ -31,6 +41,8 @@ export default async function PaginaAdminMaquinasNuevas() {
         Anuncia lo que acaba de llegar al salón. Con el número de banco, el
         cliente sabe dónde buscarla.
       </p>
+
+      {!r.ok && <FalloDeCarga que="las máquinas nuevas" />}
 
       {!almacenamientoListo() && (
         <div className="mt-6 rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm text-tinta">
@@ -43,7 +55,7 @@ export default async function PaginaAdminMaquinasNuevas() {
         </div>
       )}
 
-      <GestorMaquinas maquinas={maquinas} />
+      <GestorMaquinas maquinas={maquinas} cargaFallida={!r.ok} />
     </>
   );
 }

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS, algunoFallo } from '@/lib/queries';
 import { formatPhone } from '@/lib/phone';
 import { dateTime } from '@/lib/format';
+import { FalloDeCarga } from '../FalloDeCarga';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -26,8 +27,8 @@ type Cliente = {
 type PorPueblo = { municipality: string; n: number };
 
 export default async function PaginaClientes() {
-  const [clientes, porPueblo, total] = await Promise.all([
-    seguro(
+  const [rClientes, rPueblo, rTotal] = await Promise.all([
+    intentar(
       () => sql<Cliente[]>`
         select p.id, p.full_name, p.phone_e164, m.name as municipality, p.created_at,
                (select count(*) from app.spins s where s.player_id = p.id) as tiradas
@@ -38,8 +39,9 @@ export default async function PaginaClientes() {
          limit 100
       `,
       [] as Cliente[],
+      LIMITE_PANEL_MS,
     ),
-    seguro(
+    intentar(
       () => sql<PorPueblo[]>`
         select m.name as municipality, count(*)::int as n
           from app.players p
@@ -50,14 +52,19 @@ export default async function PaginaClientes() {
          limit 8
       `,
       [] as PorPueblo[],
+      LIMITE_PANEL_MS,
     ),
-    seguro(async () => {
+    intentar(async () => {
       const [r] = await sql<{ n: number }[]>`
         select count(*)::int as n from app.players where blocked_at is null
       `;
       return r.n;
-    }, 0),
+    }, 0, LIMITE_PANEL_MS),
   ]);
+  const clientes = rClientes.datos;
+  const porPueblo = rPueblo.datos;
+  const total = rTotal.datos;
+  const fallo = algunoFallo(rClientes, rPueblo, rTotal);
 
   return (
     <>
@@ -67,6 +74,8 @@ export default async function PaginaClientes() {
           <p className="mt-2 text-tenue">
             {total} registrado{total === 1 ? '' : 's'} en total.
           </p>
+
+      {fallo && <FalloDeCarga que="los clientes" />}
         </div>
 
         {/* Enlace directo, no fetch + descarga por JavaScript: así funciona
@@ -102,7 +111,7 @@ export default async function PaginaClientes() {
 
       {clientes.length === 0 ? (
         <p className="tarjeta mt-5 px-6 py-10 text-center text-tenue">
-          Todavía no se ha registrado nadie.
+          {fallo ? 'No se pudo leer la lista de clientes.' : 'Todavía no se ha registrado nadie.'}
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">

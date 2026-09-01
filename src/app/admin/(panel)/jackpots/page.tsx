@@ -6,9 +6,10 @@ import {
   getJackpots,
   getMaquinasParaEntrada,
   getUltimaActualizacion,
-  seguro,
+  intentar, LIMITE_PANEL_MS, algunoFallo,
 } from '@/lib/queries';
 import { money, relativeUpdate } from '@/lib/format';
+import { FalloDeCarga } from '../FalloDeCarga';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -21,12 +22,17 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaAdminJackpots() {
-  const [jackpots, maquinas, ultima, pagos] = await Promise.all([
-    seguro(getJackpots, []),
-    seguro(getMaquinasParaEntrada, []),
-    seguro(getUltimaActualizacion, null),
-    seguro(getHistorialPagos, []),
+  const [r0, r1, r2, r3] = await Promise.all([
+    intentar(getJackpots, [], LIMITE_PANEL_MS),
+    intentar(getMaquinasParaEntrada, [], LIMITE_PANEL_MS),
+    intentar(getUltimaActualizacion, null, LIMITE_PANEL_MS),
+    intentar(getHistorialPagos, [], LIMITE_PANEL_MS),
   ]);
+  const jackpots = r0.datos;
+  const maquinas = r1.datos;
+  const ultima = r2.datos;
+  const pagos = r3.datos;
+  const fallo = algunoFallo(r0, r1, r2, r3);
 
   return (
     <>
@@ -35,8 +41,12 @@ export default async function PaginaAdminJackpots() {
         {/* Sin punto al final: en español "p. m." ya lo trae, y quedaba "p. m..". */}
         {ultima
           ? `Última actualización: ${relativeUpdate(ultima)}`
-          : 'Todavía no se ha publicado ningún premio.'}
+          : fallo
+            ? 'No se pudieron leer los premios.'
+            : 'Todavía no se ha publicado ningún premio.'}
       </p>
+
+      {fallo && <FalloDeCarga que="los premios" />}
 
       <PanelJackpots maquinas={maquinas} />
 

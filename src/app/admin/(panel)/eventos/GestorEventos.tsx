@@ -47,7 +47,14 @@ const aBorrador = (e: EventoAdmin): Borrador => ({
   sort_order: e.sort_order,
 });
 
-export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
+export function GestorEventos({
+  eventos,
+  cargaFallida = false,
+}: {
+  eventos: EventoAdmin[];
+  /** true cuando la consulta no llegó a correr: la lista NO es de fiar. */
+  cargaFallida?: boolean;
+}) {
   const router = useRouter();
   const [editando, setEditando] = useState<string | 'nuevo' | null>(null);
   const [borrador, setBorrador] = useState<Borrador>(vacio());
@@ -253,10 +260,14 @@ export function GestorEventos({ eventos }: { eventos: EventoAdmin[] }) {
       )}
 
       <h2 className="mt-12 font-display text-2xl font-bold">
-        Promociones ({eventos.length})
+        Promociones{cargaFallida ? '' : ` (${eventos.length})`}
       </h2>
 
-      {eventos.length === 0 ? (
+      {cargaFallida ? (
+        <p className="tarjeta mt-5 px-6 py-12 text-center text-tenue">
+          No se pudo leer la lista. Recarga la página para verla.
+        </p>
+      ) : eventos.length === 0 ? (
         <p className="tarjeta mt-5 px-6 py-12 text-center text-tenue">
           Todavía no hay promociones. Crea la primera con el botón de arriba.
         </p>

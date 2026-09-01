@@ -458,26 +458,83 @@ export const LIMITE_CONSULTA_MS = 2_500;
  * lo resolvía: el menú nunca tuvo la culpa.
  */
 export async function seguro<T>(fn: () => Promise<T>, respaldo: T): Promise<T> {
+  return (await intentar(fn, respaldo)).datos;
+}
+
+/**
+ * Cuánto espera el PANEL antes de renunciar. Más que una página pública, y a
+ * propósito.
+ *
+ * En una página pública, una sección que no carga se queda vacía y el visitante
+ * ni se entera: venía a ver el horario. En el panel es al revés — el dueño está
+ * mirando SU trabajo, y una lista vacía por un tiempo agotado le dice que lo
+ * que guardó se perdió. Vale más esperar unos segundos que darle un cero falso.
+ *
+ * Supabase en plan gratuito duerme la base y la despierta en frío: 2.5 s se
+ * quedan cortos de sobra en ese primer golpe.
+ */
+export const LIMITE_PANEL_MS = 8_000;
+
+/**
+ * Lo mismo que `seguro`, pero DICIENDO SI FALLÓ.
+ *
+ * EL FALLO QUE ESTO ARREGLA, Y QUE ERA MÍO
+ * ----------------------------------------
+ * `seguro` atrapa el fallo y devuelve el respaldo. Cuando ese respaldo es una
+ * lista vacía, la pantalla la pinta como "no hay nada" — con esas palabras y
+ * con toda seguridad. Pero "no hay nada" y "no pude leerlo" son cosas
+ * distintas, y la única que puede distinguirlas es esta función.
+ *
+ * Pasó en producción, y el dueño lo cazó con dos capturas del MISMO despliegue:
+ * la página pública enseñaba una máquina con su foto, y el panel decía
+ * "Máquinas (0) — Todavía no has añadido ninguna". La consulta del panel no
+ * lleva ningún filtro, así que ver cero mientras la pública ve una es
+ * imposible... salvo que la consulta del panel no llegara a correr. Eso es
+ * justo lo que pasaba: se agotaba el tiempo y el respaldo vacío se pintaba como
+ * un hecho.
+ *
+ * De ahí lo de "de momento se muestra la información y de momento deja de
+ * mostrarla": un tiempo agotado es intermitente por naturaleza.
+ *
+ * Se devuelven los datos SIEMPRE, para que quien llame pueda pintar igual, más
+ * un `ok` que dice si son de fiar. Una pantalla que reciba `ok: false` tiene que
+ * decir "no se pudo cargar", nunca "no hay nada".
+ */
+export type Resultado<T> =
+  | { ok: true; datos: T }
+  | { ok: false; datos: T; motivo: string };
+
+export async function intentar<T>(
+  fn: () => Promise<T>,
+  respaldo: T,
+  limiteMs: number = LIMITE_CONSULTA_MS,
+): Promise<Resultado<T>> {
   let temporizador: ReturnType<typeof setTimeout> | undefined;
 
   try {
-    return await Promise.race([
+    const datos = await Promise.race([
       fn(),
       new Promise<never>((_, rechazar) => {
         temporizador = setTimeout(
-          () => rechazar(new Error(`la consulta pasó de ${LIMITE_CONSULTA_MS} ms`)),
-          LIMITE_CONSULTA_MS,
+          () => rechazar(new Error(`la consulta pasó de ${limiteMs} ms`)),
+          limiteMs,
         );
       }),
     ]);
+    return { ok: true, datos };
   } catch (e) {
     console.error('[consulta fallida]', e);
-    return respaldo;
+    return { ok: false, datos: respaldo, motivo: e instanceof Error ? e.message : String(e) };
   } finally {
     // Sin esto, el temporizador mantiene vivo el proceso hasta que vence,
     // incluso cuando la consulta respondió a tiempo.
     clearTimeout(temporizador);
   }
+}
+
+/** ¿Falló alguno? Para pantallas que piden varias cosas a la vez. */
+export function algunoFallo(...rs: Resultado<unknown>[]): boolean {
+  return rs.some((r) => !r.ok);
 }
 
 

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
 import { almacenamientoListo } from '@/lib/storage';
 import { GestorEventos, type EventoAdmin } from './GestorEventos';
+import { FalloDeCarga } from '../FalloDeCarga';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaAdminEventos() {
-  const eventos = await seguro(
+  const r = await intentar(
     () => sql<EventoAdmin[]>`
       select id, title, body, image_path, starts_on, ends_on, published,
                show_in_popup, sort_order
@@ -23,7 +24,9 @@ export default async function PaginaAdminEventos() {
        order by show_in_popup desc, published desc, sort_order, created_at desc
     `,
     [] as EventoAdmin[],
+    LIMITE_PANEL_MS,
   );
+  const eventos = r.datos;
 
   return (
     <>
@@ -32,6 +35,8 @@ export default async function PaginaAdminEventos() {
         Sube el arte, ponle fecha y aparece en la página. Aquí mismo la ocultas
         cuando termine.
       </p>
+
+      {!r.ok && <FalloDeCarga que="las promociones" />}
 
       {!almacenamientoListo() && (
         <div className="mt-6 rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm text-tinta">
@@ -45,7 +50,7 @@ export default async function PaginaAdminEventos() {
         </div>
       )}
 
-      <GestorEventos eventos={eventos} />
+      <GestorEventos eventos={eventos} cargaFallida={!r.ok} />
     </>
   );
 }
