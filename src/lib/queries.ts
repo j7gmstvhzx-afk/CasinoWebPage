@@ -435,48 +435,61 @@ export async function getGaleria(limite = 60): Promise<ItemGaleria[]> {
  * Ninguna de estas consultas es pesada: si a los 2.5 s no ha vuelto, no está
  * "tardando", está trabada, y esperar más no la va a arreglar.
  */
-export const LIMITE_CONSULTA_MS = 2_500;
+export const LIMITE_CONSULTA_MS = 6_000;
 
 /**
- * Envoltura tolerante a fallos para las páginas públicas.
+ * Cuántas veces se vuelve a intentar una LECTURA antes de rendirse.
  *
- * Si la base de datos no responde, una sección informativa debe quedarse vacía
- * — no tumbar la página entera. El visitante que venía a ver la dirección y el
- * horario los sigue viendo, que es lo que más se consulta.
+ * Dos, y no una: el caso que hay que cubrir es el arranque en frío. El primer
+ * intento paga el saludo TCP + TLS + autenticación contra Supabase; el segundo
+ * suele encontrar la conexión ya abierta y vuelve en milisegundos.
  *
- * POR QUÉ HAY UN TIEMPO LÍMITE Y NO SOLO UN try/catch
- * ---------------------------------------------------
- * Atrapar el error no alcanzaba: una conexión trabada NO lanza nada, se queda
- * esperando. Sin límite, la petición seguía viva hasta el techo de la función
- * en Vercel — 300 segundos. En producción eso salió 176 veces, repartido por
- * todas las pestañas del sitio.
+ * Con `maxDuration = 15` en las rutas, dos intentos de 6 s más la pausa caben
+ * de sobra (12.4 s en el peor caso). Tres no cabrían.
  *
- * Y así es como se siente desde el celular: al tocar una pestaña, Next pide el
- * .rsc de esa ruta; si esa petición se cuelga cinco minutos, la pantalla no
- * cambia y no aparece ningún error. Es exactamente el "toco la pestaña y no
- * pasa nada" que se reportó una y otra vez, y por eso ningún arreglo del menú
- * lo resolvía: el menú nunca tuvo la culpa.
+ * SOLO PARA LECTURAS. Reintentar una escritura puede cobrar dos veces un cupón
+ * o insertar la fila dos veces. `intentar` se usa únicamente para consultas de
+ * pantalla; las escrituras van por las rutas de API y usan `sql` directo.
  */
-export async function seguro<T>(fn: () => Promise<T>, respaldo: T): Promise<T> {
-  return (await intentar(fn, respaldo)).datos;
+const INTENTOS = 2;
+const PAUSA_MS = 400;
+
+/**
+ * ¿Este fallo tiene sentido reintentarlo?
+ *
+ * Un tiempo agotado o una conexión caída son ACCIDENTES: el segundo intento
+ * tiene todas las de ganar. Una tabla que no existe o un error de sintaxis son
+ * DEFECTOS: reintentar solo gasta el presupuesto y retrasa el mensaje de error.
+ *
+ * Los códigos son los de Postgres: la clase 08 es "connection exception", y
+ * 57P01/57P03 son el servidor cerrando o arrancando.
+ */
+function esTransitorio(e: unknown): boolean {
+  const code = (e as { code?: string })?.code ?? '';
+  if (code.startsWith('08') || code === '57P01' || code === '57P03' || code === '57014') return true;
+  const msg = e instanceof Error ? e.message : String(e);
+  return /pasó de \d+ ms|timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|socket|Connection terminated|CONNECT_TIMEOUT/i.test(
+    msg,
+  );
 }
 
-/**
- * Cuánto espera el PANEL antes de renunciar. Más que una página pública, y a
- * propósito.
- *
- * En una página pública, una sección que no carga se queda vacía y el visitante
- * ni se entera: venía a ver el horario. En el panel es al revés — el dueño está
- * mirando SU trabajo, y una lista vacía por un tiempo agotado le dice que lo
- * que guardó se perdió. Vale más esperar unos segundos que darle un cero falso.
- *
- * Supabase en plan gratuito duerme la base y la despierta en frío: 2.5 s se
- * quedan cortos de sobra en ese primer golpe.
- */
-export const LIMITE_PANEL_MS = 8_000;
+const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Lo mismo que `seguro`, pero DICIENDO SI FALLÓ.
+ * Cuánto espera el PANEL por cada intento. Más que una página pública.
+ *
+ * En una página pública, una sección que no carga se queda vacía y el visitante
+ * ni se entera: venía a ver el horario. Además esas páginas son de caché, así
+ * que mientras se rehacen en segundo plano el visitante sigue viendo la última
+ * versión buena — esperar ahí no le cuesta nada a nadie.
+ *
+ * En el panel es al revés: el dueño está mirando SU trabajo, y una lista vacía
+ * le dice que lo que guardó se perdió. Vale más esperar que darle un cero falso.
+ */
+export const LIMITE_PANEL_MS = 6_500;
+
+/**
+ * Lo mismo que `seguro`, pero DICIENDO SI FALLÓ — y reintentando antes.
  *
  * EL FALLO QUE ESTO ARREGLA, Y QUE ERA MÍO
  * ----------------------------------------
@@ -486,19 +499,25 @@ export const LIMITE_PANEL_MS = 8_000;
  * distintas, y la única que puede distinguirlas es esta función.
  *
  * Pasó en producción, y el dueño lo cazó con dos capturas del MISMO despliegue:
- * la página pública enseñaba una máquina con su foto, y el panel decía
+ * la página pública enseñaba una máquina con su foto y el panel decía
  * "Máquinas (0) — Todavía no has añadido ninguna". La consulta del panel no
- * lleva ningún filtro, así que ver cero mientras la pública ve una es
- * imposible... salvo que la consulta del panel no llegara a correr. Eso es
- * justo lo que pasaba: se agotaba el tiempo y el respaldo vacío se pintaba como
- * un hecho.
+ * lleva filtro, así que ver cero mientras la pública ve una es imposible...
+ * salvo que la consulta no llegara a correr.
  *
- * De ahí lo de "de momento se muestra la información y de momento deja de
- * mostrarla": un tiempo agotado es intermitente por naturaleza.
+ * POR QUÉ NO LLEGABA A CORRER, QUE ES LO QUE DE VERDAD HABÍA QUE ARREGLAR
+ * ----------------------------------------------------------------------
+ * Los plazos estaban al revés. `connect_timeout` daba 10 s para abrir la
+ * conexión y esta función se rendía a los 2.5: a una conexión fría se le
+ * concedía cuatro veces más tiempo del que la página iba a esperar. Y con
+ * `idle_timeout` en 20 s, en un casino de pueblo la conexión estaba fría casi
+ * siempre.
  *
- * Se devuelven los datos SIEMPRE, para que quien llame pueda pintar igual, más
- * un `ok` que dice si son de fiar. Una pantalla que reciba `ok: false` tiene que
- * decir "no se pudo cargar", nunca "no hay nada".
+ * Ahí estaba el "a veces sale y a veces no": no dependía de la base, dependía
+ * de si alguien había entrado en los últimos veinte segundos.
+ *
+ * Ahora son tres cosas a la vez: la conexión se mantiene abierta tres minutos,
+ * abrirla (5 s) cabe dentro de lo que se espera (6 s), y si aun así tropieza se
+ * REINTENTA. Un accidente deja de ser una pantalla vacía.
  */
 export type Resultado<T> =
   | { ok: true; datos: T }
@@ -509,27 +528,60 @@ export async function intentar<T>(
   respaldo: T,
   limiteMs: number = LIMITE_CONSULTA_MS,
 ): Promise<Resultado<T>> {
-  let temporizador: ReturnType<typeof setTimeout> | undefined;
+  let ultimo: unknown;
 
-  try {
-    const datos = await Promise.race([
-      fn(),
-      new Promise<never>((_, rechazar) => {
-        temporizador = setTimeout(
-          () => rechazar(new Error(`la consulta pasó de ${limiteMs} ms`)),
-          limiteMs,
-        );
-      }),
-    ]);
-    return { ok: true, datos };
-  } catch (e) {
-    console.error('[consulta fallida]', e);
-    return { ok: false, datos: respaldo, motivo: e instanceof Error ? e.message : String(e) };
-  } finally {
-    // Sin esto, el temporizador mantiene vivo el proceso hasta que vence,
-    // incluso cuando la consulta respondió a tiempo.
-    clearTimeout(temporizador);
+  for (let n = 1; n <= INTENTOS; n++) {
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const datos = await Promise.race([
+        fn(),
+        new Promise<never>((_, rechazar) => {
+          temporizador = setTimeout(
+            () => rechazar(new Error(`la consulta pasó de ${limiteMs} ms`)),
+            limiteMs,
+          );
+        }),
+      ]);
+      if (n > 1) console.info(`[consulta] recuperada en el intento ${n}`);
+      return { ok: true, datos };
+    } catch (e) {
+      ultimo = e;
+      const vale = esTransitorio(e) && n < INTENTOS;
+      console.error(`[consulta fallida] intento ${n}/${INTENTOS}`, vale ? '(se reintenta)' : '', e);
+      if (!vale) break;
+      await dormir(PAUSA_MS);
+    } finally {
+      // Sin esto, el temporizador mantiene vivo el proceso hasta que vence,
+      // incluso cuando la consulta respondió a tiempo.
+      clearTimeout(temporizador);
+    }
   }
+
+  return {
+    ok: false,
+    datos: respaldo,
+    motivo: ultimo instanceof Error ? ultimo.message : String(ultimo),
+  };
+}
+
+/**
+ * Envoltura tolerante a fallos para las páginas públicas.
+ *
+ * Hace lo mismo que `intentar` —con su reintento y sus plazos— pero descarta el
+ * `ok`. Se queda para los sitios donde el fallo silencioso SÍ es aceptable: una
+ * sección informativa que no carga se deja vacía en vez de tumbar la página
+ * entera, y el visitante que venía a ver la dirección y el horario los sigue
+ * viendo.
+ *
+ * Donde NO vale es donde la pantalla vaya a decir "no hay nada": eso es una
+ * afirmación, y para eso está `intentar`.
+ */
+export async function seguro<T>(
+  fn: () => Promise<T>,
+  respaldo: T,
+  limiteMs: number = LIMITE_CONSULTA_MS,
+): Promise<T> {
+  return (await intentar(fn, respaldo, limiteMs)).datos;
 }
 
 /** ¿Falló alguno? Para pantallas que piden varias cosas a la vez. */

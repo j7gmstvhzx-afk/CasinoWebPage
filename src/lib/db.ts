@@ -126,7 +126,14 @@ function crear(): Sql {
   }
 
   const cliente = postgres(corregida, {
-    max: 4,
+    // Seis y no cuatro: hay que dejar hueco para el reintento.
+    //
+    // Cuando un intento se abandona por tiempo, la consulta sigue viva en su
+    // conexión hasta que Postgres la mata (statement_timeout). El reintento
+    // necesita OTRA conexión libre; con el pool justo al ancho de la ráfaga, el
+    // reintento se quedaba esperando la conexión que había dejado tirada el
+    // intento anterior, y fallaba por lo mismo.
+    max: 6,
     prepare: false,
     types: {
       // Las columnas `date` vuelven como CADENA 'YYYY-MM-DD', no como Date.
@@ -161,8 +168,33 @@ function crear(): Sql {
         parse: (x: string) => x,
       },
     },
-    idle_timeout: 20,
-    connect_timeout: 10,
+    // LOS PLAZOS DE AQUÍ TIENEN QUE CABER DENTRO DEL PLAZO DE `intentar()`.
+    //
+    // Estaban al revés y ése era EL fallo: `connect_timeout` daba 10 s para
+    // abrir la conexión mientras `seguro()` se rendía a los 2.5. O sea que a
+    // una conexión fría se le concedía cuatro veces más tiempo del que la
+    // página estaba dispuesta a esperar: era imposible que llegara.
+    //
+    // Ahora abrir la conexión tiene 5 s y cada intento de `intentar()` tiene 6.
+    // El que abre cabe dentro del que espera, que es la única forma de que un
+    // arranque en frío pueda terminar.
+    connect_timeout: 5,
+
+    // TRES MINUTOS SIN CERRAR, Y NO VEINTE SEGUNDOS.
+    //
+    // Con 20 s, en un casino de pueblo la conexión estaba fría casi siempre:
+    // basta con que no entre nadie durante veinte segundos —lo normal a las
+    // tres de la tarde de un martes— para que la siguiente visita tenga que
+    // pagar el saludo TCP + TLS + autenticación contra Supabase entero.
+    //
+    // Ésa era la mitad del "a veces sale y a veces no": si alguien había
+    // entrado hace poco, la conexión estaba caliente y la página cargaba; si
+    // no, había que abrirla y no daba tiempo. La lotería no era de la base de
+    // datos, era del reloj.
+    //
+    // El pooler de Supabase en modo transacción está hecho para sostener
+    // conexiones ociosas: es su trabajo.
+    idle_timeout: 180,
     ssl: local ? false : 'require',
     connection: {
       // El corte del lado del servidor. `seguro()` deja de esperar a los 2.5 s,
@@ -180,9 +212,15 @@ function crear(): Sql {
     },
   });
 
-  // En desarrollo Next recarga los módulos en cada cambio. Sin esto se abriría
-  // una conexión nueva por recarga hasta agotar el límite de Postgres.
-  if (process.env.NODE_ENV !== 'production') globalThis.__camSql = cliente;
+  // SE GUARDA SIEMPRE, TAMBIÉN EN PRODUCCIÓN.
+  //
+  // En desarrollo evita abrir una conexión por recarga de módulo hasta agotar
+  // el límite de Postgres. En producción hace lo mismo por un motivo distinto:
+  // si Next reevalúa el módulo dentro de la misma lambda, `instancia` vuelve a
+  // estar vacía y se abriría un pool nuevo — dejando el anterior con sus
+  // conexiones colgando y obligando a pagar otra vez el saludo en frío.
+  // Guardarlo en globalThis lo ata a la vida del proceso, no a la del módulo.
+  globalThis.__camSql = cliente;
   return cliente;
 }
 

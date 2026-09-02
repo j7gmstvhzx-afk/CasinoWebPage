@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/verificar-plazos.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "smoke": "node scripts/smoke-nav.mjs",
-    "smoke:cuenta": "node scripts/smoke-cuenta.mjs"
+    "smoke:cuenta": "node scripts/smoke-cuenta.mjs",
+    "verificar:plazos": "node scripts/verificar-plazos.mjs"
   },
   "dependencies": {
     "jose": "^6.2.9",
