@@ -4,10 +4,10 @@ import {
   getJackpots,
   getJackpotsAlDia,
   getPremiosPagados,
-  pagosEnCero,
   getResumenSalon,
   getUltimaActualizacion,
   seguro,
+  exigir,
   type PremiosPagados,
   type ResumenSalon,
 } from '@/lib/queries';
@@ -38,7 +38,11 @@ export const metadata: Metadata = {
 
 export default async function PaginaJackpots() {
   const [jackpots, ultima, alDia, salon, pagados] = await Promise.all([
-    seguro(getJackpots, []),
+    // `exigir` y no `seguro`: si esta consulta falla, el tablero se pintaría
+    // vacío con "Los premios se están actualizando" y ESA página vacía se
+    // guardaría en la caché encima de la buena. Lanzando, Next deja la última
+    // versión buena en su sitio. Ver `exigir` en lib/queries.ts.
+    exigir(getJackpots, 'los premios'),
     seguro(getUltimaActualizacion, null),
     seguro(getJackpotsAlDia, false),
     // El respaldo es `null` y NO `{ total: 0, maquinas: 0 }`.
@@ -51,7 +55,7 @@ export default async function PaginaJackpots() {
     // Un cero es una AFIRMACIÓN sobre el dinero del salón. Cuando no se sabe,
     // hay que no decir nada; callar se entiende, mentir no.
     seguro<ResumenSalon | null>(getResumenSalon, null),
-    seguro(getPremiosPagados, pagosEnCero()),
+    exigir(getPremiosPagados, 'los premios pagados del mes'),
   ]);
 
   return (

@@ -10,6 +10,7 @@ import {
 } from '@/lib/queries';
 import { money, relativeUpdate } from '@/lib/format';
 import { FalloDeCarga } from '../FalloDeCarga';
+import { VerLaPagina } from '@/components/admin/VerLaPagina';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -45,6 +46,10 @@ export default async function PaginaAdminJackpots() {
             ? 'No se pudieron leer los premios.'
             : 'Todavía no se ha publicado ningún premio.'}
       </p>
+
+      <div className="mt-4">
+        <VerLaPagina href="/jackpots" que="el tablero" />
+      </div>
 
       {fallo && <FalloDeCarga que="los premios" />}
 

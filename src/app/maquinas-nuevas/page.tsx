@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { Marco } from '@/components/site/Marco';
-import { getMaquinasNuevas, seguro } from '@/lib/queries';
+import { getMaquinasNuevas, exigir } from '@/lib/queries';
 import { longDate } from '@/lib/format';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaMaquinasNuevas() {
-  const maquinas = await seguro(() => getMaquinasNuevas(48), []);
+  const maquinas = await exigir(() => getMaquinasNuevas(48), 'las máquinas nuevas');
 
   return (
     <>

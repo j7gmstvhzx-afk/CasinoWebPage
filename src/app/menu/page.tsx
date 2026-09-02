@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { sql } from '@/lib/db';
-import { seguro } from '@/lib/queries';
+import { exigir } from '@/lib/queries';
 import { money } from '@/lib/format';
 import { urlPublica } from '@/lib/storage';
 
@@ -60,7 +60,7 @@ type Seccion = { nombre: string; cortesia: boolean; nota: string | null; platos:
  * a $5 para llenar entre semana; aquí son gratis— y no salía en ninguna parte.
  */
 export default async function PaginaMenu() {
-  const platos = await seguro(getMenu, []);
+  const platos = await exigir(getMenu, 'la carta');
 
   const secciones = platos.reduce<Seccion[]>((acc, p) => {
     const ultima = acc[acc.length - 1];

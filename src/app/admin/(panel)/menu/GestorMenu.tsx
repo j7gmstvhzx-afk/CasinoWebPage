@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { money } from '@/lib/format';
 import { pedirJson, ERROR_GENERICO } from '@/lib/fetch-json';
 import { SubirImagen } from '@/components/admin/SubirImagen';
+import { Estado } from '@/components/admin/EstadoPublico';
+import { estadoPlato } from '@/lib/visibilidad';
 
 export type PlatoAdmin = {
   id: string;
@@ -122,8 +124,19 @@ export function GestorMenu({
 
   async function alternarDisponible(p: PlatoAdmin) {
     setOcupado(true);
-    await llamar('PATCH', { tipo: 'menu', id: p.id, datos: { available: !p.available } });
+    // El fallo se comprueba, como en `guardar` y en `borrar`.
+    //
+    // Aquí se tiraba: si la petición fallaba, el botón se quedaba igual, sin
+    // error y sin cambio, y quien lo pulsaba concluía que "no hace nada" —o
+    // peor, que sí lo hizo. Marcar un plato agotado es justo lo que se hace con
+    // prisa a mediodía y sin mirar dos veces.
+    const fallo = await llamar('PATCH', {
+      tipo: 'menu',
+      id: p.id,
+      datos: { available: !p.available },
+    });
     setOcupado(false);
+    if (fallo) return setError(fallo);
     router.refresh();
   }
 
@@ -274,7 +287,12 @@ export function GestorMenu({
             ) : (
               <ul className="mt-3 divide-y divide-linea rounded-card border border-linea">
                 {s.platos.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center gap-3 p-4">
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center gap-3 p-4"
+                    data-cam-item={p.name}
+                    data-cam-visible={estadoPlato(p).visible ? 'si' : 'no'}
+                  >
                     <div className="min-w-0 flex-1">
                       <p className={`font-medium ${p.available ? '' : 'text-tenue line-through'}`}>
                         {p.name}
@@ -282,6 +300,11 @@ export function GestorMenu({
                       {p.description && (
                         <p className="mt-0.5 line-clamp-1 text-sm text-tenue">{p.description}</p>
                       )}
+                      {/* El tachado era la única señal de que un plato no sale
+                          en la carta, y un tachado no dice dónde no sale. */}
+                      <div className="mt-1.5">
+                        <Estado estado={estadoPlato(p)} />
+                      </div>
                     </div>
 
                     <p className="tabular font-display font-semibold text-dorado">

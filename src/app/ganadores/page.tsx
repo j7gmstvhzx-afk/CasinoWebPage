@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
-import { getGanadores, seguro, type Ganador } from '@/lib/queries';
+import { getGanadores, exigir, type Ganador } from '@/lib/queries';
 import { Monto } from '@/components/site/Monto';
 import { longDate } from '@/lib/format';
 
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
  * marca, con el pueblo debajo. Es la misma jerarquía del tablero de premios.
  */
 export default async function PaginaGanadores() {
-  const ganadores = await seguro(() => getGanadores(24), []);
+  const ganadores = await exigir(() => getGanadores(24), 'el muro de ganadores');
 
   return (
     <>

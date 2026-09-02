@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
  * ES CLIENTE POR UNA SOLA RAZÓN: SABER DÓNDE ESTÁS
  * ------------------------------------------------
  * La versión anterior era una lista de enlaces en el layout del servidor, y
- * ninguno se marcaba: las nueve pestañas se veían exactamente igual en todas
+ * ninguno se marcaba: las pestañas se veían exactamente igual en todas
  * las pantallas. Quien lo usa no tenía forma de saber en cuál estaba más que
  * leyendo el título de la página. Con `usePathname` la pestaña activa se marca
  * sola, y `aria-current="page"` se lo dice también a quien navega con lector de
@@ -24,7 +24,7 @@ import { usePathname } from 'next/navigation';
  *
  * `/admin` se compara EXACTO y las demás por prefijo: `/admin` es prefijo de
  * todas, así que con `startsWith` la pestaña de Resumen se quedaría encendida
- * en las nueve pantallas.
+ * en todas las pantallas.
  */
 const ENLACES = [
   { href: '/admin', label: 'Resumen' },
@@ -32,7 +32,11 @@ const ENLACES = [
   { href: '/admin/jackpots', label: 'Jackpots' },
   { href: '/admin/eventos', label: 'Promociones' },
   { href: '/admin/maquinas-nuevas', label: 'Máquinas nuevas' },
-  { href: '/admin/menu', label: 'Menú' },
+  // "Comida", igual que se llama en el menú del sitio. Se llamaba "Menú" aquí y
+  // "Comida" allá: dos nombres para la misma pestaña obligan a traducir mentalmente
+  // cada vez, y de paso "Menú" en un panel se confunde con el menú de navegación.
+  { href: '/admin/menu', label: 'Comida' },
+  { href: '/admin/galeria', label: 'Galería' },
   { href: '/admin/horario', label: 'Horario' },
   { href: '/admin/ganadores', label: 'Ganadores' },
   { href: '/admin/clientes', label: 'Clientes' },

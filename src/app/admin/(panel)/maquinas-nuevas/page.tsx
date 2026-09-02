@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
 import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
 import { FalloDeCarga } from '../FalloDeCarga';
+import { VerLaPagina } from '@/components/admin/VerLaPagina';
 import { almacenamientoListo } from '@/lib/storage';
 import { GestorMaquinas, type MaquinaAdmin } from './GestorMaquinas';
 
@@ -41,6 +42,10 @@ export default async function PaginaAdminMaquinasNuevas() {
         Anuncia lo que acaba de llegar al salón. Con el número de banco, el
         cliente sabe dónde buscarla.
       </p>
+
+      <div className="mt-4">
+        <VerLaPagina href="/maquinas-nuevas" que="las máquinas" />
+      </div>
 
       {!r.ok && <FalloDeCarga que="las máquinas nuevas" />}
 

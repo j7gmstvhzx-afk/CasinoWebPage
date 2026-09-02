@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { Galeria } from '@/components/site/Galeria';
-import { getGaleria, seguro } from '@/lib/queries';
+import { getGaleria, exigir } from '@/lib/queries';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaGaleria() {
-  const items = await seguro(() => getGaleria(90), []);
+  const items = await exigir(() => getGaleria(90), 'la galería');
 
   return (
     <>

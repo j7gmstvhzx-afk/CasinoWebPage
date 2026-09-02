@@ -8,10 +8,10 @@ import {
   getEventos,
   getHorario,
   getPremiosPagados,
-  pagosEnCero,
   getPrograma,
   getUltimaActualizacion,
   seguro,
+  exigir,
 } from '@/lib/queries';
 import { money, relativeUpdate, longDate } from '@/lib/format';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
@@ -36,15 +36,20 @@ export const maxDuration = 15;
 
 export default async function Inicio() {
   const [jackpots, maquinas, eventos, ultima, horario, programa, pagados] = await Promise.all([
-    seguro(getJackpots, []),
-    seguro(() => getMaquinasNuevas(6), []),
-    seguro(() => getEventos(3), []),
+    // Estas tres son el contenido de la portada, y si una falla NO se pinta
+    // una portada a medias: se lanza, Next descarta la regeneración y el
+    // visitante sigue viendo la última portada buena. Antes la sección
+    // desaparecía en silencio y volvía sola al rato — el "a veces sale y a
+    // veces no" que reportó el dueño. Ver `exigir` en lib/queries.ts.
+    exigir(getJackpots, 'los premios'),
+    exigir(() => getMaquinasNuevas(6), 'las máquinas nuevas'),
+    exigir(() => getEventos(3), 'las promociones'),
     seguro(getUltimaActualizacion, null),
     // Respaldo: una semana entera sin horario. La banda se esconde sola en vez
     // de anunciar que el casino está cerrado porque una consulta falló.
     seguro(getHorario, { semana: Array(7).fill(null), excepciones: {} }),
     seguro(getPrograma, []),
-    seguro(getPremiosPagados, pagosEnCero()),
+    exigir(getPremiosPagados, 'los premios pagados del mes'),
   ]);
 
   // CINCO, y salen ordenados de mayor a menor sin que nadie los ordene:

@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
 import { GestorGanadores, type GanadorAdmin } from './GestorGanadores';
 import { FalloDeCarga } from '../FalloDeCarga';
+import { VerLaPagina } from '@/components/admin/VerLaPagina';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -35,9 +36,13 @@ export default async function PaginaGanadores() {
         le tocó a alguien de al lado. La fecha se pone sola.
       </p>
 
+      <div className="mt-4">
+        <VerLaPagina href="/ganadores" que="el muro" />
+      </div>
+
       {!r.ok && <FalloDeCarga que="los ganadores" />}
 
-      <GestorGanadores ganadores={ganadores} />
+      <GestorGanadores ganadores={ganadores} cargaFallida={!r.ok} />
     </>
   );
 }

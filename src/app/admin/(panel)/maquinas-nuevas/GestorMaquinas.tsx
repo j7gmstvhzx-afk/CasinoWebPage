@@ -4,6 +4,8 @@ import { hoyEnPR } from '@/lib/hora-pr';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
+import { Estado } from '@/components/admin/EstadoPublico';
+import { estadoMaquinaNueva } from '@/lib/visibilidad';
 import { longDate } from '@/lib/format';
 
 export type MaquinaAdmin = {
@@ -281,7 +283,12 @@ export function GestorMaquinas({
       ) : (
         <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {maquinas.map((m) => (
-            <li key={m.id} className="tarjeta overflow-hidden">
+            <li
+              key={m.id}
+              className="tarjeta overflow-hidden"
+              data-cam-item={m.name}
+              data-cam-visible={estadoMaquinaNueva(m).visible ? 'si' : 'no'}
+            >
               {m.image_path ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.image_path} alt={m.name} className="aspect-[16/10] w-full object-cover" />
@@ -292,15 +299,12 @@ export function GestorMaquinas({
               )}
 
               <div className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-display font-semibold">{m.name}</h3>
-                  <span
-                    className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                      m.published ? 'border-gana/40 text-gana' : 'border-linea text-tenue'
-                    }`}
-                  >
-                    {m.published ? 'Publicada' : 'Oculta'}
-                  </span>
+                <h3 className="font-display font-semibold">{m.name}</h3>
+
+                {/* La misma etiqueta que en las demás pestañas, con las mismas
+                    palabras: lo que importa es si el cliente la ve. */}
+                <div className="mt-2">
+                  <Estado estado={estadoMaquinaNueva(m)} />
                 </div>
 
                 <p className="mt-1.5 text-xs text-tenue">

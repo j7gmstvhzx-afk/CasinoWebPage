@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { money } from '@/lib/format';
+import { Estado } from '@/components/admin/EstadoPublico';
+import { estadoMaquinaJackpot, VENTANA_TABLERO_DIAS } from '@/lib/visibilidad';
 
 /**
  * Entrada manual de los montos del día.
@@ -21,6 +23,10 @@ export type MaquinaFila = {
   banco: number;
   centavosHoy: number | null;
   centavosPrevio: number | null;
+  /** Día de la última lectura con monto de esta máquina. */
+  ultimaLecturaEn: string | null;
+  /** Día de la lectura más reciente del sistema, que es lo que ancla la ventana. */
+  corte: string | null;
 };
 
 export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
@@ -36,6 +42,12 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
 
   const [nueva, setNueva] = useState({ nombre: '', banco: '', monto: '' });
   const [mostrarNueva, setMostrarNueva] = useState(false);
+
+  // Las máquinas que el cliente NO está viendo, con la misma regla que el
+  // tablero (`estadoMaquinaJackpot` espeja el filtro de `getJackpots`).
+  const fuera = maquinas.filter(
+    (m) => !estadoMaquinaJackpot({ ultima: m.ultimaLecturaEn, corte: m.corte }).visible,
+  );
 
   const llenos = useMemo(
     () => Object.values(valores).filter((v) => v.trim() !== '' && Number(v) > 0).length,
@@ -183,6 +195,35 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
         </p>
       </div>
 
+      {/* LAS QUE SE CAYERON DEL TABLERO.
+          Esta pantalla enseñaba las máquinas activas sin distinguir cuáles
+          estaban publicadas, así que una máquina fuera del tablero se veía
+          igual que las demás: el empleado la leía aquí con su monto y en la
+          página no estaba. Y la regla que la saca no se puede adivinar —una
+          máquina se cae porque se actualizó OTRA—, así que se dice entera. */}
+      {fuera.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-dorado/40 bg-dorado/10 p-5 text-sm">
+          <p className="font-semibold text-tinta">
+            {fuera.length === 1
+              ? 'Una máquina no está en el tablero de la página'
+              : `${fuera.length} máquinas no están en el tablero de la página`}
+          </p>
+          <p className="mt-1.5 text-tenue">
+            El tablero solo publica los montos de los últimos {VENTANA_TABLERO_DIAS}{' '}
+            días, contados desde la última vez que se subió algo. Escríbeles un
+            monto de hoy y vuelven a salir:
+          </p>
+          <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-tenue">
+            {fuera.map((m) => (
+              <li key={m.id}>
+                <span className="font-medium text-tinta">{m.nombre}</span> · banco{' '}
+                <span className="tabular">{m.banco}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[34rem] text-sm">
           <thead>
@@ -196,7 +237,14 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
           </thead>
           <tbody>
             {maquinas.map((m, i) => (
-              <tr key={m.id} className="border-b border-linea/50">
+              <tr
+                key={m.id}
+                className="border-b border-linea/50"
+                data-cam-item={m.nombre}
+                data-cam-visible={
+                  estadoMaquinaJackpot({ ultima: m.ultimaLecturaEn, corte: m.corte }).visible ? 'si' : 'no'
+                }
+              >
                 <td className="py-2 pr-4 font-medium">
                   {editando === m.id ? (
                     <input
@@ -206,7 +254,12 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
                       className="min-h-11 w-44 rounded-lg border border-cian bg-superficie px-3 focus:outline-none"
                     />
                   ) : (
-                    m.nombre
+                    <>
+                      {m.nombre}
+                      <div className="mt-1">
+                        <Estado estado={estadoMaquinaJackpot({ ultima: m.ultimaLecturaEn, corte: m.corte })} />
+                      </div>
+                    </>
                   )}
                 </td>
                 <td className="py-2 pr-4 tabular text-tenue">

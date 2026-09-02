@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { pedirJson } from '@/lib/fetch-json';
 import { money } from '@/lib/format';
+import { Estado } from '@/components/admin/EstadoPublico';
+import { estadoGanador } from '@/lib/visibilidad';
 
 export type GanadorAdmin = {
   id: string;
@@ -27,7 +29,14 @@ const CAMPO =
  * El formulario está pensado para el mostrador: se paga un premio, se teclean
  * dos cosas y sale en la página. Cuantos más campos, menos veces se hace.
  */
-export function GestorGanadores({ ganadores }: { ganadores: GanadorAdmin[] }) {
+export function GestorGanadores({
+  ganadores,
+  cargaFallida = false,
+}: {
+  ganadores: GanadorAdmin[];
+  /** true cuando la consulta no llegó a correr: la lista NO es de fiar. */
+  cargaFallida?: boolean;
+}) {
   const router = useRouter();
   const [pueblo, setPueblo] = useState('');
   const [dolares, setDolares] = useState('');
@@ -71,6 +80,31 @@ export function GestorGanadores({ ganadores }: { ganadores: GanadorAdmin[] }) {
     } catch (err) {
       setAviso({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo guardar.' });
       setGuardando(false);
+    }
+  }
+
+  /**
+   * Esconder un premio del muro sin destruirlo, y volver a sacarlo.
+   *
+   * Antes esto no existía: la única forma de que un premio dejara de salir era
+   * borrarlo, y lo que estaba oculto no se podía recuperar desde el panel.
+   */
+  async function alternar(g: GanadorAdmin) {
+    try {
+      await pedirJson('/api/admin/ganadores', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: g.id, publicado: !g.publicado }),
+      });
+      setAviso({
+        ok: true,
+        texto: g.publicado
+          ? `El premio de ${g.pueblo} ya no sale en la página.`
+          : `El premio de ${g.pueblo} ya sale en la página.`,
+      });
+      router.refresh();
+    } catch (err) {
+      setAviso({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo cambiar.' });
     }
   }
 
@@ -124,21 +158,46 @@ export function GestorGanadores({ ganadores }: { ganadores: GanadorAdmin[] }) {
         </p>
       )}
 
-      {ganadores.length > 0 && (
+      {cargaFallida ? (
+        <p className="tarjeta mt-8 px-6 py-12 text-center text-tenue">
+          No se pudo leer la lista. Recarga la página para verla.
+        </p>
+      ) : ganadores.length === 0 ? (
+        /* Este estado vacío no existía: con cero premios la pantalla no decía
+           nada, y un hueco en blanco se lee como una pantalla rota. */
+        <p className="tarjeta mt-8 px-6 py-12 text-center text-tenue">
+          Todavía no has añadido ningún premio. El primero sale en el muro en
+          cuanto lo guardes aquí arriba.
+        </p>
+      ) : (
         <ul className="mt-8 grid gap-2.5">
           {ganadores.map((g) => (
-            <li key={g.id} className="hueco flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm">
+            <li
+              key={g.id}
+              className="hueco flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm"
+              data-cam-item={money(Number(g.monto_cents))}
+              data-cam-visible={estadoGanador(g).visible ? 'si' : 'no'}
+            >
               <span className="font-semibold tabular texto-dorado">{money(Number(g.monto_cents))}</span>
               <span className="font-medium">{g.pueblo}</span>
               <span className="tabular text-tenue">{g.gano_on}</span>
-              {!g.publicado && <span className="text-xs text-tenue">(no sale)</span>}
-              <button
-                type="button"
-                onClick={() => borrar(g)}
-                className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-linea px-3 text-pierde hover:border-pierde"
-              >
-                Quitar
-              </button>
+              <Estado estado={estadoGanador(g)} />
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => alternar(g)}
+                  className="inline-flex min-h-11 items-center rounded-lg border border-linea px-3 font-medium text-tenue hover:border-cian hover:text-cian"
+                >
+                  {g.publicado ? 'Ocultar' : 'Publicar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => borrar(g)}
+                  className="inline-flex min-h-11 items-center rounded-lg border border-linea px-3 text-pierde hover:border-pierde"
+                >
+                  Quitar
+                </button>
+              </div>
             </li>
           ))}
         </ul>

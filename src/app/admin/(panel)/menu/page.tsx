@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { intentar, LIMITE_PANEL_MS, algunoFallo } from '@/lib/queries';
 import { GestorMenu, type PlatoAdmin, type SeccionMenu } from './GestorMenu';
 import { FalloDeCarga } from '../FalloDeCarga';
+import { VerLaPagina } from '@/components/admin/VerLaPagina';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -45,6 +46,10 @@ export default async function PaginaAdminMenu() {
         sale en la página en grande y sin precio: es lo que la casa invita
         mientras se juega. Lo que marques como agotado desaparece al instante.
       </p>
+
+      <div className="mt-4">
+        <VerLaPagina href="/menu" que="la carta" />
+      </div>
 
       {fallo && <FalloDeCarga que="la carta" />}
 

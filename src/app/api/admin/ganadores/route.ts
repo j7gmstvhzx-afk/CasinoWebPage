@@ -67,6 +67,41 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * Ocultar un premio del muro, o volver a publicarlo.
+ *
+ * Sin esto, un ganador que no estuviera publicado SOLO SE PODÍA BORRAR: el
+ * panel enseñaba la fila con un "(no sale)" en gris y el único botón al lado
+ * era "Quitar". Quien quisiera esconder un premio un rato —porque se tecleó mal
+ * la cifra, porque la persona pidió que no saliera— no tenía más remedio que
+ * destruir el dato. Y una fila que llegara con `publicado = false` (las que
+ * creó la migración 0015, o cualquiera metida por SQL) no había forma de
+ * sacarla a la página.
+ *
+ * Se manda solo el estado nuevo, no la fila entera: así el botón no puede
+ * pisar sin querer el pueblo ni la cantidad.
+ */
+export async function PATCH(req: NextRequest) {
+  if (!(await esAdmin())) return no('No autorizado.', 401);
+
+  const cuerpo = await req.json().catch(() => ({}));
+  const parsed = z
+    .object({ id: z.string().uuid(), publicado: z.boolean() })
+    .safeParse(cuerpo);
+  if (!parsed.success) return no('Petición inválida.');
+
+  const filas = await sql`
+    update app.ganadores
+       set publicado = ${parsed.data.publicado}
+     where id = ${parsed.data.id}
+    returning id
+  `;
+  if (filas.length === 0) return no('Ese premio ya no existe. Recarga la página.', 404);
+
+  refrescarPublico('ganadores');
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 

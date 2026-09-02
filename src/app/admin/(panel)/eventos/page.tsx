@@ -4,6 +4,8 @@ import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
 import { almacenamientoListo } from '@/lib/storage';
 import { GestorEventos, type EventoAdmin } from './GestorEventos';
 import { FalloDeCarga } from '../FalloDeCarga';
+import { VerLaPagina } from '@/components/admin/VerLaPagina';
+import { hoyEnPR } from '@/lib/hora-pr';
 
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
@@ -32,9 +34,13 @@ export default async function PaginaAdminEventos() {
     <>
       <h1 className="font-display text-3xl font-bold">Promociones y eventos</h1>
       <p className="mt-2 text-tenue">
-        Sube el arte, ponle fecha y aparece en la página. Aquí mismo la ocultas
-        cuando termine.
+        Sube el arte, ponle fecha y aparece en la página. Al pasar la fecha de
+        fin se quita sola, y aquí lo verás dicho en cada una.
       </p>
+
+      <div className="mt-4">
+        <VerLaPagina href="/eventos" que="las promociones" />
+      </div>
 
       {!r.ok && <FalloDeCarga que="las promociones" />}
 
@@ -50,7 +56,7 @@ export default async function PaginaAdminEventos() {
         </div>
       )}
 
-      <GestorEventos eventos={eventos} cargaFallida={!r.ok} />
+      <GestorEventos eventos={eventos} hoy={hoyEnPR()} cargaFallida={!r.ok} />
     </>
   );
 }

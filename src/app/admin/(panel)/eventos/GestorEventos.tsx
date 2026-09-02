@@ -3,7 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
+import { Estado } from '@/components/admin/EstadoPublico';
 import { longDate } from '@/lib/format';
+import { estadoEvento, estadoPopup } from '@/lib/visibilidad';
 
 export type EventoAdmin = {
   id: string;
@@ -49,9 +51,19 @@ const aBorrador = (e: EventoAdmin): Borrador => ({
 
 export function GestorEventos({
   eventos,
+  hoy,
   cargaFallida = false,
 }: {
   eventos: EventoAdmin[];
+  /**
+   * El día de hoy en Puerto Rico, calculado en el servidor.
+   *
+   * Viene como prop y no se calcula aquí con `hoyEnPR()` para que el HTML del
+   * servidor y el del navegador digan lo mismo: si se calculara en los dos
+   * lados, en el minuto de la medianoche saldrían días distintos y React
+   * avisaría de que la página no cuadra consigo misma.
+   */
+  hoy: string;
   /** true cuando la consulta no llegó a correr: la lista NO es de fiar. */
   cargaFallida?: boolean;
 }) {
@@ -129,6 +141,22 @@ export function GestorEventos({
     setOcupado(false);
     router.refresh();
   }
+
+  // Qué puesto ocupa cada promoción en la cola del pop-up.
+  //
+  // Solo caben cuatro; a partir de la quinta, la promoción lleva la estrella en
+  // el panel y el visitante no la ve nunca. Para saber cuál se queda fuera hay
+  // que contar en el MISMO orden que la consulta pública (`sort_order`, y luego
+  // la más nueva primero), y esta lista ya viene ordenada así por el servidor:
+  // basta con recorrerla quedándose con las que califican.
+  const cola = eventos.filter(
+    (e) =>
+      e.show_in_popup &&
+      e.published &&
+      (!e.starts_on || e.starts_on <= hoy) &&
+      (!e.ends_on || e.ends_on >= hoy),
+  );
+  const puestoEnPopup = new Map(cola.map((e, i) => [e.id, i]));
 
   return (
     <>
@@ -239,6 +267,19 @@ export function GestorEventos({
             </p>
           )}
 
+          {/* Lo que pasa al guardar, dicho antes de guardar.
+              Una promoción nueva nace PUBLICADA (la columna trae `default
+              true` y el formulario no manda nada), así que se ve en la página
+              en cuanto se pulsa Guardar. El formulario no lo decía en ninguna
+              parte: quien preparaba una para el sábado la estaba publicando. */}
+          {editando === 'nuevo' && (
+            <p className="mt-5 text-sm text-tenue">
+              Al guardar, la promoción <strong className="text-tinta">sale en la
+              página enseguida</strong>. Si quieres prepararla para más adelante,
+              guárdala y púlsale &laquo;Ocultar&raquo; en la lista.
+            </p>
+          )}
+
           <div className="mt-7 flex flex-wrap gap-3">
             <button
               type="button"
@@ -274,7 +315,12 @@ export function GestorEventos({
       ) : (
         <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {eventos.map((e) => (
-            <li key={e.id} className="tarjeta overflow-hidden">
+            <li
+              key={e.id}
+              className="tarjeta overflow-hidden"
+              data-cam-item={e.title}
+              data-cam-visible={estadoEvento(e, hoy).visible ? 'si' : 'no'}
+            >
               {e.image_path ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={e.image_path} alt={e.title} className="aspect-[4/5] w-full object-cover" />
@@ -285,24 +331,24 @@ export function GestorEventos({
               )}
 
               <div className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-display font-semibold">{e.title}</h3>
-                  <span
-                    className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                      e.published
-                        ? 'border-gana/40 text-gana'
-                        : 'border-linea text-tenue'
-                    }`}
-                  >
-                    {e.published ? 'Publicada' : 'Oculta'}
-                  </span>
+                <h3 className="font-display font-semibold">{e.title}</h3>
+
+                {/* El estado de verdad, no el valor crudo de la columna.
+                    Una promoción vencida sale aquí como "Ya terminó" aunque
+                    `published` siga en true: es lo que ve el cliente, que es lo
+                    único que importa desde esta pantalla. */}
+                <div className="mt-2">
+                  <Estado estado={estadoEvento(e, hoy)} />
                 </div>
 
-                {e.show_in_popup && (
-                  <p className="mt-2 inline-block rounded-full border border-dorado/40 bg-dorado/10 px-2.5 py-0.5 text-[10px] font-semibold text-dorado">
-                    ★ Sale al entrar
-                  </p>
-                )}
+                {(() => {
+                  const popup = estadoPopup(e, puestoEnPopup.get(e.id) ?? 99, hoy);
+                  return popup ? (
+                    <div className="mt-2">
+                      <Estado estado={popup} />
+                    </div>
+                  ) : null;
+                })()}
 
                 {(e.starts_on || e.ends_on) && (
                   <p className="mt-1.5 text-xs text-cian">

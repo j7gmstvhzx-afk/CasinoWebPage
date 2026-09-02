@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { sql } from './db';
 import { hoyEnPR } from './hora-pr';
+import { VENTANA_TABLERO_DIAS } from './visibilidad';
 import type { HorarioSitio, Programa, ReglaDia } from './horario';
 
 export type Jackpot = {
@@ -105,7 +106,7 @@ export async function getJackpots(): Promise<JackpotVista[]> {
          -- Colgada de la última subida, el tablero muestra SIEMPRE el último
          -- estado publicado. Que ese estado es viejo se dice arriba, con su
          -- fecha, en vez de esconderlo todo.
-         and r.reading_at > c.ultima - interval '3 days'
+         and r.reading_at > c.ultima - (${VENTANA_TABLERO_DIAS}::int * interval '1 day')
        order by m.id, r.reading_at desc
     ),
     previas as (
@@ -209,7 +210,7 @@ export async function getResumenSalon(): Promise<ResumenSalon> {
         cross join corte c
        where m.active
          and r.amount_cents is not null
-         and r.reading_at > c.ultima - interval '3 days'
+         and r.reading_at > c.ultima - (${VENTANA_TABLERO_DIAS}::int * interval '1 day')
        order by m.id, r.reading_at desc
     ),
     previas as (
@@ -240,6 +241,15 @@ export type FilaEntrada = {
   banco: number;
   centavosHoy: number | null;
   centavosPrevio: number | null;
+  /**
+   * Día de la última lectura con monto de ESTA máquina, o null si nunca tuvo.
+   *
+   * Va a la pantalla para poder decirle al empleado por qué una máquina no está
+   * en el tablero, con su fecha, en vez de dejarle adivinar.
+   */
+  ultimaLecturaEn: string | null;
+  /** Día de la lectura más reciente de TODO el sistema: el ancla de la ventana. */
+  corte: string | null;
 };
 
 /**
@@ -258,11 +268,22 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
       bank_number: number;
       centavos_hoy: string | null;
       centavos_previo: string | null;
+      ultima_en: string | null;
+      corte: string | null;
     }[]
   >`
+    -- El mismo corte que usa getJackpots: la lectura más reciente de todo el
+    -- sistema. Se trae hasta aquí para que la pantalla del empleado pueda
+    -- calcular, con la MISMA regla que el tablero, qué máquinas están dentro y
+    -- cuáles se cayeron.
+    with corte as (
+      select max(reading_at) as ultima from app.jackpot_readings where amount_cents is not null
+    )
     select m.id, m.name, m.bank_number,
            hoy.amount_cents  as centavos_hoy,
-           ayer.amount_cents as centavos_previo
+           ayer.amount_cents as centavos_previo,
+           app.gaming_date(ultima.reading_at)::text as ultima_en,
+           app.gaming_date((select ultima from corte))::text as corte
       from app.machines m
       left join lateral (
         select r.amount_cents
@@ -281,6 +302,14 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
          order by r.reading_at desc
          limit 1
       ) ayer on true
+      left join lateral (
+        select r.reading_at
+          from app.jackpot_readings r
+         where r.machine_id = m.id
+           and r.amount_cents is not null
+         order by r.reading_at desc
+         limit 1
+      ) ultima on true
      where m.active
      order by coalesce(hoy.amount_cents, ayer.amount_cents, 0) desc, m.name
   `;
@@ -291,6 +320,8 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
     banco: f.bank_number,
     centavosHoy: f.centavos_hoy === null ? null : Number(f.centavos_hoy),
     centavosPrevio: f.centavos_previo === null ? null : Number(f.centavos_previo),
+    ultimaLecturaEn: f.ultima_en,
+    corte: f.corte,
   }));
 }
 
@@ -587,6 +618,65 @@ export async function seguro<T>(
 /** ¿Falló alguno? Para pantallas que piden varias cosas a la vez. */
 export function algunoFallo(...rs: Resultado<unknown>[]): boolean {
   return rs.some((r) => !r.ok);
+}
+
+/** Lo que lanza `exigir`. Se distingue para que la página de error sepa qué decir. */
+export class ErrorDeCarga extends Error {
+  constructor(
+    readonly que: string,
+    motivo: string,
+  ) {
+    super(`No se pudo cargar ${que}: ${motivo}`);
+    this.name = 'ErrorDeCarga';
+  }
+}
+
+/**
+ * PARA LAS PÁGINAS PÚBLICAS: si no se pudo leer, se LANZA.
+ *
+ * ESTA ES LA CAUSA DE QUE LA INFORMACIÓN APAREZCA Y DESAPAREZCA
+ * -------------------------------------------------------------
+ * Todas las páginas públicas se guardan en caché (`revalidate = 60`) y se
+ * rehacen en segundo plano. La documentación de Next dice qué pasa cuando esa
+ * regeneración falla, y es exactamente lo que hace falta:
+ *
+ *   "If an error is thrown while attempting to revalidate data, the last
+ *    successfully generated data will continue to be served from the cache."
+ *   — node_modules/next/dist/docs/01-app/02-guides/incremental-static-regeneration.md
+ *
+ * La condición es "if an error is thrown". Y `seguro()` no lanza: atrapa el
+ * fallo y devuelve una lista vacía. Para Next eso NO es un fallo, es una página
+ * que se generó correctamente y que resulta que no tiene contenido — así que la
+ * GUARDA EN LA CACHÉ, encima de la última versión buena.
+ *
+ * El resultado, contado como lo vive el dueño: una consulta que tropieza deja
+ * la página anunciando "No hay eventos publicados en este momento" y ahí se
+ * queda. La caché se sirve tal cual hasta que a alguien le toque regenerarla, y
+ * en un sitio de poco tráfico eso puede ser horas. Luego se rehace bien y la
+ * información vuelve sola. Aparece y desaparece sin que nadie toque nada.
+ *
+ * Lanzando, Next descarta el intento y sigue sirviendo la última página buena.
+ * El visitante ve el contenido de hace un rato —que es verdad— en vez de un
+ * "no hay nada" que es mentira.
+ *
+ * QUÉ PASA EN EL BUILD, QUE NO ES GRATIS Y HAY QUE DECIRLO
+ * -------------------------------------------------------
+ * `next build` prerrenderiza estas páginas. Si la base no responde durante el
+ * build, ahora el despliegue FALLA en vez de publicar un sitio vacío. Es lo que
+ * se quiere: hasta ahora un tropiezo de treinta segundos en el momento
+ * equivocado horneaba un casino sin premios, sin promociones y sin máquinas, y
+ * nadie se enteraba hasta que lo veía un cliente.
+ *
+ * `que` es lo que se le dice a la persona: "los premios", "las promociones".
+ */
+export async function exigir<T>(
+  fn: () => Promise<T>,
+  que: string,
+  limiteMs: number = LIMITE_CONSULTA_MS,
+): Promise<T> {
+  const r = await intentar<T | null>(fn, null, limiteMs);
+  if (!r.ok) throw new ErrorDeCarga(que, r.motivo);
+  return r.datos as T;
 }
 
 

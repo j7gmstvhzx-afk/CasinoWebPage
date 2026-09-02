@@ -3,7 +3,7 @@
  *
  * EL PROBLEMA QUE RESUELVE
  * ------------------------
- * Las nueve pestañas del panel son `force-dynamic`: consultan la base en cada
+ * Las pestañas del panel son `force-dynamic`: consultan la base en cada
  * visita, porque enseñan lo que hay AHORA y una caché de un minuto en la
  * pantalla de canjear sería un premio pagado dos veces.
  *

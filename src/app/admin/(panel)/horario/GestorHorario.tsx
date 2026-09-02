@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Estado } from '@/components/admin/EstadoPublico';
+import { estadoPrograma } from '@/lib/visibilidad';
 import { useRouter } from 'next/navigation';
 import { pedirJson } from '@/lib/fetch-json';
 import { DIAS } from '@/lib/hora-pr';
@@ -286,7 +288,9 @@ function Programa({ entradas }: { entradas: Entrada[] }) {
                   gratis
                 </span>
               )}
-              {!e.activo && <span className="text-xs text-tenue">(apagado)</span>}
+              {/* La misma etiqueta que en las demás pestañas. Decía "(apagado)",
+                  que no dice dónde no sale. */}
+              <Estado estado={estadoPrograma(e)} />
               <span className="text-sm tabular text-tenue">
                 {corta(e.desde)}–{corta(e.hasta)} · {e.dias.length === 7 ? 'todos los días' : e.dias.map((d) => DIAS[d].slice(0, 3)).join(', ')}
               </span>

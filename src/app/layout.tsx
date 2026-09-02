@@ -3,6 +3,7 @@ import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/site/Header';
 import { Footer } from '@/components/site/Footer';
+import { CromoPublico } from '@/components/site/CromoPublico';
 import { PromoLauncher } from '@/components/slot/PromoLauncher';
 import { SITE, PROMO } from '@/lib/site';
 
@@ -87,12 +88,20 @@ export default function RootLayout({
           Saltar al contenido
         </a>
 
-        <Header />
+        {/* La cabecera, el pie y el botón de la tragamonedas son para el
+            visitante. En /admin no se pintan: ver CromoPublico. */}
+        <CromoPublico>
+          <Header />
+        </CromoPublico>
+
         <main id="contenido" className="flex-1">
           {children}
         </main>
-        <Footer />
-        <PromoLauncher />
+
+        <CromoPublico>
+          <Footer />
+          <PromoLauncher />
+        </CromoPublico>
 
         <script
           type="application/ld+json"
