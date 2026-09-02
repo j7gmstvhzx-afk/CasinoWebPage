@@ -12,7 +12,7 @@ import { SITE } from '@/lib/site';
  * Las páginas del sitio se guardan en caché. Cuando una consulta falla al
  * rehacerlas, Next descarta el intento y sigue sirviendo la última versión
  * buena: el visitante no ve nada raro, ve el contenido de hace un rato. Ver
- * `exigir` en lib/queries.ts.
+ * `paraLaPagina` en lib/queries.ts.
  *
  * Esta pantalla es para el único hueco que deja eso: que no haya ninguna
  * versión buena todavía —el primer visitante justo después de un despliegue— y

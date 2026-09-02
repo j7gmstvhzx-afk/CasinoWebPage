@@ -187,14 +187,14 @@ function crear(): Sql {
     // El que abre cabe dentro del que espera, que es la única forma de que un
     // arranque en frío pueda terminar.
     //
-    // EN EL BUILD SON 25 Y NO 5, y no es una excepción caprichosa: la máquina
+    // EN EL BUILD SON 10 Y NO 5, y no es una excepción caprichosa: la máquina
     // que hace el build no ha hablado con Supabase nunca, así que paga el
     // saludo entero —TCP, TLS, el pooler— y, si el proyecto llevaba rato
     // quieto, el despertar del servidor. Con 5 s no llegaba: el primer
-    // despliegue con `exigir` se cayó ahí. Y en un build no hay nadie
+    // despliegue que lanzaba en el build se cayó ahí. Y en un build no hay nadie
     // esperando ni función que se corte a los 15 s, así que esperar sale
     // gratis. Ver EN_BUILD en lib/queries.ts.
-    connect_timeout: enBuild ? 25 : 5,
+    connect_timeout: enBuild ? 10 : 5,
 
     // TRES MINUTOS SIN CERRAR, Y NO VEINTE SEGUNDOS.
     //
@@ -221,7 +221,7 @@ function crear(): Sql {
       // 8 s y no 2.5: aquí también pasan las escrituras de la tirada y del
       // panel, que no las cubre `seguro()` y que sí pueden tardar más que una
       // lectura del tablero.
-      statement_timeout: enBuild ? 45_000 : 8_000,
+      statement_timeout: enBuild ? 20_000 : 8_000,
       // Una transacción abierta y abandonada retiene sus candados. En
       // `execute_spin` eso bloquearía las tiradas de todo el mundo.
       idle_in_transaction_session_timeout: 10_000,

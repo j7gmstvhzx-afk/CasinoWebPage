@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { sql } from '@/lib/db';
-import { exigir } from '@/lib/queries';
+import { paraLaPagina } from '@/lib/queries';
 import { money } from '@/lib/format';
 import { urlPublica } from '@/lib/storage';
 
@@ -60,7 +60,8 @@ type Seccion = { nombre: string; cortesia: boolean; nota: string | null; platos:
  * a $5 para llenar entre semana; aquí son gratis— y no salía en ninguna parte.
  */
 export default async function PaginaMenu() {
-  const platos = await exigir(getMenu, 'la carta');
+  const r = await paraLaPagina(getMenu, 'la carta', [] as Plato[]);
+  const platos = r.datos;
 
   const secciones = platos.reduce<Seccion[]>((acc, p) => {
     const ultima = acc[acc.length - 1];
@@ -80,7 +81,12 @@ export default async function PaginaMenu() {
       />
 
       <section className="contenedor py-10 sm:py-14">
-        {secciones.length === 0 ? (
+        {!r.ok ? (
+          /* No es que no haya nada: es que no se pudo leer. Solo pasa en un
+             build que no alcanzó la base; en cuanto alguien visite la página
+             se rehace sola con el contenido de verdad. */
+          <SeccionVacia mensaje="Estamos actualizando esta página. Vuelve en un momento." />
+        ) : secciones.length === 0 ? (
           <SeccionVacia mensaje="Estamos preparando esta página. Pregunta en el salón por la comida y la bebida de hoy." />
         ) : (
           <div className="grid gap-10">

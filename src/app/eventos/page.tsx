@@ -2,7 +2,7 @@ import { hoyEnPR } from '@/lib/hora-pr';
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { Marco } from '@/components/site/Marco';
-import { getEventos, exigir } from '@/lib/queries';
+import { getEventos, paraLaPagina } from '@/lib/queries';
 import { longDate } from '@/lib/format';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
@@ -27,7 +27,8 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaEventos() {
-  const eventos = await exigir(() => getEventos(60), 'las promociones');
+  const r = await paraLaPagina(() => getEventos(60), 'las promociones', []);
+  const eventos = r.datos;
 
   const hoy = hoyEnPR();
   const activos = eventos.filter((e) => !e.starts_on || e.starts_on <= hoy);
@@ -41,7 +42,12 @@ export default async function PaginaEventos() {
       />
 
       <section className="contenedor py-10 sm:py-14">
-        {eventos.length === 0 ? (
+        {!r.ok ? (
+          /* No es que no haya nada: es que no se pudo leer. Solo pasa en un
+             build que no alcanzó la base; en cuanto alguien visite la página
+             se rehace sola con el contenido de verdad. */
+          <SeccionVacia mensaje="Estamos actualizando esta página. Vuelve en un momento." />
+        ) : eventos.length === 0 ? (
           <SeccionVacia mensaje="No hay eventos publicados en este momento. ¡Vuelve pronto!" />
         ) : (
           <div className="space-y-14">

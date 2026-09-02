@@ -23,14 +23,18 @@
  * 3. El corte del lado del servidor tiene que ser MAYOR que el del cliente: es
  *    la red de seguridad que mata la consulta que ya abandonamos, no el primero
  *    en disparar.
- * 4. LAS MISMAS DOS REGLAS, OTRA VEZ, PARA EL BUILD. El build tiene sus propios
- *    plazos —mucho más largos— porque ahí la base está fría del todo y no hay
- *    nadie esperando. Faltaba comprobarlos y se notó: el primer despliegue con
- *    `exigir` se cayó en Vercel con "la consulta pasó de 6000 ms" mientras
- *    prerrenderizaba la portada, con un código que en local pasaba todas las
- *    comprobaciones. En local la base está en la misma máquina; el build de
- *    Vercel abre la conexión a Supabase desde cero. Los números del build no
- *    los vigilaba nadie, así que ahora se vigilan igual que los otros.
+ * 4. LAS MISMAS REGLAS, OTRA VEZ, PARA EL BUILD — INCLUIDO SU TECHO. El build
+ *    tiene sus propios plazos y su propio techo, que es DISTINTO y que yo no
+ *    sabía que existía: Next mata cualquier página que tarde más de 60 s en
+ *    generarse (`staticPageGenerationTimeout`, por defecto 60, en
+ *    node_modules/next/dist/server/config.js).
+ *
+ *    Por no saberlo rompí dos despliegues seguidos: puse tres intentos de 30 s
+ *    —94 s— creyendo que en un build se podía esperar lo que hiciera falta, y
+ *    la página moría a los 60 s sin llegar a su respaldo. La regla 2 existía
+ *    exactamente para esto y yo la había desactivado para el build, con el
+ *    comentario "sin techo que respetar". Techo hay siempre; lo que cambia es
+ *    cuál.
  */
 import { readFileSync } from 'node:fs';
 
@@ -44,6 +48,12 @@ const num = (txt, re, que) => {
 const q = leer('src/lib/queries.ts');
 const db = leer('src/lib/db.ts');
 const pagina = leer('src/app/admin/(panel)/maquinas-nuevas/page.tsx');
+const config = leer('next.config.ts');
+
+// El techo del build sale de next.config.ts si está puesto a mano; si no, del
+// valor por defecto de Next, que es 60 s.
+const techoBuild =
+  (/staticPageGenerationTimeout:\s*(\d+)/.exec(config)?.[1] ?? 60) * 1000;
 
 const v = {
   publico:   num(q,  /LIMITE_CONSULTA_MS = ([\d_]+)/, 'LIMITE_CONSULTA_MS'),
@@ -57,6 +67,8 @@ const v = {
   // Los del build.
   build:          num(q,  /LIMITE_BUILD_MS = ([\d_]+)/, 'LIMITE_BUILD_MS'),
   intentosBuild:  num(q,  /INTENTOS_BUILD = (\d+)/, 'INTENTOS_BUILD'),
+  pausaBuild:     num(q,  /PAUSA_BUILD_MS = ([\d_]+)/, 'PAUSA_BUILD_MS'),
+  techoBuild:     Number(techoBuild),
   conectarBuild:  num(db, /connect_timeout: enBuild \? (\d+)/, 'connect_timeout del build') * 1000,
   sentenciaBuild: num(db, /statement_timeout: enBuild \? ([\d_]+)/, 'statement_timeout del build'),
 };
@@ -70,9 +82,10 @@ const reglas = [
    v.intentos * v.panel + (v.intentos - 1) * v.pausa < v.techo],
   ['el corte del servidor es mayor que el del cliente', v.sentencia > v.panel],
 
-  // El build. Sin techo que respetar —no es una función de Vercel—, pero las
-  // dos reglas de encaje valen igual.
+  // El build, con su techo propio: Next mata la página a los 60 s.
   ['en el build, abrir la conexión cabe en un intento', v.conectarBuild < v.build],
+  ['los intentos del build caben en el techo de Next por página',
+   v.intentosBuild * v.build + (v.intentosBuild - 1) * v.pausaBuild < v.techoBuild],
   ['en el build, el corte del servidor es mayor que el del cliente',
    v.sentenciaBuild > v.build],
   ['el build espera más que una petición, no menos',

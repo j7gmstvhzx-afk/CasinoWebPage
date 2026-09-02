@@ -11,7 +11,9 @@ import {
   getPrograma,
   getUltimaActualizacion,
   seguro,
-  exigir,
+  pagosEnCero,
+  paraLaPagina,
+  algunoFallo,
 } from '@/lib/queries';
 import { money, relativeUpdate, longDate } from '@/lib/format';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
@@ -35,22 +37,34 @@ export const revalidate = 60;
 export const maxDuration = 15;
 
 export default async function Inicio() {
-  const [jackpots, maquinas, eventos, ultima, horario, programa, pagados] = await Promise.all([
-    // Estas tres son el contenido de la portada, y si una falla NO se pinta
-    // una portada a medias: se lanza, Next descarta la regeneración y el
-    // visitante sigue viendo la última portada buena. Antes la sección
-    // desaparecía en silencio y volvía sola al rato — el "a veces sale y a
-    // veces no" que reportó el dueño. Ver `exigir` en lib/queries.ts.
-    exigir(getJackpots, 'los premios'),
-    exigir(() => getMaquinasNuevas(6), 'las máquinas nuevas'),
-    exigir(() => getEventos(3), 'las promociones'),
-    seguro(getUltimaActualizacion, null),
-    // Respaldo: una semana entera sin horario. La banda se esconde sola en vez
-    // de anunciar que el casino está cerrado porque una consulta falló.
-    seguro(getHorario, { semana: Array(7).fill(null), excepciones: {} }),
-    seguro(getPrograma, []),
-    exigir(getPremiosPagados, 'los premios pagados del mes'),
-  ]);
+  const [rJackpots, rMaquinas, rEventos, ultima, horario, programa, rPagados] =
+    await Promise.all([
+      // Estas cuatro son el contenido de la portada, y si una falla NO se pinta
+      // una portada a medias: se lanza, Next descarta la regeneración y el
+      // visitante sigue viendo la última portada buena. Antes la sección
+      // desaparecía en silencio y volvía sola al rato — el "a veces sale y a
+      // veces no" que reportó el dueño. Ver `paraLaPagina` en lib/queries.ts.
+      paraLaPagina(getJackpots, 'los premios', []),
+      paraLaPagina(() => getMaquinasNuevas(6), 'las máquinas nuevas', []),
+      paraLaPagina(() => getEventos(3), 'las promociones', []),
+      seguro(getUltimaActualizacion, null),
+      // Respaldo: una semana entera sin horario. La banda se esconde sola en vez
+      // de anunciar que el casino está cerrado porque una consulta falló.
+      seguro(getHorario, { semana: Array(7).fill(null), excepciones: {} }),
+      seguro(getPrograma, []),
+      paraLaPagina(getPremiosPagados, 'los premios pagados del mes', pagosEnCero()),
+    ]);
+
+  const jackpots = rJackpots.datos;
+  const maquinas = rMaquinas.datos;
+  const eventos = rEventos.datos;
+  const pagados = rPagados.datos;
+
+  // Solo puede ser cierto durante un build que no alcanzó la base (en ejecución
+  // `paraLaPagina` habría lanzado). La página se hornea diciendo la verdad —que
+  // se está actualizando— en vez de afirmar que el casino no tiene nada, y se
+  // rellena sola en cuanto alguien la visite.
+  const sinLeer = algunoFallo(rJackpots, rMaquinas, rEventos, rPagados);
 
   // CINCO, y salen ordenados de mayor a menor sin que nadie los ordene:
   // `getJackpots` ya devuelve la lista por monto descendente, así que al entrar
@@ -59,6 +73,11 @@ export default async function Inicio() {
 
   return (
     <>
+      {sinLeer && (
+        <p className="contenedor py-3 text-sm text-tenue">
+          Estamos actualizando esta página. Vuelve en un momento.
+        </p>
+      )}
       {/* EL PARTE DEL DÍA, ANTES QUE NADA.
 
           Lo primero que quiere saber quien abre la página de un casino es si

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
-import { getGanadores, exigir, type Ganador } from '@/lib/queries';
+import { getGanadores, paraLaPagina, type Ganador } from '@/lib/queries';
 import { Monto } from '@/components/site/Monto';
 import { longDate } from '@/lib/format';
 
@@ -31,7 +31,8 @@ export const metadata: Metadata = {
  * marca, con el pueblo debajo. Es la misma jerarquía del tablero de premios.
  */
 export default async function PaginaGanadores() {
-  const ganadores = await exigir(() => getGanadores(24), 'el muro de ganadores');
+  const r = await paraLaPagina(() => getGanadores(24), 'el muro de ganadores', [] as Ganador[]);
+  const ganadores = r.datos;
 
   return (
     <>
@@ -41,7 +42,12 @@ export default async function PaginaGanadores() {
       />
 
       <section className="contenedor py-10 sm:py-14">
-        {ganadores.length === 0 ? (
+        {!r.ok ? (
+          /* No es que no haya nada: es que no se pudo leer. Solo pasa en un
+             build que no alcanzó la base; en cuanto alguien visite la página
+             se rehace sola con el contenido de verdad. */
+          <SeccionVacia mensaje="Estamos actualizando esta página. Vuelve en un momento." />
+        ) : ganadores.length === 0 ? (
           <SeccionVacia mensaje="Pronto verás aquí los últimos premios pagados del salón." />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

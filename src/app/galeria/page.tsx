@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { Galeria } from '@/components/site/Galeria';
-import { getGaleria, exigir } from '@/lib/queries';
+import { getGaleria, paraLaPagina } from '@/lib/queries';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -23,7 +23,8 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaGaleria() {
-  const items = await exigir(() => getGaleria(90), 'la galería');
+  const r = await paraLaPagina(() => getGaleria(90), 'la galería', []);
+  const items = r.datos;
 
   return (
     <>
@@ -33,7 +34,12 @@ export default async function PaginaGaleria() {
       />
 
       <section className="contenedor py-10 sm:py-14">
-        {items.length === 0 ? (
+        {!r.ok ? (
+          /* No es que no haya nada: es que no se pudo leer. Solo pasa en un
+             build que no alcanzó la base; en cuanto alguien visite la página
+             se rehace sola con el contenido de verdad. */
+          <SeccionVacia mensaje="Estamos actualizando esta página. Vuelve en un momento." />
+        ) : items.length === 0 ? (
           <SeccionVacia mensaje="Estamos preparando la galería. ¡Vuelve pronto!" />
         ) : (
           <Galeria items={items} />

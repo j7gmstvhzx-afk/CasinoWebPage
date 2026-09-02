@@ -7,7 +7,9 @@ import {
   getResumenSalon,
   getUltimaActualizacion,
   seguro,
-  exigir,
+  paraLaPagina,
+  algunoFallo,
+  pagosEnCero,
   type PremiosPagados,
   type ResumenSalon,
 } from '@/lib/queries';
@@ -37,12 +39,12 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaJackpots() {
-  const [jackpots, ultima, alDia, salon, pagados] = await Promise.all([
-    // `exigir` y no `seguro`: si esta consulta falla, el tablero se pintaría
-    // vacío con "Los premios se están actualizando" y ESA página vacía se
-    // guardaría en la caché encima de la buena. Lanzando, Next deja la última
-    // versión buena en su sitio. Ver `exigir` en lib/queries.ts.
-    exigir(getJackpots, 'los premios'),
+  const [rJackpots, ultima, alDia, salon, rPagados] = await Promise.all([
+    // `paraLaPagina` y no `seguro`: si esta consulta falla, el tablero se
+    // pintaría vacío con "Los premios se están actualizando" y ESA página vacía
+    // se guardaría en la caché encima de la buena. Lanzando, Next deja la
+    // última versión buena en su sitio. Ver lib/queries.ts.
+    paraLaPagina(getJackpots, 'los premios', []),
     seguro(getUltimaActualizacion, null),
     seguro(getJackpotsAlDia, false),
     // El respaldo es `null` y NO `{ total: 0, maquinas: 0 }`.
@@ -55,11 +57,20 @@ export default async function PaginaJackpots() {
     // Un cero es una AFIRMACIÓN sobre el dinero del salón. Cuando no se sabe,
     // hay que no decir nada; callar se entiende, mentir no.
     seguro<ResumenSalon | null>(getResumenSalon, null),
-    exigir(getPremiosPagados, 'los premios pagados del mes'),
+    paraLaPagina(getPremiosPagados, 'los premios pagados del mes', pagosEnCero()),
   ]);
+
+  const jackpots = rJackpots.datos;
+  const pagados = rPagados.datos;
+  const sinLeer = algunoFallo(rJackpots, rPagados);
 
   return (
     <>
+      {sinLeer && (
+        <p className="contenedor py-3 text-sm text-tenue">
+          Estamos actualizando esta página. Vuelve en un momento.
+        </p>
+      )}
       <Portada salon={salon} pagados={pagados} ultima={ultima} alDia={alDia} />
 
       <section className="contenedor py-10 sm:py-14">

@@ -498,7 +498,7 @@ const PAUSA_MS = 400;
  * Y ahí es justo donde la base está más fría que nunca: la máquina que hace el
  * build no ha hablado con Supabase en su vida, así que paga el saludo TCP, el
  * TLS, la autenticación del pooler y, si el proyecto llevaba rato quieto, el
- * despertar del propio servidor. El primer despliegue con `exigir` se cayó por
+ * despertar del propio servidor. El primer despliegue que lanzaba se cayó por
  * esto —"la consulta pasó de 6000 ms" al prerrenderizar la portada— con un
  * código que en local funcionaba: en local la base está en la misma máquina.
  *
@@ -510,9 +510,28 @@ const PAUSA_MS = 400;
  */
 export const EN_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
 
-const LIMITE_BUILD_MS = 30_000;
-const INTENTOS_BUILD = 3;
-const PAUSA_BUILD_MS = 2_000;
+/**
+ * EL BUILD TAMBIÉN TIENE TECHO, Y ES DE 60 SEGUNDOS POR PÁGINA.
+ *
+ * `staticPageGenerationTimeout: 60` — el valor por defecto de Next, en
+ * node_modules/next/dist/server/config.js. Si una página tarda más en
+ * generarse, Next la mata, la reintenta tres veces y tumba el build.
+ *
+ * Ese número no lo sabía, y por no saberlo rompí dos despliegues: puse 3
+ * intentos de 30 s (94 s en total) convencido de que en un build se podía
+ * esperar lo que hiciera falta. La página moría a los 60 s sin llegar nunca a
+ * su respaldo. Con los 6 s de antes cabía —12,4 s— y por eso el build "salía
+ * bien"... horneando páginas vacías.
+ *
+ * Así que se espera más que en una petición, pero cabiendo de sobra:
+ * 2 × 12 s + 1 s de pausa = 25 s, y la página tiene 60.
+ */
+const LIMITE_BUILD_MS = 12_000;
+const INTENTOS_BUILD = 2;
+const PAUSA_BUILD_MS = 1_000;
+
+/** El techo de Next por página en el build. Ver arriba. */
+export const TECHO_BUILD_MS = 60_000;
 
 /**
  * ¿Este fallo tiene sentido reintentarlo?
@@ -654,7 +673,7 @@ export function algunoFallo(...rs: Resultado<unknown>[]): boolean {
   return rs.some((r) => !r.ok);
 }
 
-/** Lo que lanza `exigir`. Se distingue para que la página de error sepa qué decir. */
+/** Lo que lanza `paraLaPagina`. Se distingue para que la página de error sepa qué decir. */
 export class ErrorDeCarga extends Error {
   constructor(
     readonly que: string,
@@ -666,67 +685,67 @@ export class ErrorDeCarga extends Error {
 }
 
 /**
- * PARA LAS PÁGINAS PÚBLICAS: si no se pudo leer, se LANZA.
+ * PARA LAS PÁGINAS PÚBLICAS: si no se pudo leer, se LANZA — salvo en el build.
  *
- * ESTA ES LA CAUSA DE QUE LA INFORMACIÓN APAREZCA Y DESAPAREZCA
- * -------------------------------------------------------------
+ * PARTE 1: EN EJECUCIÓN SE LANZA, PARA NO PISAR LA CACHÉ BUENA
+ * ------------------------------------------------------------
  * Todas las páginas públicas se guardan en caché (`revalidate = 60`) y se
  * rehacen en segundo plano. La documentación de Next dice qué pasa cuando esa
- * regeneración falla, y es exactamente lo que hace falta:
+ * regeneración falla, y es justo lo que hace falta:
  *
  *   "If an error is thrown while attempting to revalidate data, the last
  *    successfully generated data will continue to be served from the cache."
  *   — node_modules/next/dist/docs/01-app/02-guides/incremental-static-regeneration.md
  *
- * La condición es "if an error is thrown". Y `seguro()` no lanza: atrapa el
- * fallo y devuelve una lista vacía. Para Next eso NO es un fallo, es una página
- * que se generó correctamente y que resulta que no tiene contenido — así que la
- * GUARDA EN LA CACHÉ, encima de la última versión buena.
+ * La condición es "if an error is thrown". `seguro()` no lanza: atrapa el fallo
+ * y devuelve una lista vacía, así que para Next la regeneración fue un ÉXITO y
+ * esa página vacía SE GUARDA encima de la última buena. Servida tal cual hasta
+ * que a alguien le toque rehacerla, que en un sitio de poco tráfico son horas.
+ * Ése es el "aparece y desaparece sin que nadie toque nada".
  *
- * El resultado, contado como lo vive el dueño: una consulta que tropieza deja
- * la página anunciando "No hay eventos publicados en este momento" y ahí se
- * queda. La caché se sirve tal cual hasta que a alguien le toque regenerarla, y
- * en un sitio de poco tráfico eso puede ser horas. Luego se rehace bien y la
- * información vuelve sola. Aparece y desaparece sin que nadie toque nada.
+ * PARTE 2: EN EL BUILD NO SE LANZA, Y ESTO ME COSTÓ DOS DESPLIEGUES
+ * ----------------------------------------------------------------
+ * Al principio esto lanzaba también en el build, con el argumento de que más
+ * vale un despliegue que no sale que un casino publicado sin premios. El
+ * argumento era bueno y la conclusión estaba mal, porque le faltaba un dato que
+ * estaba en los registros de Vercel desde el primer día:
  *
- * Lanzando, Next descarta el intento y sigue sirviendo la última página buena.
- * El visitante ve el contenido de hace un rato —que es verdad— en vez de un
- * "no hay nada" que es mentira.
+ *   LA MÁQUINA QUE HACE EL BUILD NUNCA HA PODIDO HABLAR CON LA BASE.
  *
- * QUÉ PASA EN EL BUILD, QUE NO ES GRATIS Y HAY QUE DECIRLO
- * -------------------------------------------------------
- * `next build` prerrenderiza estas páginas. Si la base no responde durante el
- * build, ahora el despliegue FALLA en vez de publicar un sitio vacío. Es lo que
- * se quiere: hasta ahora un tropiezo de treinta segundos en el momento
- * equivocado horneaba un casino sin premios, sin promociones y sin máquinas, y
- * nadie se enteraba hasta que lo veía un cliente.
+ * En el despliegue anterior —el que salió BIEN— sus registros dicen
+ * "[consulta fallida] intento 2/2 la consulta pasó de 6000 ms" mientras
+ * prerrenderizaba. Con `seguro()` eso no se veía: se horneaban las páginas
+ * vacías y nadie se enteraba. Y en ejecución la base contesta de sobra (la
+ * página en vivo enseña sus veinte máquinas), así que no es que esté caída: es
+ * que el build sale por otra red.
+ *
+ * Con eso encima de la mesa, lanzar en el build no protege de nada — impide
+ * desplegar, y punto. Así que en el build se sigue adelante, pero la página que
+ * se hornea DICE que no pudo leerse en vez de decir que no hay nada. Se cura
+ * sola en cuanto alguien la visita y la caché se rehace (ver `revalidate`).
  *
  * `que` es lo que se le dice a la persona: "los premios", "las promociones".
  */
-export async function exigir<T>(
+export async function paraLaPagina<T>(
   fn: () => Promise<T>,
   que: string,
+  respaldo: T,
   limiteMs: number = LIMITE_CONSULTA_MS,
-): Promise<T> {
-  const r = await intentar<T | null>(fn, null, limiteMs);
-  if (!r.ok) {
-    // En el build, el que lee esto es quien despliega, y necesita saber qué
-    // hacer. Sin esta frase el mensaje es "la consulta pasó de N ms" y no dice
-    // ni a qué base ni qué mirar.
-    if (EN_BUILD) {
-      console.error(
-        `\n[build] No se pudo leer ${que} de la base de datos, y por eso no se ` +
-          'publica el sitio: saldría sin ese contenido.\n' +
-          '        Comprueba que el proyecto de Supabase está despierto (los ' +
-          'proyectos gratuitos se duermen solos)\n' +
-          '        y que DATABASE_POOL_URL sigue siendo la del pooler en modo ' +
-          'transacción, puerto 6543.\n' +
-          '        El despliegue anterior sigue en pie mientras tanto.\n',
-      );
-    }
-    throw new ErrorDeCarga(que, r.motivo);
+): Promise<Resultado<T>> {
+  const r = await intentar(fn, respaldo, limiteMs);
+
+  if (!r.ok && EN_BUILD) {
+    console.error(
+      `\n[build] No se pudo leer ${que} desde la máquina del build. La página se\n` +
+        '        hornea diciendo que se está actualizando, y se rellena sola en\n' +
+        '        cuanto alguien la visite y la caché se rehaga.\n' +
+        `        Motivo: ${r.motivo}\n`,
+    );
+    return r;
   }
-  return r.datos as T;
+
+  if (!r.ok) throw new ErrorDeCarga(que, r.motivo);
+  return r;
 }
 
 
