@@ -486,6 +486,35 @@ const INTENTOS = 2;
 const PAUSA_MS = 400;
 
 /**
+ * ¿Estamos dentro de `next build`? Next pone esta variable en el proceso.
+ *
+ * EL BUILD NO ES UNA PETICIÓN, Y LOS PLAZOS DE UNA PETICIÓN NO LE SIRVEN
+ * ---------------------------------------------------------------------
+ * Los 6 s de `LIMITE_CONSULTA_MS` existen porque hay una persona esperando
+ * delante de una pantalla y una función de Vercel que se corta a los 15. En un
+ * build no hay ni lo uno ni lo otro: nadie espera, y el build puede durar
+ * minutos.
+ *
+ * Y ahí es justo donde la base está más fría que nunca: la máquina que hace el
+ * build no ha hablado con Supabase en su vida, así que paga el saludo TCP, el
+ * TLS, la autenticación del pooler y, si el proyecto llevaba rato quieto, el
+ * despertar del propio servidor. El primer despliegue con `exigir` se cayó por
+ * esto —"la consulta pasó de 6000 ms" al prerrenderizar la portada— con un
+ * código que en local funcionaba: en local la base está en la misma máquina.
+ *
+ * Así que en el build se espera mucho más y se insiste más veces. Lo que NO se
+ * hace es rendirse y hornear una página vacía: si después de todo esto la base
+ * sigue sin contestar, el despliegue falla, y Vercel deja en pie el anterior.
+ * Un despliegue que no sale es un problema; un casino publicado sin premios y
+ * sin promociones es peor.
+ */
+export const EN_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+
+const LIMITE_BUILD_MS = 30_000;
+const INTENTOS_BUILD = 3;
+const PAUSA_BUILD_MS = 2_000;
+
+/**
  * ¿Este fallo tiene sentido reintentarlo?
  *
  * Un tiempo agotado o una conexión caída son ACCIDENTES: el segundo intento
@@ -561,15 +590,20 @@ export async function intentar<T>(
 ): Promise<Resultado<T>> {
   let ultimo: unknown;
 
-  for (let n = 1; n <= INTENTOS; n++) {
+  // En el build mandan los plazos del build, no los de la petición: ver EN_BUILD.
+  const intentos = EN_BUILD ? INTENTOS_BUILD : INTENTOS;
+  const pausa = EN_BUILD ? PAUSA_BUILD_MS : PAUSA_MS;
+  const limite = EN_BUILD ? Math.max(limiteMs, LIMITE_BUILD_MS) : limiteMs;
+
+  for (let n = 1; n <= intentos; n++) {
     let temporizador: ReturnType<typeof setTimeout> | undefined;
     try {
       const datos = await Promise.race([
         fn(),
         new Promise<never>((_, rechazar) => {
           temporizador = setTimeout(
-            () => rechazar(new Error(`la consulta pasó de ${limiteMs} ms`)),
-            limiteMs,
+            () => rechazar(new Error(`la consulta pasó de ${limite} ms`)),
+            limite,
           );
         }),
       ]);
@@ -577,10 +611,10 @@ export async function intentar<T>(
       return { ok: true, datos };
     } catch (e) {
       ultimo = e;
-      const vale = esTransitorio(e) && n < INTENTOS;
-      console.error(`[consulta fallida] intento ${n}/${INTENTOS}`, vale ? '(se reintenta)' : '', e);
+      const vale = esTransitorio(e) && n < intentos;
+      console.error(`[consulta fallida] intento ${n}/${intentos}`, vale ? '(se reintenta)' : '', e);
       if (!vale) break;
-      await dormir(PAUSA_MS);
+      await dormir(pausa);
     } finally {
       // Sin esto, el temporizador mantiene vivo el proceso hasta que vence,
       // incluso cuando la consulta respondió a tiempo.
@@ -675,7 +709,23 @@ export async function exigir<T>(
   limiteMs: number = LIMITE_CONSULTA_MS,
 ): Promise<T> {
   const r = await intentar<T | null>(fn, null, limiteMs);
-  if (!r.ok) throw new ErrorDeCarga(que, r.motivo);
+  if (!r.ok) {
+    // En el build, el que lee esto es quien despliega, y necesita saber qué
+    // hacer. Sin esta frase el mensaje es "la consulta pasó de N ms" y no dice
+    // ni a qué base ni qué mirar.
+    if (EN_BUILD) {
+      console.error(
+        `\n[build] No se pudo leer ${que} de la base de datos, y por eso no se ` +
+          'publica el sitio: saldría sin ese contenido.\n' +
+          '        Comprueba que el proyecto de Supabase está despierto (los ' +
+          'proyectos gratuitos se duermen solos)\n' +
+          '        y que DATABASE_POOL_URL sigue siendo la del pooler en modo ' +
+          'transacción, puerto 6543.\n' +
+          '        El despliegue anterior sigue en pie mientras tanto.\n',
+      );
+    }
+    throw new ErrorDeCarga(que, r.motivo);
+  }
   return r.datos as T;
 }
 

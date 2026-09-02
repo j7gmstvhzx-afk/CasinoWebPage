@@ -110,6 +110,14 @@ function crear(): Sql {
   }
 
   const local = /localhost|127\.0\.0\.1|\/var\/tmp|\/tmp/.test(cadena);
+
+  // ¿Esto corre dentro de `next build`? Los plazos de una petición no valen ahí:
+  // no hay nadie esperando, no hay función que se corte a los 15 s, y la base
+  // está más fría que en ningún otro momento. Ver EN_BUILD en lib/queries.ts.
+  //
+  // Se calcula aquí y no se importa de queries.ts porque queries.ts importa
+  // este archivo: importarlo de vuelta sería un círculo.
+  const enBuild = process.env.NEXT_PHASE === 'phase-production-build';
   const corregida = normalizarCadena(cadena);
 
   // Huella de la conexión, SIN la contraseña. Cuando el sitio sale vacío, la
@@ -178,7 +186,15 @@ function crear(): Sql {
     // Ahora abrir la conexión tiene 5 s y cada intento de `intentar()` tiene 6.
     // El que abre cabe dentro del que espera, que es la única forma de que un
     // arranque en frío pueda terminar.
-    connect_timeout: 5,
+    //
+    // EN EL BUILD SON 25 Y NO 5, y no es una excepción caprichosa: la máquina
+    // que hace el build no ha hablado con Supabase nunca, así que paga el
+    // saludo entero —TCP, TLS, el pooler— y, si el proyecto llevaba rato
+    // quieto, el despertar del servidor. Con 5 s no llegaba: el primer
+    // despliegue con `exigir` se cayó ahí. Y en un build no hay nadie
+    // esperando ni función que se corte a los 15 s, así que esperar sale
+    // gratis. Ver EN_BUILD en lib/queries.ts.
+    connect_timeout: enBuild ? 25 : 5,
 
     // TRES MINUTOS SIN CERRAR, Y NO VEINTE SEGUNDOS.
     //
@@ -205,7 +221,7 @@ function crear(): Sql {
       // 8 s y no 2.5: aquí también pasan las escrituras de la tirada y del
       // panel, que no las cubre `seguro()` y que sí pueden tardar más que una
       // lectura del tablero.
-      statement_timeout: 8_000,
+      statement_timeout: enBuild ? 45_000 : 8_000,
       // Una transacción abierta y abandonada retiene sus candados. En
       // `execute_spin` eso bloquearía las tiradas de todo el mundo.
       idle_in_transaction_session_timeout: 10_000,
