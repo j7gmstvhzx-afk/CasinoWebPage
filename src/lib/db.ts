@@ -206,14 +206,30 @@ function crear(): Sql {
   }
 
   const cliente = postgres(corregida, {
-    // Seis y no cuatro: hay que dejar hueco para el reintento.
+    // CUATRO OTRA VEZ, Y AHORA CON UN MOTIVO MEDIDO EN EL OTRO LADO.
     //
-    // Cuando un intento se abandona por tiempo, la consulta sigue viva en su
-    // conexión hasta que Postgres la mata (statement_timeout). El reintento
-    // necesita OTRA conexión libre; con el pool justo al ancho de la ráfaga, el
-    // reintento se quedaba esperando la conexión que había dejado tirada el
-    // intento anterior, y fallaba por lo mismo.
-    max: 6,
+    // Eran seis para dejarle hueco al reintento: una consulta abandonada seguía
+    // ocupando su conexión, así que el reintento necesitaba otra libre. Desde
+    // que un plazo agotado ya NO se reintenta (ver `esTransitorio` en
+    // queries.ts), ese hueco no hace falta.
+    //
+    // Y sobra por una razón que solo se ve desde los registros de Supabase: el
+    // pooler de este proyecto es de tamaño 15 y es COMPARTIDO por todo lo que
+    // hable con la base. En el despliegue del 3 de septiembre, el build abrió
+    // DIEZ conexiones en el mismo instante —Next lo hace en dos procesos, seis
+    // por cada uno— y en la segunda tanda ocho clientes se autenticaron pero
+    // solo cuatro consiguieron su conexión de base:
+    //
+    //     21:10:31.85  ClientHandler: Connection authenticated   x8
+    //     21:10:31.85  DbHandler: Backend authenticated          x4
+    //
+    // Los otros cuatro se quedaron esperando en silencio hasta que nos rendimos
+    // a los 12 s. Con cuatro por proceso se pide bastante menos de lo que hay.
+    //
+    // Cuatro sigue siendo el ancho de la ráfaga más grande que hace este sitio
+    // (la pestaña de premios lanza cinco con Promise.all, y la quinta espera lo
+    // que tarde una de las otras: entre 25 y 33 ms).
+    max: 4,
     prepare: false,
     types: {
       // Las columnas `date` vuelven como CADENA 'YYYY-MM-DD', no como Date.

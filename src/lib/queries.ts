@@ -579,12 +579,18 @@ export const TECHO_BUILD_MS = 60_000;
 function esTransitorio(e: unknown): boolean {
   const code = (e as { code?: string })?.code ?? '';
   if (code.startsWith('08') || code === '57P01' || code === '57P03') return true;
-  // Este lo produce el pool cuando se le manda una consulta justo después de
-  // haberlo descartado (ver `descartarPool` en lib/db.ts): dos peticiones a la
-  // vez, una descarta y a la otra le pilla el cambio en medio. Es la definición
-  // de accidente —ya hay un pool nuevo esperando—, así que el reintento entra
-  // por él y sale bien.
-  if (code === 'CONNECTION_ENDED') return true;
+  // Estos dos los produce el pool cuando se le manda una consulta justo
+  // después de haberlo descartado (ver `descartarPool` en lib/db.ts): dos
+  // peticiones a la vez, una descarta y a la otra le pilla el cambio en medio.
+  // ENDED es el cierre pedido; DESTROYED, el forzoso cuando se acaba la gracia.
+  // Los dos son la definición de accidente —ya hay un pool nuevo esperando—,
+  // así que el reintento entra por él y sale bien.
+  //
+  // DESTROYED salió en el despliegue de este mismo cambio, en el registro del
+  // build: `write CONNECTION_DESTROYED aws-0-us-east-1.pooler.supabase.com`.
+  // Yo solo había contemplado ENDED, y esa página se horneó vacía por un error
+  // que se arreglaba solo con volver a intentarlo.
+  if (code === 'CONNECTION_ENDED' || code === 'CONNECTION_DESTROYED') return true;
   const msg = e instanceof Error ? e.message : String(e);
   // El matiz está en QUÉ se agotó. `CONNECT_TIMEOUT` y `ETIMEDOUT` sí entran:
   // son de ABRIR la conexión, y volver a intentarlo abre otra. Un "timeout" a
