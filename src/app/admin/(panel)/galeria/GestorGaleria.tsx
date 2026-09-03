@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
 import { Estado } from '@/components/admin/EstadoPublico';
+import { FotoEncajada } from '@/components/site/FotoEncajada';
 import { estadoFoto } from '@/lib/visibilidad';
 
 export type FotoAdmin = {
@@ -159,11 +160,10 @@ export function GestorGaleria({
               data-cam-item={f.image_path}
               data-cam-visible="si"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <FotoEncajada
                 src={f.image_path}
                 alt={f.caption ?? 'Foto del salón'}
-                className="aspect-[4/3] w-full object-cover"
+                proporcion="aspect-[4/3]"
               />
               <div className="p-4">
                 <p className="text-sm font-medium">{f.caption ?? 'Sin pie de foto'}</p>

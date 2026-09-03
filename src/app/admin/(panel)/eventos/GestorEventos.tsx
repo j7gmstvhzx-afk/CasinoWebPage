@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
 import { Estado } from '@/components/admin/EstadoPublico';
+import { FotoEncajada } from '@/components/site/FotoEncajada';
 import { longDate } from '@/lib/format';
 import { estadoEvento, estadoPopup } from '@/lib/visibilidad';
 
@@ -322,8 +323,7 @@ export function GestorEventos({
               data-cam-visible={estadoEvento(e, hoy).visible ? 'si' : 'no'}
             >
               {e.image_path ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={e.image_path} alt={e.title} className="aspect-[4/5] w-full object-cover" />
+                <FotoEncajada src={e.image_path} alt={e.title} proporcion="aspect-[4/5]" />
               ) : (
                 <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-br from-superficie to-superficie-2">
                   <span className="px-4 text-center text-sm text-tenue">Sin arte todavía</span>

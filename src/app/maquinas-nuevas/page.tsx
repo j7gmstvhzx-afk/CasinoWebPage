@@ -49,7 +49,7 @@ export default async function PaginaMaquinasNuevas() {
             {maquinas.map((m) => {
               return (
                 <li key={m.id} className="tarjeta overflow-hidden">
-                  <Marco imagen={m.image_path} alt={m.name} proporcion="aspect-square" encaje="contener" />
+                  <Marco imagen={m.image_path} alt={m.name} proporcion="aspect-square" />
                   <div className="p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       {m.es_nueva && (

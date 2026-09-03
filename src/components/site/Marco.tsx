@@ -24,26 +24,26 @@ import { FotoEncajada } from './FotoEncajada';
  * exige declarar cada dominio de antemano. Cuando se fije el dominio definitivo
  * conviene migrar y ganar el redimensionado automático.
  *
- * `encaje` decide qué pasa cuando la foto no tiene la forma del recuadro:
+ * LA FOTO SE ENCAJA SIEMPRE, Y NO HAY FORMA DE PEDIR LO CONTRARIO.
  *
- *   'recortar'  rellena el recuadro y corta lo que sobra. Vale cuando la foto
- *               es del tamaño previsto o cuando los bordes no importan.
- *   'contener'  mete la foto ENTERA y rellena el hueco con ella misma
- *               desenfocada (ver FotoEncajada). Es lo que hace falta cuando las
- *               fotos las hace el personal con el teléfono y cada una viene de
- *               una forma: una máquina fotografiada de pie no se puede recortar
- *               a una franja apaisada sin cortarle la mitad.
+ * Hubo un momento en que esto era una opción, con `object-cover` por defecto y
+ * `encaje="contener"` para quien se acordara de ponerlo. Duró un commit: una
+ * opción que hay que acordarse de activar en cada sitio nuevo es una opción que
+ * un día se olvida, y ese día se vuelve a publicar una máquina cortada por la
+ * mitad. El dueño lo pidió con estas palabras: que sea automático, sin importar
+ * de qué tamaño sea la foto.
+ *
+ * Así que ya no se pregunta. Toda foto que suba el personal entra entera en su
+ * recuadro y el hueco se rellena con ella misma desenfocada (ver FotoEncajada).
  */
 export function Marco({
   imagen,
   alt,
   proporcion = 'aspect-[16/10]',
-  encaje = 'recortar',
 }: {
   imagen: string | null;
   alt: string;
   proporcion?: string;
-  encaje?: 'recortar' | 'contener';
 }) {
   if (!imagen) {
     return (
@@ -68,19 +68,7 @@ export function Marco({
     );
   }
 
-  if (encaje === 'contener') {
-    return <FotoEncajada src={imagen} alt={alt} proporcion={proporcion} />;
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={imagen}
-      alt={alt}
-      loading="lazy"
-      className={`${proporcion} w-full object-cover`}
-    />
-  );
+  return <FotoEncajada src={imagen} alt={alt} proporcion={proporcion} />;
 }
 
 /** La pica del mandala del logo, en trazo. Es la misma silueta que teje el

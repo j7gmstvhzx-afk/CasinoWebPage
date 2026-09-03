@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { FotoEncajada } from './FotoEncajada';
 import type { ItemGaleria } from '@/lib/queries';
 import { setOverlayActivo } from '@/lib/overlay-activo';
 
@@ -119,13 +120,16 @@ export function Galeria({ items }: { items: ItemGaleria[] }) {
               }}
               className="group block w-full overflow-hidden rounded-2xl border border-linea"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.image_path}
-                alt={item.caption ?? 'Foto de Casino Atlántico Manatí'}
-                loading="lazy"
-                className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
+              {/* El acercamiento al pasar el ratón va en el envoltorio y no en
+                  la imagen: FotoEncajada pinta dos capas —la foto y su relleno
+                  desenfocado— y tienen que moverse juntas. */}
+              <div className="transition-transform duration-500 group-hover:scale-105">
+                <FotoEncajada
+                  src={item.image_path}
+                  alt={item.caption ?? 'Foto de Casino Atlántico Manatí'}
+                  proporcion="aspect-square"
+                />
+              </div>
             </button>
           </li>
         ))}

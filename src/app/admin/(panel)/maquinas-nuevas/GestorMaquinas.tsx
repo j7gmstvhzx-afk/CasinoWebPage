@@ -237,7 +237,6 @@ export function GestorMaquinas({
                 valor={b.image_path}
                 onCambio={(ruta) => setB({ ...b, image_path: ruta })}
                 proporcion="aspect-square"
-                encaje="contener"
               />
             </div>
           </div>

@@ -303,7 +303,7 @@ export default async function Inicio() {
           <ul className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {maquinas.slice(0, 3).map((m) => (
               <li key={m.id} className="tarjeta overflow-hidden">
-                <Marco imagen={m.image_path} alt={m.name} proporcion="aspect-square" encaje="contener" />
+                <Marco imagen={m.image_path} alt={m.name} proporcion="aspect-square" />
                 <div className="p-5">
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-cian/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-tinta">
