@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { sql } from './db';
+import { sql, descartarPool, edadDelPool } from './db';
 import { hoyEnPR } from './hora-pr';
 import { VENTANA_TABLERO_DIAS } from './visibilidad';
 import type { HorarioSitio, Programa, ReglaDia } from './horario';
@@ -548,21 +548,89 @@ export const TECHO_BUILD_MS = 60_000;
 /**
  * ¿Este fallo tiene sentido reintentarlo?
  *
- * Un tiempo agotado o una conexión caída son ACCIDENTES: el segundo intento
- * tiene todas las de ganar. Una tabla que no existe o un error de sintaxis son
+ * Una conexión caída es un ACCIDENTE: el cable se cayó, el pooler reciclaba,
+ * el servidor estaba arrancando. Al segundo intento la conexión es otra y tiene
+ * todas las de ganar. Una tabla que no existe o un error de sintaxis son
  * DEFECTOS: reintentar solo gasta el presupuesto y retrasa el mensaje de error.
  *
  * Los códigos son los de Postgres: la clase 08 es "connection exception", y
  * 57P01/57P03 son el servidor cerrando o arrancando.
+ *
+ * LO QUE **NO** SE REINTENTA, Y POR QUÉ CAMBIÓ
+ * -------------------------------------------
+ * Hasta ahora aquí entraba también nuestro propio plazo —el error que dice
+ * "la consulta pasó de 6500 ms"— y los registros de producción dicen que eso
+ * estaba mal. En las tres tandas de fallos que se examinaron (el tablero de
+ * jackpots, la portada del panel y la lista de clientes) **el reintento falló
+ * TAMBIÉN, sin una sola excepción**: 4 y 4, 2 y 2, 3 y 3. Cero recuperaciones.
+ *
+ * Y no es solo que no sirviera: hacía daño. Nuestro plazo se agota cuando la
+ * conexión SÍ está abierta —si no lo estuviera saltaría `connect_timeout`
+ * antes, a los 5 s— y la consulta simplemente no vuelve. Eso no es un
+ * accidente, es la base saturada o lenta; el reintento le manda una consulta
+ * más mientras la primera sigue viva ocupando su conexión, o sea que dobla la
+ * carga justo en el momento en que sobra. Y le cuesta al visitante el doble de
+ * espera: 13,4 s de esqueleto en vez de 6,5 antes de enseñar algo.
+ *
+ * 57014 sale de la misma tela: es Postgres matando por `statement_timeout` la
+ * consulta que ya habíamos abandonado. Es el gemelo del plazo de arriba, del
+ * lado del servidor, y se trata igual.
  */
 function esTransitorio(e: unknown): boolean {
   const code = (e as { code?: string })?.code ?? '';
-  if (code.startsWith('08') || code === '57P01' || code === '57P03' || code === '57014') return true;
+  if (code.startsWith('08') || code === '57P01' || code === '57P03') return true;
+  // Este lo produce el pool cuando se le manda una consulta justo después de
+  // haberlo descartado (ver `descartarPool` en lib/db.ts): dos peticiones a la
+  // vez, una descarta y a la otra le pilla el cambio en medio. Es la definición
+  // de accidente —ya hay un pool nuevo esperando—, así que el reintento entra
+  // por él y sale bien.
+  if (code === 'CONNECTION_ENDED') return true;
   const msg = e instanceof Error ? e.message : String(e);
-  return /pasó de \d+ ms|timeout|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|socket|Connection terminated|CONNECT_TIMEOUT/i.test(
+  // El matiz está en QUÉ se agotó. `CONNECT_TIMEOUT` y `ETIMEDOUT` sí entran:
+  // son de ABRIR la conexión, y volver a intentarlo abre otra. Un "timeout" a
+  // secas, no: ése es el nuestro esperando una respuesta por una conexión que
+  // ya estaba abierta, y repetirlo la vuelve a esperar por la misma.
+  return /ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|socket|Connection terminated|CONNECT_TIMEOUT/i.test(
     msg,
   );
 }
+
+/**
+ * ¿Este fallo es "la consulta no volvió"?
+ *
+ * Es el otro lado de `esTransitorio`: lo que NO se reintenta pero SÍ tiene una
+ * consecuencia — se tira el pool, porque el sospechoso número uno es una
+ * conexión que se quedó muerta mientras la función estaba congelada. El porqué,
+ * entero, está en `descartarPool` en lib/db.ts.
+ */
+function esPlazoAgotado(e: unknown): boolean {
+  if ((e as { code?: string })?.code === '57014') return true;
+  const msg = e instanceof Error ? e.message : String(e);
+  return /pasó de \d+ ms/.test(msg);
+}
+
+/**
+ * Cuándo respondió la última consulta que salió bien, en esta misma función.
+ *
+ * SIRVE PARA DISTINGUIR DOS CAUSAS QUE DAN EL MISMO ERROR
+ * -------------------------------------------------------
+ * "La consulta pasó de 6500 ms" puede ser dos cosas muy distintas:
+ *
+ *   - Una conexión muerta por congelación. Entonces la última consulta buena
+ *     fue hace MINUTOS: la función estuvo dormida y despertó con el socket
+ *     podrido. El pool es viejo.
+ *   - La base saturada. Entonces la última consulta buena fue hace SEGUNDOS,
+ *     porque hay tráfico; es lo que la satura.
+ *
+ * El arreglo de cada una es el contrario del de la otra —tirar el pool y abrir
+ * de nuevo, o dejar de mandar consultas— así que confundirlas sale caro. Estos
+ * dos números lo dicen en la misma línea del registro, sin tener que reproducir
+ * nada.
+ *
+ * Se anota aquí y no en db.ts porque aquí es donde se sabe si una consulta
+ * TERMINÓ, que no es lo mismo que si se envió.
+ */
+let ultimoExito = 0;
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -638,12 +706,28 @@ export async function intentar<T>(
           );
         }),
       ]);
+      ultimoExito = Date.now();
       if (n > 1) console.info(`[consulta] recuperada en el intento ${n}`);
       return { ok: true, datos };
     } catch (e) {
       ultimo = e;
       const vale = esTransitorio(e) && n < intentos;
       console.error(`[consulta fallida] intento ${n}/${intentos}`, vale ? '(se reintenta)' : '', e);
+
+      if (esPlazoAgotado(e)) {
+        // Los dos números que dicen cuál de las dos causas fue. Con el plan
+        // Hobby de Vercel los registros solo se guardan UNA HORA, así que
+        // tienen que estar en la misma línea y decirlo solos: cuando alguien
+        // vaya a mirarlos, no va a poder reproducir nada.
+        const desdeExito = ultimoExito ? Date.now() - ultimoExito : -1;
+        console.error(
+          `[diagnóstico] pool de ${edadDelPool()} ms; último acierto hace ` +
+            `${desdeExito} ms. Mucho tiempo sin acertar apunta a conexión ` +
+            'muerta por congelación; poco tiempo, a base saturada.',
+        );
+        descartarPool('una consulta se agotó sin respuesta');
+      }
+
       if (!vale) break;
       await dormir(pausa);
     } finally {

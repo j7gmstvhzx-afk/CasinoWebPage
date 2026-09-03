@@ -46,9 +46,79 @@ type Sql = ReturnType<typeof postgres>;
 
 declare global {
   var __camSql: Sql | undefined;
+  /** Cuándo se abrió el pool que está guardado. Ver `edadDelPool`. */
+  var __camSqlDesde: number | undefined;
+  /** Cuándo se pidió por última vez. Ver `MAX_REPOSO_MS`. */
+  var __camSqlUltimoUso: number | undefined;
 }
 
-let instancia: Sql | undefined;
+/**
+ * NO HAY COPIA LOCAL DEL POOL, Y ESO ES A PROPÓSITO.
+ *
+ * Aquí había un `let instancia` que guardaba el pool también en el módulo, para
+ * ahorrarse mirar en `globalThis` en cada consulta. Era inofensivo mientras
+ * nadie tirara el pool; en cuanto se pudo tirar (ver `descartarPool`), se
+ * convirtió en un fallo grave, y salió en la primera prueba completa:
+ *
+ *     [db] se descarta el pool (llevaba 106 s sin usarse).
+ *     [db] host=localhost ...            <- se abrió otro, bien
+ *     Error: write CONNECTION_ENDED      <- y aun así, TODO falló a partir de ahí
+ *
+ * El motivo es que el empaquetador NO deja una sola copia de este archivo: en
+ * el servidor conviven varias (una por trozo — se ven en el propio error:
+ * `src_lib_db_ts_...` y `ssr/src_lib_queries_ts_...`). Cada copia tenía su
+ * propio `instancia`. Al descartar, la copia que lo hizo se quedaba limpia,
+ * pero LAS OTRAS seguían con el pool ya cerrado en su variable, y como su
+ * `instancia` no estaba vacía nunca volvían a mirar `globalThis`: servían el
+ * cadáver para siempre. Una página se recuperaba y las demás quedaban muertas
+ * hasta el siguiente despliegue.
+ *
+ * `globalThis` es de la copia de nadie y de todas: es el único sitio donde
+ * "tirar el pool" significa lo mismo para todo el proceso.
+ */
+
+/**
+ * CUÁNTO PUEDE ESTAR QUIETO EL POOL ANTES DE NO FIARSE DE ÉL.
+ *
+ * Éste es el arreglo del esqueleto que tarda. La cadena es así:
+ *
+ *   1. En Vercel la función se CONGELA en cuanto contesta. Congelada no corre
+ *      nada suyo: ni el temporizador que cierra conexiones ociosas, ni el
+ *      latido de TCP que comprueba que el otro lado sigue ahí.
+ *   2. El otro lado —el pooler de Supabase, o cualquier cortafuegos del
+ *      camino— sí sigue contando, y pasados unos minutos de silencio da la
+ *      conexión por muerta y deja de atenderla. A veces avisa, a veces no.
+ *   3. La función despierta con la visita siguiente y en el pool tiene un
+ *      socket que PARECE bueno. Como no hay nada que conectar, `connect_timeout`
+ *      no salta. La consulta se escribe sin error... y no vuelve nunca.
+ *   4. A los 6,5 s nos rendimos. Eso es el esqueleto que se queda puesto.
+ *
+ * Un temporizador no puede arreglar esto, porque el problema es justamente que
+ * los temporizadores no corren. Lo que sí funciona es MIRAR EL RELOJ al pedir
+ * el pool: si lleva más de esto sin usarse, no se usa — se tira y se abre otro.
+ * Un reloj no se congela; el reloj es lo único que sigue corriendo.
+ *
+ * NOVENTA SEGUNDOS, Y NO SESENTA. Muy por debajo de cualquier plazo de
+ * inactividad razonable del otro lado, y muy por encima del ritmo de alguien
+ * navegando por el panel, así que en pleno uso no se nota nunca. El minuto
+ * redondo, que era lo primero que se probó, cae JUSTO encima del `revalidate`
+ * de las páginas públicas: con visitas de vez en cuando, el reposo se quedaría
+ * rondando los 60 s exactos y el pool se tiraría casi en cada refresco, pagando
+ * un saludo por minuto sin necesidad. Noventa no coincide con nada.
+ *
+ * El precio, cuando toca, es el saludo TCP + TLS —unas décimas— en vez de
+ * 6,5 s tirados. No es un empate: es la diferencia entre que la pantalla salga
+ * y que no.
+ */
+const MAX_REPOSO_MS = 90_000;
+
+/**
+ * Segundos que se le dan a un pool descartado para terminar lo que tenga en
+ * vuelo antes de cerrarlo a la fuerza. Ver `descartarPool`: tiene que ser mayor
+ * que `idle_in_transaction_session_timeout`, que es lo más largo que puede
+ * durar legítimamente algo empezado.
+ */
+const GRACIA_AL_CERRAR_S = 12;
 
 /**
  * Corrige el usuario cuando la cadena apunta al pooler de Supabase.
@@ -100,6 +170,8 @@ function normalizarCadena(cadena: string): string {
 
 function crear(): Sql {
   if (globalThis.__camSql) return globalThis.__camSql;
+  globalThis.__camSqlDesde = Date.now();
+  globalThis.__camSqlUltimoUso = Date.now();
 
   const cadena = process.env.DATABASE_POOL_URL ?? process.env.DATABASE_URL;
   if (!cadena) {
@@ -213,36 +285,122 @@ function crear(): Sql {
     idle_timeout: 180,
     ssl: local ? false : 'require',
     connection: {
-      // El corte del lado del servidor. `seguro()` deja de esperar a los 2.5 s,
-      // pero eso solo suelta a la página: la consulta seguiría corriendo en
-      // Postgres, ocupando la única conexión de esta lambda y trabando a la
-      // siguiente petición que llegue. Con esto la mata Postgres.
+      // El corte del lado del servidor. Cuando la página deja de esperar, eso
+      // solo la suelta a ella: la consulta seguiría corriendo en Postgres,
+      // ocupando su conexión del pooler y trabando a la siguiente petición que
+      // llegue. Con esto la mata Postgres.
       //
-      // 8 s y no 2.5: aquí también pasan las escrituras de la tirada y del
-      // panel, que no las cubre `seguro()` y que sí pueden tardar más que una
-      // lectura del tablero.
-      statement_timeout: enBuild ? 20_000 : 8_000,
+      // TIENE QUE SER MAYOR QUE EL PLAZO DEL CLIENTE, PERO POR POCO.
+      // Mayor, porque es la red de seguridad y no el primero en disparar (la
+      // regla 3 de scripts/verificar-plazos.mjs). Por poco, porque cada
+      // milisegundo entre que nosotros abandonamos —6,5 s— y Postgres mata es
+      // tiempo en que una consulta que ya no le importa a nadie sigue
+      // reteniendo su hueco en el pooler. Con 8 s era medio segundo largo de
+      // más; 7 s deja el margen justo.
+      //
+      // No baja de ahí porque por aquí pasan también las escrituras de la
+      // tirada y del panel, que no las cubre ningún plazo del cliente y que sí
+      // pueden tardar más que una lectura del tablero.
+      statement_timeout: enBuild ? 20_000 : 7_000,
       // Una transacción abierta y abandonada retiene sus candados. En
       // `execute_spin` eso bloquearía las tiradas de todo el mundo.
       idle_in_transaction_session_timeout: 10_000,
     },
   });
 
-  // SE GUARDA SIEMPRE, TAMBIÉN EN PRODUCCIÓN.
+  // GLOBALTHIS ES EL ÚNICO SITIO DONDE VIVE EL POOL, TAMBIÉN EN PRODUCCIÓN.
   //
-  // En desarrollo evita abrir una conexión por recarga de módulo hasta agotar
-  // el límite de Postgres. En producción hace lo mismo por un motivo distinto:
-  // si Next reevalúa el módulo dentro de la misma lambda, `instancia` vuelve a
-  // estar vacía y se abriría un pool nuevo — dejando el anterior con sus
-  // conexiones colgando y obligando a pagar otra vez el saludo en frío.
-  // Guardarlo en globalThis lo ata a la vida del proceso, no a la del módulo.
+  // En desarrollo evita abrir una conexión por cada recarga de módulo hasta
+  // agotar el límite de Postgres. En producción hace dos cosas más: si Next
+  // reevalúa el módulo dentro de la misma lambda no se abre un pool nuevo
+  // dejando el anterior colgando, y —lo importante desde que se puede
+  // descartar— todas las copias del módulo que hace el empaquetador comparten
+  // el MISMO pool y se enteran a la vez de que se tiró. Ver el comentario de
+  // arriba, donde estaba `instancia`.
   globalThis.__camSql = cliente;
   return cliente;
 }
 
 export function getSql(): Sql {
-  instancia ??= crear();
-  return instancia;
+  // El reloj, antes que nada. Ver MAX_REPOSO_MS: un pool que lleva un rato
+  // quieto en una función congelada no es un pool, es una trampa.
+  const reposo = Date.now() - (globalThis.__camSqlUltimoUso ?? 0);
+  if (globalThis.__camSql && reposo > MAX_REPOSO_MS) {
+    descartarPool(`llevaba ${Math.round(reposo / 1000)} s sin usarse`);
+  }
+
+  const cliente = globalThis.__camSql ?? crear();
+  globalThis.__camSqlUltimoUso = Date.now();
+  return cliente;
+}
+
+/**
+ * Cuántos milisegundos lleva abierto el pool. -1 si todavía no hay ninguno.
+ *
+ * Es un dato de diagnóstico, no de funcionamiento: acompaña al registro de una
+ * consulta que se agotó para poder distinguir DOS causas que desde el mensaje
+ * de error se ven exactamente igual. Ver `descartarPool`.
+ */
+export function edadDelPool(): number {
+  const desde = globalThis.__camSqlDesde;
+  return globalThis.__camSql && desde ? Date.now() - desde : -1;
+}
+
+/**
+ * Tirar el pool y empezar de cero en la siguiente consulta.
+ *
+ * EL PROBLEMA QUE ESTO ATACA
+ * --------------------------
+ * En Vercel la función se CONGELA entre una petición y la siguiente. Mientras
+ * está congelada no corre ni un temporizador suyo: ni el que cierra las
+ * conexiones ociosas ni el latido de TCP. Pero el otro extremo —el pooler de
+ * Supabase, o cualquier cortafuegos que haya por el camino— sí sigue contando,
+ * y a los pocos minutos da la conexión por muerta y deja de atenderla.
+ *
+ * Al descongelarse, esta función tiene en el pool un socket que *parece* bueno:
+ * está abierto, así que `connect_timeout` no salta —no hay nada que conectar—,
+ * la consulta se escribe sin error... y no vuelve nunca. Se queda esperando una
+ * respuesta que nadie va a mandar, hasta que se agota nuestro propio plazo.
+ *
+ * Y como el pool guarda VARIAS conexiones de la misma época, todas están igual
+ * de muertas: por eso en producción el reintento fallaba también, sin una sola
+ * excepción. No era mala suerte; era el mismo socket podrido dos veces.
+ *
+ * QUÉ HACE, Y QUÉ NO
+ * ------------------
+ * No reintenta nada: a la petición que se agotó ya no la salva nadie. Lo que
+ * hace es que la SIGUIENTE no herede el problema — suelta el pool sospechoso y
+ * la próxima consulta abre conexiones nuevas. Sin esto, una lambda envenenada
+ * se queda envenenada: cada pestaña que abra el dueño en los minutos siguientes
+ * se come sus 6,5 s de esqueleto.
+ *
+ * El cierre se pide con GRACIA y SIN ESPERARLO.
+ *
+ * Con gracia porque bajo `fluid compute` la misma función puede estar
+ * atendiendo otra petición a la vez —una escritura del panel dentro de una
+ * transacción, por ejemplo— y cortarla en seco sería romper algo que iba bien.
+ * Por eso la gracia son DOCE segundos y no cinco: tiene que durar más que lo
+ * más largo que puede haber legítimamente en vuelo, y eso es una transacción
+ * abandonada, que aguanta hasta `idle_in_transaction_session_timeout` (10 s).
+ * Con cinco, un `sql.begin` lento se quedaría a medias por culpa de una lectura
+ * ajena que se agotó. Comprobado en local: una consulta en vuelo sobrevive al
+ * descarte y termina normal.
+ *
+ * Sin esperarlo porque el pool ya está desenganchado: nadie va a pedirle nada
+ * nuevo, y a quien está esperando ahora mismo no le sirve de nada.
+ */
+export function descartarPool(motivo: string): void {
+  const viejo = globalThis.__camSql;
+  globalThis.__camSql = undefined;
+  globalThis.__camSqlDesde = undefined;
+  globalThis.__camSqlUltimoUso = undefined;
+  if (!viejo) return;
+
+  console.warn(
+    `[db] se descarta el pool (${motivo}). La próxima consulta abrirá ` +
+      'conexiones nuevas.',
+  );
+  void viejo.end({ timeout: GRACIA_AL_CERRAR_S }).catch(() => {});
 }
 
 /**

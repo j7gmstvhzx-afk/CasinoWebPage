@@ -35,6 +35,12 @@
  *    exactamente para esto y yo la había desactivado para el build, con el
  *    comentario "sin techo que respetar". Techo hay siempre; lo que cambia es
  *    cuál.
+ * 5. EL RELOJ TIENE QUE DECIDIR ANTES QUE EL TEMPORIZADOR. Un pool que lleva
+ *    rato quieto se descarta mirando el reloj (`MAX_REPOSO_MS`), no esperando a
+ *    que lo cierre `idle_timeout`: en Vercel la función se congela entre
+ *    peticiones y sus temporizadores no corren, así que el que cierra por
+ *    tiempo solo funciona cuando no hace falta. Si `idle_timeout` fuera el más
+ *    corto de los dos, la protección sería de mentira.
  */
 import { readFileSync } from 'node:fs';
 
@@ -61,6 +67,10 @@ const v = {
   intentos:  num(q,  /const INTENTOS = (\d+)/, 'INTENTOS'),
   pausa:     num(q,  /const PAUSA_MS = ([\d_]+)/, 'PAUSA_MS'),
   conectar:  num(db, /connect_timeout: enBuild \? \d+ : (\d+)/, 'connect_timeout') * 1000,
+  reposo:    num(db, /MAX_REPOSO_MS = ([\d_]+)/, 'MAX_REPOSO_MS'),
+  ocioso:    num(db, /idle_timeout: ([\d_]+)/, 'idle_timeout') * 1000,
+  gracia:    num(db, /GRACIA_AL_CERRAR_S = ([\d_]+)/, 'GRACIA_AL_CERRAR_S') * 1000,
+  enTx:      num(db, /idle_in_transaction_session_timeout: ([\d_]+)/, 'idle_in_transaction_session_timeout'),
   sentencia: num(db, /statement_timeout: enBuild \? [\d_]+ : ([\d_]+)/, 'statement_timeout'),
   techo:     num(pagina, /maxDuration = (\d+)/, 'maxDuration') * 1000,
 
@@ -81,6 +91,20 @@ const reglas = [
   ['los intentos del panel caben en el techo',
    v.intentos * v.panel + (v.intentos - 1) * v.pausa < v.techo],
   ['el corte del servidor es mayor que el del cliente', v.sentencia > v.panel],
+
+  // El reloj tiene que decidir ANTES que el temporizador, porque en una función
+  // congelada el temporizador puede no llegar a correr nunca. Ver MAX_REPOSO_MS
+  // en src/lib/db.ts: si `idle_timeout` fuera el más corto, quien cierra las
+  // conexiones sería un temporizador que solo funciona cuando no hace falta.
+  ['el reloj descarta el pool antes de que lo cierre el temporizador',
+   v.reposo < v.ocioso],
+  // Descartar el pool obliga a volver a abrir conexión en la siguiente
+  // consulta: ese saludo tiene que caber en lo que espera la página (regla 1).
+  ['volver a abrir tras el descarte cabe en un intento', v.conectar < v.publico],
+  // Descartar un pool no puede cortar una escritura que iba bien: la gracia al
+  // cerrarlo tiene que durar más que lo más largo que puede haber en vuelo.
+  ['la gracia al cerrar aguanta una transacción entera',
+   v.gracia > v.enTx && v.gracia > v.sentencia],
 
   // El build, con su techo propio: Next mata la página a los 60 s.
   ['en el build, abrir la conexión cabe en un intento', v.conectarBuild < v.build],
