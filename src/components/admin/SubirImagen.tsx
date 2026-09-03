@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { FotoEncajada } from '@/components/site/FotoEncajada';
 
 /**
  * Selector de imagen con vista previa.
@@ -14,11 +15,20 @@ export function SubirImagen({
   valor,
   onCambio,
   proporcion = 'aspect-[4/5]',
+  encaje = 'recortar',
 }: {
   carpeta: 'eventos' | 'maquinas' | 'galeria' | 'menu' | 'ganadores';
   valor: string | null;
   onCambio: (ruta: string | null) => void;
   proporcion?: string;
+  /**
+   * Tiene que ser EL MISMO que use la tarjeta de la página.
+   *
+   * La vista previa está para ver cómo va a quedar, así que si aquí se enseña
+   * la foto entera y allá sale recortada, la vista previa miente y no sirve
+   * para nada — que es peor que no tenerla.
+   */
+  encaje?: 'recortar' | 'contener';
 }) {
   const entrada = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -47,8 +57,12 @@ export function SubirImagen({
     <div>
       {valor ? (
         <div className="relative overflow-hidden rounded-2xl border border-linea">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={valor} alt="Vista previa" className={`${proporcion} w-full object-cover`} />
+          {encaje === 'contener' ? (
+            <FotoEncajada src={valor} alt="Vista previa" proporcion={proporcion} />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={valor} alt="Vista previa" className={`${proporcion} w-full object-cover`} />
+          )}
           <button
             type="button"
             onClick={() => onCambio(null)}

@@ -1,4 +1,5 @@
 import { SITE } from '@/lib/site';
+import { FotoEncajada } from './FotoEncajada';
 
 /**
  * Marco de imagen.
@@ -22,15 +23,27 @@ import { SITE } from '@/lib/site';
  * Storage con rutas que el personal sube a mano, y la optimización de next/image
  * exige declarar cada dominio de antemano. Cuando se fije el dominio definitivo
  * conviene migrar y ganar el redimensionado automático.
+ *
+ * `encaje` decide qué pasa cuando la foto no tiene la forma del recuadro:
+ *
+ *   'recortar'  rellena el recuadro y corta lo que sobra. Vale cuando la foto
+ *               es del tamaño previsto o cuando los bordes no importan.
+ *   'contener'  mete la foto ENTERA y rellena el hueco con ella misma
+ *               desenfocada (ver FotoEncajada). Es lo que hace falta cuando las
+ *               fotos las hace el personal con el teléfono y cada una viene de
+ *               una forma: una máquina fotografiada de pie no se puede recortar
+ *               a una franja apaisada sin cortarle la mitad.
  */
 export function Marco({
   imagen,
   alt,
   proporcion = 'aspect-[16/10]',
+  encaje = 'recortar',
 }: {
   imagen: string | null;
   alt: string;
   proporcion?: string;
+  encaje?: 'recortar' | 'contener';
 }) {
   if (!imagen) {
     return (
@@ -53,6 +66,10 @@ export function Marco({
         </div>
       </div>
     );
+  }
+
+  if (encaje === 'contener') {
+    return <FotoEncajada src={imagen} alt={alt} proporcion={proporcion} />;
   }
 
   return (

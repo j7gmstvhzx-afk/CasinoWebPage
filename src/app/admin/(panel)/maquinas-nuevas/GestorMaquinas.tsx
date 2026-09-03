@@ -4,6 +4,7 @@ import { hoyEnPR } from '@/lib/hora-pr';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
+import { FotoEncajada } from '@/components/site/FotoEncajada';
 import { Estado } from '@/components/admin/EstadoPublico';
 import { estadoMaquinaNueva } from '@/lib/visibilidad';
 import { longDate } from '@/lib/format';
@@ -235,7 +236,8 @@ export function GestorMaquinas({
                 carpeta="maquinas"
                 valor={b.image_path}
                 onCambio={(ruta) => setB({ ...b, image_path: ruta })}
-                proporcion="aspect-[16/10]"
+                proporcion="aspect-square"
+                encaje="contener"
               />
             </div>
           </div>
@@ -290,10 +292,9 @@ export function GestorMaquinas({
               data-cam-visible={estadoMaquinaNueva(m).visible ? 'si' : 'no'}
             >
               {m.image_path ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.image_path} alt={m.name} className="aspect-[16/10] w-full object-cover" />
+                <FotoEncajada src={m.image_path} alt={m.name} proporcion="aspect-square" />
               ) : (
-                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-superficie to-superficie-2">
+                <div className="flex aspect-square items-center justify-center bg-gradient-to-br from-superficie to-superficie-2">
                   <span className="px-4 text-center text-sm text-tenue">Sin foto todavía</span>
                 </div>
               )}
