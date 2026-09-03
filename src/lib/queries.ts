@@ -255,10 +255,22 @@ export type FilaEntrada = {
 /**
  * Máquinas activas para la pantalla de entrada manual.
  *
- * Van en el MISMO orden que el tablero público — de mayor a menor — para que lo
- * que el empleado tiene delante cuadre con lo que el cliente ve. Si aquí
- * salieran alfabéticas y allá por monto, comprobar un dato obligaría a saltar
- * de un lado a otro.
+ * VAN POR NÚMERO DE BANCO, y eso es distinto del tablero público a propósito.
+ *
+ * Antes salían por monto, igual que el tablero, con el argumento de que así lo
+ * que el empleado tiene delante cuadra con lo que ve el cliente. El argumento
+ * era de escritorio: quien teclea estos montos no está comparando pantallas,
+ * está CAMINANDO EL SALÓN, y el salón está ordenado por banco. Con la lista por
+ * monto hay que buscar cada máquina en una lista de veinte que además CAMBIA DE
+ * ORDEN cada día, porque los progresivos suben. Por banco, la pantalla va en el
+ * mismo orden que los pasos. Lo pidió el dueño.
+ *
+ * El tablero público sigue por monto —lo primero que quiere ver un cliente es
+ * el premio más alto—, y la tabla de "Publicado ahora mismo" del propio panel
+ * también, porque ésa está para comprobar lo que se publicó.
+ *
+ * Dos máquinas pueden compartir banco (pasa: hay dos en el 38), así que el
+ * desempate es por nombre y la lista nunca baila entre dos recargas.
  */
 export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
   const filas = await sql<
@@ -311,7 +323,7 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
          limit 1
       ) ultima on true
      where m.active
-     order by coalesce(hoy.amount_cents, ayer.amount_cents, 0) desc, m.name
+     order by m.bank_number, m.name
   `;
 
   return filas.map((f) => ({

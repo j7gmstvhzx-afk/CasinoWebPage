@@ -184,9 +184,10 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
         <div>
           <h2 className="font-display text-2xl font-bold">Montos de hoy</h2>
           <p className="mt-1.5 text-sm text-tenue">
-            Escribe el premio de cada máquina. El tablero los ordena solo, de
-            mayor a menor. Para quitar un premio del tablero, <strong>borra la
-            casilla y guarda</strong>.
+            Van <strong>por número de banco</strong>, en el mismo orden en que
+            los ves en el salón. En la página el tablero los ordena solo, de
+            mayor a menor. Para quitar un premio del tablero,{' '}
+            <strong>borra la casilla y guarda</strong>.
           </p>
         </div>
         <p className="text-sm text-tenue">
@@ -228,8 +229,10 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
         <table className="w-full min-w-[34rem] text-sm">
           <thead>
             <tr className="border-b border-linea text-left text-xs uppercase tracking-wider text-tenue">
-              <th className="pb-3 pr-4 font-semibold">Máquina</th>
+              {/* El banco primero: la lista va ordenada por él, así que es lo
+                  que el ojo busca al bajar por la columna. */}
               <th className="pb-3 pr-4 font-semibold">Banco</th>
+              <th className="pb-3 pr-4 font-semibold">Máquina</th>
               <th className="pb-3 pr-4 font-semibold">Ayer</th>
               <th className="pb-3 pr-4 font-semibold">Premio de hoy</th>
               <th className="pb-3 font-semibold"><span className="sr-only">Acciones</span></th>
@@ -245,6 +248,21 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
                   estadoMaquinaJackpot({ ultima: m.ultimaLecturaEn, corte: m.corte }).visible ? 'si' : 'no'
                 }
               >
+                <td className="py-2 pr-4 font-display text-lg font-semibold tabular">
+                  {editando === m.id ? (
+                    <input
+                      value={edicion.banco}
+                      onChange={(e) =>
+                        setEdicion({ ...edicion, banco: e.target.value.replace(/[^0-9]/g, '') })
+                      }
+                      inputMode="numeric"
+                      aria-label={`Banco de ${m.nombre}`}
+                      className="min-h-11 w-20 rounded-lg border border-cian bg-superficie px-3 tabular focus:outline-none"
+                    />
+                  ) : (
+                    m.banco
+                  )}
+                </td>
                 <td className="py-2 pr-4 font-medium">
                   {editando === m.id ? (
                     <input
@@ -260,21 +278,6 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
                         <Estado estado={estadoMaquinaJackpot({ ultima: m.ultimaLecturaEn, corte: m.corte })} />
                       </div>
                     </>
-                  )}
-                </td>
-                <td className="py-2 pr-4 tabular text-tenue">
-                  {editando === m.id ? (
-                    <input
-                      value={edicion.banco}
-                      onChange={(e) =>
-                        setEdicion({ ...edicion, banco: e.target.value.replace(/[^0-9]/g, '') })
-                      }
-                      inputMode="numeric"
-                      aria-label={`Banco de ${m.nombre}`}
-                      className="min-h-11 w-20 rounded-lg border border-cian bg-superficie px-3 tabular focus:outline-none"
-                    />
-                  ) : (
-                    m.banco
                   )}
                 </td>
                 <td className="py-2 pr-4 tabular text-tenue">
