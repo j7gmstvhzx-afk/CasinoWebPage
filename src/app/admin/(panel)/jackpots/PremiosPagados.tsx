@@ -42,6 +42,17 @@ export function PremiosPagados({ historial }: { historial: Fila[] }) {
         los ganadores que registras: aquí no hay nada que teclear.
       </p>
 
+      {/* LOS DOS NÚMEROS DE ESTA PANTALLA SON DISTINTOS, Y HAY QUE DECIRLO.
+          Justo arriba está la entrada de los progresivos, que son montos que
+          suben solos dentro de las máquinas. Aquí está lo pagado. Los dos van
+          en dólares, los dos se llaman "premios" y están a un palmo uno del
+          otro: sin esta línea se confunden, y de hecho se confundieron. */}
+      <p className="mt-3 rounded-xl border border-linea bg-superficie px-4 py-3 text-sm">
+        <strong>No es lo mismo que los montos de arriba.</strong> Los
+        progresivos son dinero que está DENTRO de las máquinas esperando a
+        caer. Esto es dinero que ya SALIÓ, pagado a una persona.
+      </p>
+
       {esteMes ? (
         <p className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <strong className="font-display text-3xl font-bold tabular texto-dorado">

@@ -141,9 +141,22 @@ export default async function Inicio() {
           <EncabezadoSeccion
             compacto
             comoH1
-            titulo="Los cinco premios más altos ahora"
+            /* "PROGRESIVOS" Y NO "PREMIOS", Y LA NOTA DICE QUÉ SON.
+               Justo encima va el bloque de "Total de premios pagados en
+               septiembre". Con las dos secciones diciendo "premios", una
+               encima de la otra, se leen como la misma cosa contada de dos
+               maneras — y no lo son. El dueño lo dijo con estas palabras: "la
+               cantidad pagada, o sea los ganadores, no es lo mismo que las
+               cantidades de los progresivos disponibles, son dos cosas
+               totalmente distintas". Arriba está el dinero que SALIÓ; aquí el
+               que está DENTRO de las máquinas esperando a caer. */
+            titulo="Los cinco progresivos más altos ahora"
             enlace={{ href: '/jackpots', texto: 'Ver todos' }}
-            nota={ultima ? `Actualizado ${relativeUpdate(ultima)}` : undefined}
+            nota={
+              ultima
+                ? `Acumulado en las máquinas, esperando a caer · Actualizado ${relativeUpdate(ultima)}`
+                : 'Acumulado en las máquinas, esperando a caer'
+            }
           />
 
           {/* Las mismas fichas del tablero de /jackpots, con el mismo material
@@ -246,7 +259,7 @@ export default async function Inicio() {
               Promoción del día
             </p>
 
-            {/* h2 y no h1: el h1 de la página es ahora "Premios más altos
+            {/* h2 y no h1: el h1 de la página es ahora "Los cinco progresivos
                 ahora", que es lo que abre la portada. El tamaño no cambia —
                 este sigue siendo el titular grande — solo el nivel, para que el
                 orden de encabezados vuelva a ser 1, 2, 2, 2. */}
