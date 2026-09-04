@@ -276,7 +276,39 @@ function crear(): Sql {
     // Los otros cuatro se quedaron esperando en silencio hasta que nos rendimos
     // a los 12 s. Con cuatro por proceso se pide bastante menos de lo que hay.
     //
-    // Y AHORA DOS, POR LO QUE ENSEÑÓ EL TRÁFICO DE VERDAD.
+    // Y AHORA UNA. NO ES UN CAPRICHO NI UNA VUELTA ATRÁS: ES A DONDE LLEVA LA
+    // MEDIDA, PASO A PASO.
+    //
+    // Este número ha ido 6 -> 4 -> 2 -> 1, y cada bajada salió de un registro,
+    // no de una corazonada. Con la función ya arreglada para que no se muera
+    // (ver `intentar` en queries.ts), el síntoma se quedó limpio y dice esto,
+    // producción del 4 de septiembre a la 01:48:11:
+    //
+    //     [diagnóstico] pool de 6010 ms; último acierto hace 5903 ms
+    //
+    // Traducido: se abre el pool, la PRIMERA consulta contesta a los 107 ms, y
+    // la siguiente no vuelve nunca. Y no es que no conectara —si no conectara
+    // saltaría `connect_timeout` a los 5 s, antes que nuestro plazo—: la
+    // conexión se abre y se queda muda.
+    //
+    // Con UNA sola conexión no hay una segunda que pueda quedarse muda: todo va
+    // por la que se ha demostrado que funciona, en fila. Y la fila no cuesta
+    // nada aquí: la página más pesada lanza cinco consultas y cada una tarda
+    // 0,29 ms en la base, así que en el peor caso son cinco idas y vueltas,
+    // unas décimas de segundo, contra un plazo de seis.
+    //
+    // POR QUÉ ESTO NO REPITE EL FALLO VIEJO. Hubo un `max: 1` antes y causó un
+    // "$0.00 repartidos en 0 máquinas" en la portada: la quinta consulta de la
+    // fila no cabía en los 2,5 s que esperaba la página, contando el saludo TLS
+    // en frío. Los dos números que lo causaban ya no son ésos —el plazo es de 6
+    // s y la conexión se abre en 5— y el pool ya no se queda frío entre visitas
+    // (ver MAX_REPOSO_MS).
+    //
+    // Si el próximo apretón sigue enseñando "pool de N ms; último acierto hace
+    // casi N", entonces no era el número de conexiones y hay que buscar en otro
+    // sitio. Esa línea lo dirá sola.
+    //
+    // Lo que se escribió cuando eran dos, y sigue valiendo:
     //
     // El número que importa no es cuántas conexiones pide UNA función: es
     // cuántas piden TODAS a la vez. En los registros del 4 de septiembre a la
@@ -294,7 +326,7 @@ function crear(): Sql {
     // camino donde se ve que hay cola. El diagnóstico de `intentar()` dirá en el
     // próximo apretón si bastó — cuando dice "último acierto hace 5996 ms", con
     // el pool recién abierto, eso es cola, no conexión muerta.
-    max: 2,
+    max: 1,
     prepare: false,
     types: {
       // Las columnas `date` vuelven como CADENA 'YYYY-MM-DD', no como Date.
