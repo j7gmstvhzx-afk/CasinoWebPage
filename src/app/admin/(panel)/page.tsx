@@ -52,13 +52,15 @@ export default async function PaginaResumen() {
             (select count(*) from app.machines where active)          as maquinas,
             (select max(reading_at) from app.jackpot_readings
               where amount_cents is not null)                         as ultima_lectura,
-            -- ¿Hay cifra de premios pagados del mes EN CURSO? Se compara contra
+            -- ¿Hay algún ganador registrado del mes EN CURSO? De ahí sale la
+            -- cifra de premios pagados que va en la portada. Se compara contra
             -- el mes de Puerto Rico, no el del servidor: el día 1 a la 1 de la
             -- mañana en UTC todavía es día 31 en Manatí, y el aviso saldría un
             -- día antes de tiempo.
-            (select count(*) from app.monthly_payouts
-              where mes = date_trunc('month',
-                          (now() at time zone 'America/Puerto_Rico'))::date) as pagados_del_mes
+            (select count(*) from app.ganadores
+              where gano_on >= date_trunc('month',
+                          (now() at time zone 'America/Puerto_Rico'))::date
+                and gano_on <= (now() at time zone 'America/Puerto_Rico')::date) as pagados_del_mes
         `;
         return r;
       },
@@ -217,25 +219,31 @@ function Estado({ estado, vence }: { estado: string; vence: string }) {
 function Pendientes({ faltaPagados }: { faltaPagados: boolean }) {
   const avisos: { titulo: string; texto: string }[] = [];
 
-  // ESTE AVISO EXISTE POR UN FALLO DE DISEÑO MÍO.
+  // ESTE AVISO HA CAMBIADO DE MOTIVO DOS VECES, Y LAS DOS POR UN FALLO MÍO.
   //
-  // La cifra de premios pagados del mes la escribe el personal. Si no está, la
-  // portada NO PINTA el bloque —mejor eso que un "$0.00"— y el tablero de
-  // premios cae a enseñar el total EN JUEGO, que es la suma de los progresivos
-  // disponibles. Las dos cosas son correctas por separado, pero juntas dejan al
-  // dueño mirando un total que no es el que esperaba SIN NINGUNA PISTA de qué
-  // falta ni dónde ponerlo. Eso pasó de verdad.
+  // La primera: sin cifra, la portada no pintaba el bloque y /jackpots caía a
+  // enseñar el total EN JUEGO —la suma de los progresivos disponibles—, que es
+  // dinero esperando dentro de las máquinas y no dinero pagado. Dos cosas
+  // correctas por separado que juntas dejaban al dueño mirando un total que no
+  // era el que esperaba.
   //
-  // El aviso va aquí, en lo primero que se ve al entrar al panel, y no en la
-  // página pública: el cliente no tiene nada que hacer con esta información.
+  // La segunda: la cifra se tecleaba a mano en una tabla aparte que nadie llenó
+  // nunca, mientras los ganadores SÍ se registraban con su cantidad. La portada
+  // decía "$0.00 pagados en septiembre" con $9,799.56 registrados a dos
+  // pestañas. Ahora la cifra se suma sola de los ganadores, así que este aviso
+  // ya no pide teclear nada: dice que este mes no hay ningún premio registrado,
+  // que es una cosa distinta y accionable.
+  //
+  // Va aquí, en lo primero que se ve al entrar al panel, y no en la página
+  // pública: el cliente no tiene nada que hacer con esta información.
   if (faltaPagados) {
     avisos.push({
-      titulo: 'Falta la cifra de premios pagados de este mes',
+      titulo: 'Este mes no tiene ningún premio registrado',
       texto:
-        'Hasta que la pongas, la portada no enseña el bloque de "pagado este mes" ' +
-        'y la pestaña de Jackpots abre con el total EN JUEGO —la suma de los ' +
-        'progresivos disponibles—, que no es lo mismo. Ponla en Jackpots → ' +
-        'Premios pagados del mes y aparece en las dos al instante.',
+        'La portada enseña "$0.00 pagados" hasta que registres el primero. La ' +
+        'cifra se suma sola de la pestaña de Ganadores: pueblo y cantidad, sin ' +
+        'nombres ni fotos. En cuanto añadas uno, aparece en la portada y en la ' +
+        'pestaña de Jackpots.',
     });
   }
 

@@ -902,20 +902,46 @@ export function pagosEnCero(anterior: PagoMensual | null = null): PremiosPagados
  * Manatí, `date_trunc('month', now())` ya está en el mes siguiente: el bloque
  * se pondría en cero cuatro horas antes de tiempo, borrando de la portada el
  * mes que todavía está corriendo.
+ *
+ * LA CIFRA SALE DE LOS GANADORES REGISTRADOS, Y ANTES NO
+ * ------------------------------------------------------
+ * Esto salía de `app.monthly_payouts`, una tabla aparte con una cifra que había
+ * que teclear a mano cada mes en la pestaña de Jackpots. Nadie la tecleó nunca
+ * —en producción tenía CERO filas— mientras que en la pestaña de Ganadores sí
+ * había tres premios de septiembre cargados con su pueblo y su cantidad. O sea
+ * que la portada anunciaba "$0.00 pagados en septiembre" teniendo $9,799.56 en
+ * premios registrados, a dos pestañas de distancia. Lo reportó el dueño con la
+ * frase exacta: "debe estar sumando los premios registrados".
+ *
+ * Tenía razón, y el fallo no era la tabla vacía: era pedir el mismo dato dos
+ * veces. Ahora hay UNA sola fuente —los ganadores que se registran— y la
+ * portada suma lo que hay. Registrar un ganador sube el total; no hay segundo
+ * sitio donde teclear nada.
+ *
+ * SE CUENTAN TAMBIÉN LOS OCULTOS, y es deliberado. "Ocultar" quita a alguien
+ * del muro público —porque no quiere salir, o porque el muro ya está largo—
+ * pero ese dinero se pagó igual, y el total es una suma sin nombres ni pueblos.
+ * Para lo que NO se pagó está "Quitar", que lo borra y sí baja el total.
  */
 export async function getPremiosPagados(): Promise<PremiosPagados> {
-  const mesActual = `${hoyEnPR().slice(0, 7)}-01`;
+  const hoy = hoyEnPR();
+  const mesActual = `${hoy.slice(0, 7)}-01`;
 
-  // Los dos meses más recientes de una vez: el en curso (si está) y el último
-  // cerrado con cifra, que es lo que acompaña al cero para que no parezca que
-  // la página está rota.
+  // Los dos meses más recientes de una vez: el en curso (si tiene premios) y el
+  // último que sí los tenga, que es lo que acompaña al cero para que no parezca
+  // que la página está rota.
   const filas = await sql<
     { mes: string; total_cents: string; premios: number }[]
   >`
-    select mes::text, total_cents::text, premios
-      from app.monthly_payouts
-     where mes <= ${mesActual}::date
-     order by mes desc
+    select to_char(date_trunc('month', gano_on), 'YYYY-MM-DD') as mes,
+           sum(monto_cents)::text as total_cents,
+           count(*)::int as premios
+      from app.ganadores
+     -- Un premio con fecha de mañana no cuenta todavía: la tabla la permite
+     -- (por el huso horario) y sumarla adelantaría dinero que no se ha pagado.
+     where gano_on <= ${hoy}::date
+     group by 1
+     order by 1 desc
      limit 2
   `;
 
@@ -940,15 +966,26 @@ export async function getPremiosPagados(): Promise<PremiosPagados> {
   };
 }
 
-/** Los últimos meses, para el panel. */
+/**
+ * Los últimos meses, para el panel.
+ *
+ * Sale de los mismos ganadores que la portada, a propósito: si el panel sumara
+ * por su lado, volveríamos a tener dos cifras del mismo dinero que pueden no
+ * coincidir, que es justo el fallo que se acaba de arreglar.
+ */
 export async function getHistorialPagos(): Promise<PagoMensual[]> {
-  const mesActual = `${hoyEnPR().slice(0, 7)}-01`;
+  const hoy = hoyEnPR();
+  const mesActual = `${hoy.slice(0, 7)}-01`;
   const filas = await sql<
     { mes: string; total_cents: string; premios: number }[]
   >`
-    select mes::text, total_cents::text, premios
-      from app.monthly_payouts
-     order by mes desc
+    select to_char(date_trunc('month', gano_on), 'YYYY-MM-DD') as mes,
+           sum(monto_cents)::text as total_cents,
+           count(*)::int as premios
+      from app.ganadores
+     where gano_on <= ${hoy}::date
+     group by 1
+     order by 1 desc
      limit 12
   `;
   return filas.map((f) => ({

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
-import { intentar, LIMITE_PANEL_MS } from '@/lib/queries';
+import { intentar, LIMITE_PANEL_MS, getPremiosPagados, pagosEnCero } from '@/lib/queries';
+import { nombreMesDe } from '@/lib/hora-pr';
+import { money } from '@/lib/format';
 import { GestorGanadores, type GanadorAdmin } from './GestorGanadores';
 import { FalloDeCarga } from '../FalloDeCarga';
 import { VerLaPagina } from '@/components/admin/VerLaPagina';
@@ -14,18 +16,23 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaGanadores() {
-  const r = await intentar(
-    () =>
-      sql<GanadorAdmin[]>`
-        select id, pueblo, monto_cents::text as monto_cents, gano_on::text, publicado
-          from app.ganadores
-         order by gano_on desc, orden, creado_en desc
-         limit 100
-      `.then((f) => [...f]),
-    [] as GanadorAdmin[],
-    LIMITE_PANEL_MS,
-  );
+  const [r, rPagado] = await Promise.all([
+    intentar(
+      () =>
+        sql<GanadorAdmin[]>`
+          select id, pueblo, monto_cents::text as monto_cents, gano_on::text, publicado
+            from app.ganadores
+           order by gano_on desc, orden, creado_en desc
+           limit 100
+        `.then((f) => [...f]),
+      [] as GanadorAdmin[],
+      LIMITE_PANEL_MS,
+    ),
+    intentar(getPremiosPagados, pagosEnCero(), LIMITE_PANEL_MS),
+  ]);
   const ganadores = r.datos;
+  const pagado = rPagado.datos;
+  const { mes } = nombreMesDe(pagado.mes);
 
   return (
     <>
@@ -39,6 +46,31 @@ export default async function PaginaGanadores() {
       <div className="mt-4">
         <VerLaPagina href="/ganadores" que="el muro" />
       </div>
+
+      {/* LA MISMA CIFRA QUE SALE EN LA PORTADA, Y SALE DE LA MISMA FUNCIÓN.
+          No es adorno: el total de premios pagados del mes se calcula sumando
+          estos ganadores, y hasta ahora el dueño no tenía forma de saberlo. Vio
+          "$0.00 pagados en septiembre" en la portada teniendo tres premios
+          cargados aquí, y no había ninguna pantalla que conectara las dos
+          cosas. Ahora lo dice donde se registran. */}
+      <p className="tarjeta mt-6 px-5 py-4 text-sm">
+        {pagado.premios === 0 ? (
+          <>
+            Todavía no hay premios de <strong>{mes}</strong>. La portada dice
+            <strong> $0.00 pagados en {mes}</strong> hasta que registres el
+            primero aquí abajo.
+          </>
+        ) : (
+          <>
+            En <strong>{mes}</strong> llevas{' '}
+            <strong className="tabular">{money(pagado.totalCentavos)}</strong> en{' '}
+            <strong>{pagado.premios}</strong>{' '}
+            {pagado.premios === 1 ? 'premio' : 'premios'}. Es la cifra que sale
+            en la portada. Los ocultos también suman: se pagaron igual, y el
+            total no lleva nombres.
+          </>
+        )}
+      </p>
 
       {!r.ok && <FalloDeCarga que="los ganadores" />}
 
