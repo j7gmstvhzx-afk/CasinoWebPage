@@ -49,16 +49,30 @@ const ZONAS = {
     entrada: '/',
     movil: false,
     pestanas: [
-      'Inicio', 'Jackpots', 'Máquinas Nuevas', 'Eventos',
-      'Galería', 'Ganadores', 'Comida', 'Contacto', 'Mi cuenta',
+      ['Inicio', '/'],
+      ['Jackpots', '/jackpots'],
+      ['Máquinas Nuevas', '/maquinas-nuevas'],
+      ['Eventos', '/eventos'],
+      ['Galería', '/galeria'],
+      ['Ganadores', '/ganadores'],
+      ['Comida', '/menu'],
+      ['Contacto', '/contacto'],
+      ['Mi cuenta', '/cuenta'],
     ],
   },
   movil: {
     entrada: '/',
     movil: true,
     pestanas: [
-      'Inicio', 'Jackpots', 'Máquinas Nuevas', 'Eventos',
-      'Galería', 'Ganadores', 'Comida', 'Contacto', 'Mi cuenta',
+      ['Inicio', '/'],
+      ['Jackpots', '/jackpots'],
+      ['Máquinas Nuevas', '/maquinas-nuevas'],
+      ['Eventos', '/eventos'],
+      ['Galería', '/galeria'],
+      ['Ganadores', '/ganadores'],
+      ['Comida', '/menu'],
+      ['Contacto', '/contacto'],
+      ['Mi cuenta', '/cuenta'],
     ],
   },
   panel: {
@@ -66,8 +80,16 @@ const ZONAS = {
     movil: false,
     admin: true,
     pestanas: [
-      'Resumen', 'Canjear', 'Jackpots', 'Promociones', 'Máquinas nuevas',
-      'Comida', 'Galería', 'Horario', 'Ganadores', 'Clientes',
+      ['Resumen', '/admin'],
+      ['Canjear', '/admin/canjear'],
+      ['Jackpots', '/admin/jackpots'],
+      ['Promociones', '/admin/eventos'],
+      ['Máquinas nuevas', '/admin/maquinas-nuevas'],
+      ['Comida', '/admin/menu'],
+      ['Galería', '/admin/galeria'],
+      ['Horario', '/admin/horario'],
+      ['Ganadores', '/admin/ganadores'],
+      ['Clientes', '/admin/clientes'],
     ],
   },
 };
@@ -156,7 +178,7 @@ let hechas = 0;
 let esqueletosLargos = 0;
 
 for (let vuelta = 1; vuelta <= VUELTAS; vuelta++) {
-  for (const pestana of zona.pestanas) {
+  for (const [pestana, ruta] of zona.pestanas) {
     dónde = { vuelta, pestana };
 
     // En móvil hay que abrir el menú antes de cada salto.
@@ -174,20 +196,48 @@ for (let vuelta = 1; vuelta <= VUELTAS; vuelta++) {
       continue;
     }
 
+    const yaEstaba = new URL(pagina.url()).pathname === ruta;
     const antes = Date.now();
     await enlace.click().catch((e) => anota(vuelta, pestana, 'clic', String(e).slice(0, 120)));
 
-    // Se espera a que el contenido de verdad esté, no solo a que la URL cambie.
-    // Si a los 8 s sigue el esqueleto, eso ES el fallo que se está buscando.
-    try {
-      await pagina.waitForFunction(
-        () => !document.querySelector('[data-cargando], .animate-pulse'),
-        undefined,
-        { timeout: 8000 },
-      );
-    } catch {
-      esqueletosLargos++;
-      anota(vuelta, pestana, 'esqueleto', 'seguía cargando a los 8 s');
+    // PRIMERO SE COMPRUEBA QUE SE LLEGÓ, Y LUEGO SI QUEDA ESQUELETO.
+    //
+    // El orden importa y la primera versión lo tenía mal: miraba el esqueleto
+    // nada más hacer clic, cuando en pantalla todavía estaba la pestaña
+    // ANTERIOR —que, claro, ya no tenía esqueleto—, así que daba por buena una
+    // navegación que ni siquiera había empezado. Un contador de esqueletos que
+    // mide la página equivocada siempre sale a cero. Lo cazó un agente
+    // revisando el guion, no el guion a sí mismo.
+    //
+    // Ahora se espera a que la URL sea la de la pestaña. Si el clic no navega
+    // —el fallo más silencioso de todos— esto lo dice en vez de callarse.
+    let llegó = true;
+    if (!yaEstaba) {
+      try {
+        await pagina.waitForURL((u) => new URL(u).pathname === ruta, { timeout: 8000 });
+      } catch {
+        llegó = false;
+        anota(vuelta, pestana, 'no navegó', `sigue en ${new URL(pagina.url()).pathname}`);
+      }
+    }
+
+    // Y ahora sí, sobre la página nueva: que el esqueleto se haya ido y que
+    // haya contenido de verdad debajo.
+    if (llegó) {
+      try {
+        await pagina.waitForFunction(
+          () => {
+            if (document.querySelector('[data-cargando], .animate-pulse')) return false;
+            const main = document.querySelector('main');
+            return !!main && (main.innerText ?? '').trim().length > 40;
+          },
+          undefined,
+          { timeout: 8000 },
+        );
+      } catch {
+        esqueletosLargos++;
+        anota(vuelta, pestana, 'esqueleto', 'seguía cargando (o vacía) a los 8 s');
+      }
     }
     const tardó = Date.now() - antes;
     if (tardó > 3000) anota(vuelta, pestana, 'lento', `${tardó} ms`);
