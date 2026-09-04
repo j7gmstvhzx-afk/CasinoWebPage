@@ -90,7 +90,13 @@ const reglas = [
    v.intentos * v.publico + (v.intentos - 1) * v.pausa < v.techo],
   ['los intentos del panel caben en el techo',
    v.intentos * v.panel + (v.intentos - 1) * v.pausa < v.techo],
-  ['el corte del servidor es mayor que el del cliente', v.sentencia > v.panel],
+  // OJO: desde que estos dos plazos NO se mandan por el pooler (ver
+  // `plazosDelServidor` en src/lib/db.ts, es un experimento en curso), esta
+  // regla y la de la gracia cubren la conexión DIRECTA y la local, no la de
+  // producción. Se quedan porque los números tienen que seguir encajando el día
+  // que se devuelvan, pero no hay que leerlas como "en producción esto pasa".
+  ['el corte del servidor es mayor que el del cliente (conexión directa)',
+   v.sentencia > v.panel],
 
   // El reloj tiene que decidir ANTES que el temporizador, porque en una función
   // congelada el temporizador puede no llegar a correr nunca. Ver MAX_REPOSO_MS
@@ -103,7 +109,7 @@ const reglas = [
   ['volver a abrir tras el descarte cabe en un intento', v.conectar < v.publico],
   // Descartar un pool no puede cortar una escritura que iba bien: la gracia al
   // cerrarlo tiene que durar más que lo más largo que puede haber en vuelo.
-  ['la gracia al cerrar aguanta una transacción entera',
+  ['la gracia al cerrar aguanta una transacción entera (conexión directa)',
    v.gracia > v.enTx && v.gracia > v.sentencia],
 
   // El build, con su techo propio: Next mata la página a los 60 s.

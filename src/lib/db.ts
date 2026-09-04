@@ -182,6 +182,7 @@ function crear(): Sql {
   }
 
   const local = /localhost|127\.0\.0\.1|\/var\/tmp|\/tmp/.test(cadena);
+  const esPooler = /\.pooler\.supabase\.com/i.test(cadena);
 
   // ¿Esto corre dentro de `next build`? Los plazos de una petición no valen ahí:
   // no hay nadie esperando, no hay función que se corte a los 15 s, y la base
@@ -204,6 +205,58 @@ function crear(): Sql {
   } catch {
     console.error('[db] DATABASE_POOL_URL no tiene formato de URL válido.');
   }
+
+  // LOS PLAZOS DEL LADO DEL SERVIDOR, Y POR QUÉ NO SIEMPRE SE MANDAN.
+  //
+  // Son la red de seguridad: matan en Postgres la consulta que nosotros ya
+  // abandonamos, para que no se quede ocupando su conexión.
+  //
+  // El problema es CÓMO viajan. Estos ajustes van en el saludo inicial de la
+  // conexión, y el pooler en modo transacción reparte una misma conexión de
+  // base entre varios clientes: para eso tiene que emparejar a cada cliente con
+  // una conexión que traiga los mismos ajustes. Los registros de producción
+  // enseñan justo el síntoma que eso produce —el cliente se autentica, la
+  // primera consulta pasa, y de ahí en adelante se queda esperando, sin error,
+  // hasta que nos rendimos:
+  //
+  //     21:17:26.58  Connection authenticated  x3
+  //     21:17:26.60  Backend authenticated     x3
+  //     21:17:26.8   una consulta responde
+  //     21:17:38     SEIS consultas se rinden a los 12 s
+  //
+  // Y no es la base: medido contra producción, el tablero de jackpots entero
+  // tarda 0,29 ms y la base pesa 12 MB.
+  //
+  // ESTO ES UN EXPERIMENTO, Y ESTÁ ESCRITO PARA PODER DESHACERLO. Por el pooler
+  // no se mandan; por conexión directa o en local sí. Si el siguiente build
+  // deja de colgarse, era esto. Si se cuelga igual, se devuelven.
+  //
+  // Lo que se pierde mientras tanto es acotado: desde que una consulta agotada
+  // hace que se tire el pool (ver `descartarPool`), los sockets se cierran y
+  // Postgres aborta solo el trabajo huérfano. La red de seguridad de abajo era
+  // la segunda, no la única.
+  const plazosDelServidor = {
+    // El corte del lado del servidor. Cuando la página deja de esperar, eso
+    // solo la suelta a ella: la consulta seguiría corriendo en Postgres,
+    // ocupando su conexión del pooler y trabando a la siguiente petición que
+    // llegue. Con esto la mata Postgres.
+    //
+    // TIENE QUE SER MAYOR QUE EL PLAZO DEL CLIENTE, PERO POR POCO.
+    // Mayor, porque es la red de seguridad y no el primero en disparar (la
+    // regla 3 de scripts/verificar-plazos.mjs). Por poco, porque cada
+    // milisegundo entre que nosotros abandonamos —6,5 s— y Postgres mata es
+    // tiempo en que una consulta que ya no le importa a nadie sigue
+    // reteniendo su hueco en el pooler. Con 8 s era medio segundo largo de
+    // más; 7 s deja el margen justo.
+    //
+    // No baja de ahí porque por aquí pasan también las escrituras de la
+    // tirada y del panel, que no las cubre ningún plazo del cliente y que sí
+    // pueden tardar más que una lectura del tablero.
+    statement_timeout: enBuild ? 20_000 : 7_000,
+    // Una transacción abierta y abandonada retiene sus candados. En
+    // `execute_spin` eso bloquearía las tiradas de todo el mundo.
+    idle_in_transaction_session_timeout: 10_000,
+  };
 
   const cliente = postgres(corregida, {
     // CUATRO OTRA VEZ, Y AHORA CON UN MOTIVO MEDIDO EN EL OTRO LADO.
@@ -300,28 +353,7 @@ function crear(): Sql {
     // conexiones ociosas: es su trabajo.
     idle_timeout: 180,
     ssl: local ? false : 'require',
-    connection: {
-      // El corte del lado del servidor. Cuando la página deja de esperar, eso
-      // solo la suelta a ella: la consulta seguiría corriendo en Postgres,
-      // ocupando su conexión del pooler y trabando a la siguiente petición que
-      // llegue. Con esto la mata Postgres.
-      //
-      // TIENE QUE SER MAYOR QUE EL PLAZO DEL CLIENTE, PERO POR POCO.
-      // Mayor, porque es la red de seguridad y no el primero en disparar (la
-      // regla 3 de scripts/verificar-plazos.mjs). Por poco, porque cada
-      // milisegundo entre que nosotros abandonamos —6,5 s— y Postgres mata es
-      // tiempo en que una consulta que ya no le importa a nadie sigue
-      // reteniendo su hueco en el pooler. Con 8 s era medio segundo largo de
-      // más; 7 s deja el margen justo.
-      //
-      // No baja de ahí porque por aquí pasan también las escrituras de la
-      // tirada y del panel, que no las cubre ningún plazo del cliente y que sí
-      // pueden tardar más que una lectura del tablero.
-      statement_timeout: enBuild ? 20_000 : 7_000,
-      // Una transacción abierta y abandonada retiene sus candados. En
-      // `execute_spin` eso bloquearía las tiradas de todo el mundo.
-      idle_in_transaction_session_timeout: 10_000,
-    },
+    connection: esPooler ? {} : plazosDelServidor,
   });
 
   // GLOBALTHIS ES EL ÚNICO SITIO DONDE VIVE EL POOL, TAMBIÉN EN PRODUCCIÓN.
