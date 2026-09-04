@@ -150,8 +150,59 @@ const pagina = await contexto.newPage();
 
 // Todo lo que el navegador se queje, con su vuelta y su pestaña.
 let dónde = { vuelta: 0, pestana: '(arranque)' };
+
+// LOS FALLOS DE RED SE APUNTAN CON SU DIRECCIÓN.
+//
+// Antes se apuntaba el mensaje de consola tal cual, y el de un recurso que no
+// carga es siempre el mismo: "Failed to load resource: net::ERR_...". Sin la
+// dirección no hay forma de saber si lo que falló es algo NUESTRO —que sería un
+// fallo de verdad— o el mapa de Google y la miniatura de YouTube, que en este
+// contenedor no pueden cargar porque no hay salida a internet. Salían cien
+// fallos idénticos y ninguno decía de qué.
+//
+// Ahora se separan por dominio. Lo de fuera se cuenta aparte y se enseña al
+// final como una nota, no como un fallo; lo nuestro sigue siendo un fallo.
+const FUERA = /(^|\.)(youtube-nocookie\.com|youtube\.com|ytimg\.com|googlevideo\.com|google\.com|gstatic\.com|googleapis\.com)$/;
+const deFuera = new Map();
+let canceladas = 0;
+pagina.on('requestfailed', (r) => {
+  let host = '';
+  try {
+    host = new URL(r.url()).hostname;
+  } catch {
+    /* dirección rara */
+  }
+  const motivo = r.failure()?.errorText ?? '';
+  const texto = `${r.url()} [${motivo}]`;
+
+  if (FUERA.test(host)) {
+    deFuera.set(host, (deFuera.get(host) ?? 0) + 1);
+    return;
+  }
+
+  // ERR_ABORTED en una petición de navegación (`?_rsc=`) NO es un fallo: es el
+  // navegador cancelando algo que ya no hace falta porque este guion clica la
+  // siguiente pestaña antes de que termine la anterior. Una persona no va tan
+  // rápido; el aporreo sí, y por eso lo provoca él mismo.
+  //
+  // Y se puede descartar sin miedo por una razón concreta: si esa carga hubiera
+  // fallado DE VERDAD, la pestaña se habría quedado sin contenido, y eso lo
+  // comprueba aparte el detector de esqueletos y de texto en <main>. O sea que
+  // no se está tapando nada: hay una segunda red debajo.
+  if (motivo === 'net::ERR_ABORTED' && r.url().includes('_rsc=')) {
+    canceladas++;
+    return;
+  }
+
+  anota(dónde.vuelta, dónde.pestana, 'red', texto.slice(0, 200));
+});
+
 pagina.on('console', (m) => {
-  if (m.type() === 'error') anota(dónde.vuelta, dónde.pestana, 'consola', m.text().slice(0, 200));
+  // El mensaje de "no cargó un recurso" no trae la dirección, así que aquí no
+  // sirve de nada: ya quedó apuntado, con su URL y su dominio, más arriba.
+  if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) {
+    anota(dónde.vuelta, dónde.pestana, 'consola', m.text().slice(0, 200));
+  }
 });
 pagina.on('pageerror', (e) => anota(dónde.vuelta, dónde.pestana, 'excepción', String(e).slice(0, 200)));
 pagina.on('response', (r) => {
@@ -263,6 +314,27 @@ await navegador.close();
 
 const seg = ((Date.now() - t0) / 1000).toFixed(0);
 console.log(`\n${hechas} navegaciones en ${seg}s. Esqueletos que no se fueron: ${esqueletosLargos}.`);
+
+// Se enseña siempre, aunque esté todo verde: que quede claro que se vio y se
+// descartó a propósito, y no que nadie miró. En el sitio de verdad estas
+// direcciones sí cargan; aquí dentro no hay salida a internet.
+if (canceladas) {
+  console.log(
+    `\n${canceladas} cargas de pestaña canceladas por ir más rápido que una ` +
+      'persona. No cuentan: el contenido de cada pestaña se comprueba aparte.',
+  );
+}
+
+if (deFuera.size) {
+  const total = [...deFuera.values()].reduce((a, b) => a + b, 0);
+  console.log(
+    `\n${total} peticiones a sitios de fuera bloqueadas por el contenedor ` +
+      '(aquí no hay internet). No cuentan como fallo:',
+  );
+  for (const [host, n] of [...deFuera].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${String(n).padStart(4)} × ${host}`);
+  }
+}
 
 if (fallos.length) {
   const porTipo = {};

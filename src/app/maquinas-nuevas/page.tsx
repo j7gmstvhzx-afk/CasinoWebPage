@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
-import { Marco } from '@/components/site/Marco';
+import { VideoMaquina } from '@/components/maquinas/VideoMaquina';
 import { getMaquinasNuevas, paraLaPagina } from '@/lib/queries';
 import { longDate } from '@/lib/format';
 
@@ -66,7 +66,14 @@ export default async function PaginaMaquinasNuevas() {
             {maquinas.map((m) => {
               return (
                 <li key={m.id} className="tarjeta overflow-hidden">
-                  <Marco imagen={m.image_path} alt={m.name} proporcion="aspect-square" />
+                  {/* Con video, la foto es un botón que lo arranca; sin video,
+                      es exactamente el marco de siempre. Ver VideoMaquina. */}
+                  <VideoMaquina
+                    videoId={m.video_id}
+                    imagen={m.image_path}
+                    nombre={m.name}
+                    proporcion="aspect-square"
+                  />
                   <div className="p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       {m.es_nueva && (

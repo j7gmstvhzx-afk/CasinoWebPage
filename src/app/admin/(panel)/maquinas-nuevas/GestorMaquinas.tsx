@@ -8,6 +8,7 @@ import { FotoEncajada } from '@/components/site/FotoEncajada';
 import { Estado } from '@/components/admin/EstadoPublico';
 import { estadoMaquinaNueva } from '@/lib/visibilidad';
 import { longDate } from '@/lib/format';
+import { idDeYouTube } from '@/lib/youtube';
 
 export type MaquinaAdmin = {
   id: string;
@@ -16,6 +17,7 @@ export type MaquinaAdmin = {
   image_path: string | null;
   arrived_on: string;
   bank_number: number | null;
+  video_id: string | null;
   published: boolean;
 };
 
@@ -25,6 +27,8 @@ type Borrador = {
   image_path: string | null;
   arrived_on: string;
   bank_number: string;
+  /** Lo que la persona pegó, tal cual. El identificador se saca al guardar. */
+  video: string;
 };
 
 const hoy = () => hoyEnPR();
@@ -35,6 +39,7 @@ const vacio = (): Borrador => ({
   image_path: null,
   arrived_on: hoy(),
   bank_number: '',
+  video: '',
 });
 
 export function GestorMaquinas({
@@ -68,6 +73,18 @@ export function GestorMaquinas({
   async function guardar() {
     if (b.name.trim().length < 2) return setError('Escribe el nombre de la máquina.');
 
+    // Se comprueba ANTES de mandar nada, para poder decir qué pasa con el
+    // enlace. Si esto se dejara para el servidor, el error que volvería sería
+    // el genérico "faltan datos o alguno no es válido", que en una pantalla con
+    // seis campos no dice en cuál está el problema.
+    const video = b.video.trim() ? idDeYouTube(b.video) : null;
+    if (b.video.trim() && !video) {
+      return setError(
+        'Ese enlace no parece de YouTube. Copia la dirección de la barra del ' +
+          'navegador o la del botón Compartir del video.',
+      );
+    }
+
     setOcupado(true);
     setError(null);
     setHecho(null);
@@ -78,6 +95,7 @@ export function GestorMaquinas({
       image_path: b.image_path,
       arrived_on: b.arrived_on || hoy(),
       bank_number: b.bank_number ? Number.parseInt(b.bank_number, 10) : null,
+      video_id: video,
     };
 
     const r =
@@ -228,6 +246,25 @@ export function GestorMaquinas({
                 El badge NUEVA se pone y se quita solo: dura 30 días desde la
                 fecha de llegada.
               </p>
+
+              <Campo etiqueta="Video de YouTube (opcional)" id="video">
+                <input
+                  id="video"
+                  type="url"
+                  inputMode="url"
+                  value={b.video}
+                  onChange={(e) => setB({ ...b, video: e.target.value })}
+                  placeholder="Pega aquí el enlace del video"
+                  className={campo}
+                />
+              </Campo>
+              <p className="text-xs text-tenue">
+                Sirve cualquier enlace de YouTube: el de la barra del navegador,
+                el del botón Compartir o el de un Short. Si lo pones, en la
+                página la foto de la máquina se convierte en un botón de play y
+                el video arranca al tocarlo. Déjalo vacío y la tarjeta se queda
+                como está.
+              </p>
             </div>
 
             <div>
@@ -303,8 +340,21 @@ export function GestorMaquinas({
 
                 {/* La misma etiqueta que en las demás pestañas, con las mismas
                     palabras: lo que importa es si el cliente la ve. */}
-                <div className="mt-2">
+                {/* Se dice si tiene video EN LA LISTA, no solo dentro del
+                    formulario. El video cambia cómo se ve la tarjeta en la
+                    página —la foto pasa a ser un botón de play— y quien mira
+                    esta lista tiene que poder saber cuáles están así sin abrir
+                    una por una. */}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Estado estado={estadoMaquinaNueva(m)} />
+                  {m.video_id && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-tenue">
+                      <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-current">
+                        <path d="M8 5.5v13l11-6.5z" />
+                      </svg>
+                      Con video
+                    </span>
+                  )}
                 </div>
 
                 <p className="mt-1.5 text-xs text-tenue">
@@ -322,6 +372,11 @@ export function GestorMaquinas({
                         image_path: m.image_path,
                         arrived_on: m.arrived_on.slice(0, 10),
                         bank_number: m.bank_number === null ? '' : String(m.bank_number),
+                        // Se devuelve como enlace completo y no como los once
+                        // caracteres pelados: un identificador suelto en una
+                        // casilla no le dice nada a nadie, y si lo copia para
+                        // comprobarlo no le lleva al video.
+                        video: m.video_id ? `https://youtu.be/${m.video_id}` : '',
                       });
                       setEditando(m.id);
                       setError(null);

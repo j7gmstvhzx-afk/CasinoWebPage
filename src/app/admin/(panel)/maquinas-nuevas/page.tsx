@@ -26,7 +26,8 @@ export default async function PaginaAdminMaquinasNuevas() {
   // ninguna". Ahora se distingue, y se espera más (ver LIMITE_PANEL_MS).
   const r = await intentar(
     () => sql<MaquinaAdmin[]>`
-      select id, name, description, image_path, arrived_on, bank_number, published
+      select id, name, description, image_path, arrived_on, bank_number,
+             video_id, published
         from app.new_machines
        order by published desc, arrived_on desc
     `,

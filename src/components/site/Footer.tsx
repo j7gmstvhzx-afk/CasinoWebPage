@@ -159,9 +159,13 @@ export function Footer() {
                 de 12px. El token a pleno da 4,71:1 — está calibrado justo para
                 este fondo. Discreto no puede significar ilegible, y menos en el
                 enlace por el que entra el personal. */}
+            {/* Sin precarga, por lo mismo que el de la cabecera: /admin es
+                force-dynamic y precargarlo ejecuta el panel entero, con sus
+                consultas, en cada visita pública. Ver Header.tsx. */}
             <Link
               className="inline-flex min-h-11 items-center text-tenue underline underline-offset-4 hover:text-cian"
               href="/admin"
+              prefetch={false}
             >
               Administración
             </Link>

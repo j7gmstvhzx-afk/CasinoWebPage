@@ -45,6 +45,17 @@ const ESQUEMAS = {
     arrived_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     bank_number: z.number().int().min(0).max(32767).nullable().optional(),
     published: z.boolean().optional(),
+    // Los once caracteres del video de YouTube, YA extraídos del enlace por el
+    // panel. Aquí se vuelve a comprobar la forma en vez de fiarse: esto acaba
+    // dentro del `src` de un iframe, y el navegador no es quien decide qué es
+    // seguro. La base tiene la misma restricción (migración 0018), así que hay
+    // que romper las tres capas para colar algo raro.
+    video_id: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_-]{11}$/)
+      .nullable()
+      .optional(),
   }),
   galeria: z.object({
     image_path: z.string().trim().min(1).max(500),

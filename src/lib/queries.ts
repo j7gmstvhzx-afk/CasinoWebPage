@@ -374,6 +374,8 @@ export type MaquinaNueva = {
   image_path: string | null;
   arrived_on: string;
   bank_number: number | null;
+  /** Identificador de YouTube, 11 caracteres, o null. Ver lib/youtube.ts. */
+  video_id: string | null;
   /** Llegó hace 30 días o menos. */
   es_nueva: boolean;
 };
@@ -383,7 +385,7 @@ const DIAS_NUEVA = 30;
 
 export async function getMaquinasNuevas(limite = 24): Promise<MaquinaNueva[]> {
   return sql<MaquinaNueva[]>`
-    select id, name, description, image_path, arrived_on, bank_number,
+    select id, name, description, image_path, arrived_on, bank_number, video_id,
            -- El "hoy" lo pone la base de datos, no el servidor de Next: es la
            -- misma fuente de fecha que usa el resto del sistema, y siempre en
            -- hora de Puerto Rico.

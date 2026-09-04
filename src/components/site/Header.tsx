@@ -191,8 +191,22 @@ export function Header() {
             vivía en una línea diminuta al fondo del pie de página y ni el
             propio dueño la encontraba. Aquí, junto al resto de la navegación,
             se ve en todo momento sin quedar en la cara del cliente. */}
+        {/* prefetch={false} NO ES UN DETALLE DE RENDIMIENTO CUALQUIERA.
+            /admin es force-dynamic: no tiene página horneada que precargar, así
+            que cada precarga EJECUTA la función en el servidor y sus consultas
+            contra la base. Y Next precarga todo enlace que esté a la vista, así
+            que este botón, que sale en la cabecera de TODAS las páginas
+            públicas, disparaba dos renderizados del panel por cada visita de
+            cualquier cliente.
+            Medido en local: cargar la portada dispara 2 peticiones a /admin.
+            Y en los registros de producción del 4 de septiembre se ven esos
+            "GET /admin ... cache=MISS" intercalados entre las cargas públicas,
+            uno de ellos gastando cinco consultas que se agotaron a los 6000 ms.
+            Nadie gana nada con esto: quien va al panel escribe la contraseña,
+            y ahí medio segundo no le cambia el día. */}
         <Link
           href="/admin"
+          prefetch={false}
           className="hidden shrink-0 items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-tenue transition-[color,border-color,background-color] duration-200 hover:border-cian-2 hover:bg-cian-2/8 hover:text-cian lg:inline-flex"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -302,6 +316,7 @@ export function Header() {
           </ul>
           <Link
             href="/admin"
+            prefetch={false}
             onClick={() => setAbierto(false)}
             className="mt-3 block border-t border-linea px-4 pt-3 text-sm font-medium text-tenue/70"
           >
