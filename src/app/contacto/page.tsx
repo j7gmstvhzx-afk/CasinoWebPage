@@ -7,7 +7,24 @@ import { HorarioTexto } from '@/components/site/HorarioTexto';
 // mismo que las demás: caché de un minuto —sin esto se hornea en el build y se
 // queda con el respaldo escrito a mano para siempre— y el techo de 15 s, porque
 // por defecto Vercel deja llegar a 300 y ahí fue donde se colgaron las pestañas.
-export const revalidate = 60;
+// NO SON 60 EN TODAS, Y ESO ES EL ARREGLO, NO UN DESCUIDO.
+//
+// Con las ocho páginas públicas a 60 s pasaba esto: el despliegue las hornea a
+// todas en el mismo segundo, así que TODAS caducan en el mismo segundo. Y como
+// Next precarga cada pestaña del menú que esté a la vista —y están las nueve—,
+// el primer visitante que llega después de que caduquen dispara OCHO
+// regeneraciones a la vez, cada una en su propia función y cada una abriendo su
+// propio manojo de conexiones contra un pooler que solo tiene 15.
+//
+// Se vio en los registros de producción del 4 de septiembre a la 01:13:25: once
+// peticiones en el mismo segundo, seis de ellas regenerando, y /jackpots
+// cayéndose con "la consulta pasó de 6000 ms" mientras el diagnóstico decía
+// "último acierto hace 5996 ms" — o sea, saturación, no conexión muerta.
+//
+// Separándolas, en cualquier instante hay como mucho una o dos por rehacer. El
+// visitante no nota la diferencia entre 60 y 116 segundos de frescura; sí nota
+// una página que no carga.
+export const revalidate = 116; // la que menos cambia
 export const maxDuration = 15;
 
 export const metadata: Metadata = {

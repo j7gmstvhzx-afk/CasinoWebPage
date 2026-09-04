@@ -276,10 +276,25 @@ function crear(): Sql {
     // Los otros cuatro se quedaron esperando en silencio hasta que nos rendimos
     // a los 12 s. Con cuatro por proceso se pide bastante menos de lo que hay.
     //
-    // Cuatro sigue siendo el ancho de la ráfaga más grande que hace este sitio
-    // (la pestaña de premios lanza cinco con Promise.all, y la quinta espera lo
-    // que tarde una de las otras: entre 25 y 33 ms).
-    max: 4,
+    // Y AHORA DOS, POR LO QUE ENSEÑÓ EL TRÁFICO DE VERDAD.
+    //
+    // El número que importa no es cuántas conexiones pide UNA función: es
+    // cuántas piden TODAS a la vez. En los registros del 4 de septiembre a la
+    // 01:13:25 hay once peticiones en el mismo segundo —una sola visita, porque
+    // Next precarga las nueve pestañas del menú—, seis de ellas rehaciendo su
+    // página, cada una en su propia función y cada una abriendo su propio
+    // manojo. Seis por cuatro son veinticuatro contra un pooler de quince.
+    //
+    // Con dos, esas mismas seis funciones piden doce y caben. Y no cuesta nada:
+    // la página más pesada lanza cinco consultas a la vez y cada una tarda 0,29
+    // ms en la base, así que hacer cola de dos en dos añade décimas de
+    // milisegundo, no segundos.
+    //
+    // Esto NO es "la causa encontrada": es quitarle peso a la única parte del
+    // camino donde se ve que hay cola. El diagnóstico de `intentar()` dirá en el
+    // próximo apretón si bastó — cuando dice "último acierto hace 5996 ms", con
+    // el pool recién abierto, eso es cola, no conexión muerta.
+    max: 2,
     prepare: false,
     types: {
       // Las columnas `date` vuelven como CADENA 'YYYY-MM-DD', no como Date.
