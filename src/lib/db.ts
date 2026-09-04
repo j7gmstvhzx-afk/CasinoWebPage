@@ -182,7 +182,6 @@ function crear(): Sql {
   }
 
   const local = /localhost|127\.0\.0\.1|\/var\/tmp|\/tmp/.test(cadena);
-  const esPooler = /\.pooler\.supabase\.com/i.test(cadena);
 
   // ¿Esto corre dentro de `next build`? Los plazos de una petición no valen ahí:
   // no hay nadie esperando, no hay función que se corte a los 15 s, y la base
@@ -227,14 +226,12 @@ function crear(): Sql {
   // Y no es la base: medido contra producción, el tablero de jackpots entero
   // tarda 0,29 ms y la base pesa 12 MB.
   //
-  // ESTO ES UN EXPERIMENTO, Y ESTÁ ESCRITO PARA PODER DESHACERLO. Por el pooler
-  // no se mandan; por conexión directa o en local sí. Si el siguiente build
-  // deja de colgarse, era esto. Si se cuelga igual, se devuelven.
-  //
-  // Lo que se pierde mientras tanto es acotado: desde que una consulta agotada
-  // hace que se tire el pool (ver `descartarPool`), los sockets se cierran y
-  // Postgres aborta solo el trabajo huérfano. La red de seguridad de abajo era
-  // la segunda, no la única.
+  // SE PROBÓ A NO MANDARLOS POR EL POOLER, Y NO ERA ESO. Despliegue de las
+  // 00:55: sin estos dos ajustes, el build se colgó exactamente igual —pool
+  // abierto a las 00:55:23, una consulta acierta a los 334 ms, y a las 00:55:35
+  // seis se rinden a los 12 s—. La sospecha era que el pooler no encontraba con
+  // qué emparejar a un cliente que traía ajustes no estándar en el saludo.
+  // Descartada, y vuelven: son la red de seguridad y no cuestan nada.
   const plazosDelServidor = {
     // El corte del lado del servidor. Cuando la página deja de esperar, eso
     // solo la suelta a ella: la consulta seguiría corriendo en Postgres,
@@ -353,7 +350,7 @@ function crear(): Sql {
     // conexiones ociosas: es su trabajo.
     idle_timeout: 180,
     ssl: local ? false : 'require',
-    connection: esPooler ? {} : plazosDelServidor,
+    connection: plazosDelServidor,
   });
 
   // GLOBALTHIS ES EL ÚNICO SITIO DONDE VIVE EL POOL, TAMBIÉN EN PRODUCCIÓN.
