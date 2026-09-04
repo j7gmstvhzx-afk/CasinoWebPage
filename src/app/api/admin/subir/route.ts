@@ -9,7 +9,11 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /** Carpetas permitidas. Lista cerrada para que no se pueda escribir en cualquier sitio del bucket. */
-const CARPETAS = new Set(['eventos', 'maquinas', 'galeria', 'menu', 'ganadores']);
+// 'logos' es el arte de los juegos de jackpot, que va en app.machines. Se
+// guarda aparte de 'maquinas' —que son las fotos de los gabinetes recién
+// llegados— porque son dos cosas distintas y conviene poder mirar una carpeta
+// del bucket y saber qué hay dentro.
+const CARPETAS = new Set(['eventos', 'maquinas', 'galeria', 'menu', 'ganadores', 'logos']);
 
 export async function POST(req: NextRequest) {
   if (!(await esAdmin())) {

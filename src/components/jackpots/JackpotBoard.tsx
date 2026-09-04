@@ -6,6 +6,7 @@ import type { JackpotVista } from '@/lib/queries';
 import { money } from '@/lib/format';
 import { FichaPuesto, FICHA } from '@/components/site/FichaPuesto';
 import { Monto } from '@/components/site/Monto';
+import { LogoJuego } from '@/components/jackpots/LogoJuego';
 
 /**
  * Tablero de jackpots.
@@ -428,6 +429,19 @@ function TarjetaHero({ j }: { j: JackpotVista }) {
               clase={`h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl ${FICHA[1]}`}
             />
 
+            {/* El arte del juego, si el personal lo subió. Va DESPUÉS de la
+                ficha del puesto y no antes: el orden de lectura sigue siendo
+                "es el primero, y es este juego". Sin logo no se pinta nada —ni
+                un hueco reservado— para que la tarjeta no se vea a medio
+                terminar mientras no haya arte. */}
+            {j.logo && (
+              <LogoJuego
+                src={j.logo}
+                nombre={j.nombre}
+                className="h-12 w-12 border-white/20 bg-white/10 sm:h-14 sm:w-14"
+              />
+            )}
+
             <div className="min-w-0">
               {/* Sin la palabra "hoy". El tablero puede estar enseñando los
                   montos de la última subida y no los de esta mañana, y la
@@ -545,6 +559,7 @@ function TarjetaPodio({ j, puesto, max }: { j: JackpotVista; puesto: number; max
 
       <div className="relative flex items-start gap-3.5">
         <FichaPuesto puesto={puesto} clase={`h-10 w-10 text-base ${puesto === 2 ? FICHA[2] : FICHA[3]}`} />
+        {j.logo && <LogoJuego src={j.logo} nombre={j.nombre} className="h-10 w-10" />}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -618,6 +633,7 @@ function TarjetaCuarta({ j, puesto, max }: { j: JackpotVista; puesto: number; ma
       <div className="relative flex items-start gap-3">
         <FichaPuesto puesto={puesto} clase={`h-9 w-9 text-sm ${FICHA.casa}`} />
         <span className="sr-only">Puesto {puesto}.</span>
+        {j.logo && <LogoJuego src={j.logo} nombre={j.nombre} className="h-9 w-9" />}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -685,6 +701,8 @@ function FilaJackpot({ j, max, puesto }: { j: JackpotVista; max: number; puesto?
             <span className="sr-only">Puesto {puesto}.</span>
           </>
         )}
+
+        {j.logo && <LogoJuego src={j.logo} nombre={j.nombre} className="h-11 w-11" />}
 
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-base font-semibold sm:text-lg">{j.nombre}</p>

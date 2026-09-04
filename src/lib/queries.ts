@@ -10,6 +10,7 @@ export type Jackpot = {
   id: string;
   name: string;
   bank_number: number;
+  image_path: string | null;
   amount_cents: string;
   reading_at: string;
   anterior: string | null;
@@ -22,6 +23,8 @@ export type JackpotVista = {
   id: string;
   nombre: string;
   banco: number;
+  /** El arte del juego. null mientras nadie lo haya subido. */
+  logo: string | null;
   centavos: number;
   leidoEn: string;
   /** Cerca de lo más alto que ha estado esta máquina. */
@@ -82,7 +85,7 @@ export async function getJackpots(): Promise<JackpotVista[]> {
     ),
     ultimas as (
       select distinct on (m.id)
-             m.id, m.name, m.bank_number, r.amount_cents, r.reading_at
+             m.id, m.name, m.bank_number, m.image_path, r.amount_cents, r.reading_at
         from app.machines m
         join app.jackpot_readings r on r.machine_id = m.id
         cross join corte c
@@ -140,7 +143,7 @@ export async function getJackpots(): Promise<JackpotVista[]> {
          and reading_at > now() - interval '90 days'
        group by machine_id
     )
-    select u.id, u.name, u.bank_number, u.amount_cents, u.reading_at,
+    select u.id, u.name, u.bank_number, u.image_path, u.amount_cents, u.reading_at,
            p.amount_cents as anterior,
            h.maximo, coalesce(h.lecturas, 0)::int as lecturas,
            coalesce(s.puntos, array[]::bigint[]) as puntos,
@@ -162,6 +165,7 @@ export async function getJackpots(): Promise<JackpotVista[]> {
       id: f.id,
       nombre: f.name,
       banco: f.bank_number,
+      logo: f.image_path,
       centavos,
       leidoEn: f.reading_at,
       // Se exigen al menos 10 lecturas para no marcar caliente una máquina
@@ -248,6 +252,8 @@ export type FilaEntrada = {
    * en el tablero, con su fecha, en vez de dejarle adivinar.
    */
   ultimaLecturaEn: string | null;
+  /** El arte del juego, o null si nadie lo ha subido. Lo pone GestorLogos. */
+  logo: string | null;
   /** Día de la lectura más reciente de TODO el sistema: el ancla de la ventana. */
   corte: string | null;
 };
@@ -278,6 +284,7 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
       id: string;
       name: string;
       bank_number: number;
+      image_path: string | null;
       centavos_hoy: string | null;
       centavos_previo: string | null;
       ultima_en: string | null;
@@ -291,7 +298,7 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
     with corte as (
       select max(reading_at) as ultima from app.jackpot_readings where amount_cents is not null
     )
-    select m.id, m.name, m.bank_number,
+    select m.id, m.name, m.bank_number, m.image_path,
            hoy.amount_cents  as centavos_hoy,
            ayer.amount_cents as centavos_previo,
            app.gaming_date(ultima.reading_at)::text as ultima_en,
@@ -334,6 +341,7 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
     centavosPrevio: f.centavos_previo === null ? null : Number(f.centavos_previo),
     ultimaLecturaEn: f.ultima_en,
     corte: f.corte,
+    logo: f.image_path,
   }));
 }
 

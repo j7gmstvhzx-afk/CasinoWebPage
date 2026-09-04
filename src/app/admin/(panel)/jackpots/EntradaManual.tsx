@@ -27,6 +27,8 @@ export type MaquinaFila = {
   ultimaLecturaEn: string | null;
   /** Día de la lectura más reciente del sistema, que es lo que ancla la ventana. */
   corte: string | null;
+  /** El arte del juego, o null si nadie lo ha subido. Ver GestorLogos. */
+  logo: string | null;
 };
 
 export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {

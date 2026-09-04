@@ -3,28 +3,33 @@
 import { useState } from 'react';
 import { EntradaManual, type MaquinaFila } from './EntradaManual';
 import { ImportadorJackpots } from './ImportadorJackpots';
+import { GestorLogos } from './GestorLogos';
 
 /**
- * Dos formas de actualizar los premios.
+ * Tres tareas sobre las mismas máquinas, ordenadas por con qué frecuencia se
+ * hacen.
  *
  * Escribir a mano es lo primero porque es lo que se hace todos los días. Subir
  * el Excel queda de segunda, para cuando conviene actualizar las 19 de un
- * tirón desde la hoja que ya se lleva.
+ * tirón desde la hoja que ya se lleva. Y los logos van al final porque se ponen
+ * UNA VEZ por máquina: es la tarea que menos se toca, y la que menos tiene que
+ * estorbar a la de todos los días.
  */
 export function PanelJackpots({ maquinas }: { maquinas: MaquinaFila[] }) {
-  const [modo, setModo] = useState<'manual' | 'excel'>('manual');
+  const [modo, setModo] = useState<'manual' | 'excel' | 'logos'>('manual');
 
   return (
     <>
       <div
         role="tablist"
-        aria-label="Cómo actualizar los premios"
-        className="mt-6 inline-flex rounded-2xl border border-linea bg-superficie p-1"
+        aria-label="Qué hacer con los premios"
+        className="mt-6 flex flex-wrap gap-1 rounded-2xl border border-linea bg-superficie p-1 sm:inline-flex sm:flex-nowrap"
       >
         {(
           [
             ['manual', 'Escribir montos'],
             ['excel', 'Subir Excel'],
+            ['logos', 'Logos de los juegos'],
           ] as const
         ).map(([valor, etiqueta]) => (
           <button
@@ -43,7 +48,9 @@ export function PanelJackpots({ maquinas }: { maquinas: MaquinaFila[] }) {
       </div>
 
       <div className="mt-6">
-        {modo === 'manual' ? <EntradaManual maquinas={maquinas} /> : <ImportadorJackpots />}
+        {modo === 'manual' && <EntradaManual maquinas={maquinas} />}
+        {modo === 'excel' && <ImportadorJackpots />}
+        {modo === 'logos' && <GestorLogos maquinas={maquinas} />}
       </div>
     </>
   );

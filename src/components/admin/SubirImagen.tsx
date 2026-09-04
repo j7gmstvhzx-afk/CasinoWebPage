@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { FotoEncajada } from '@/components/site/FotoEncajada';
+import { LogoJuego } from '@/components/jackpots/LogoJuego';
 import { encogerImagen, comoPeso } from '@/lib/encoger-imagen';
 
 /**
@@ -21,10 +22,23 @@ export function SubirImagen({
   valor,
   onCambio,
   proporcion = 'aspect-[4/5]',
+  encaje = 'foto',
 }: {
-  carpeta: 'eventos' | 'maquinas' | 'galeria' | 'menu' | 'ganadores';
+  carpeta: 'eventos' | 'maquinas' | 'galeria' | 'menu' | 'ganadores' | 'logos';
   valor: string | null;
   onCambio: (ruta: string | null) => void;
+  /**
+   * Cómo se encaja la imagen en su recuadro.
+   *
+   * Las dos meten la imagen ENTERA, sin recortar; se diferencian en con qué
+   * rellenan el hueco que sobra: 'foto' con una copia desenfocada de sí misma
+   * (bien para fotos), 'logo' con el fondo liso de la marca (bien para logos
+   * recortados, donde la mancha borrosa se vería como suciedad).
+   *
+   * Tiene que coincidir con lo que use la página: la vista previa está para ver
+   * cómo va a quedar, y si aquí se enseña de una forma y allá de otra, miente.
+   */
+  encaje?: 'foto' | 'logo';
   /**
    * La forma del recuadro. Tiene que ser LA MISMA que use la tarjeta de la
    * página: la vista previa está para ver cómo va a quedar, y si aquí se
@@ -48,11 +62,11 @@ export function SubirImagen({
     // megas y la tarjeta más grande del sitio no llega a 700 píxeles: subirla
     // entera es rechazarla por pasarse de 8 MB, o hacer que cada visitante se
     // descargue cinco megas para ver una miniatura.
-    const encaje = await encogerImagen(original);
-    const archivo = encaje.archivo;
-    if (encaje.cambiada) {
+    const ajuste = await encogerImagen(original);
+    const archivo = ajuste.archivo;
+    if (ajuste.cambiada) {
       setEncogida(
-        `Se ajustó sola: de ${comoPeso(encaje.bytesAntes)} a ${comoPeso(encaje.bytesDespues)}.`,
+        `Se ajustó sola: de ${comoPeso(ajuste.bytesAntes)} a ${comoPeso(ajuste.bytesDespues)}.`,
       );
     }
 
@@ -73,7 +87,13 @@ export function SubirImagen({
     <div>
       {valor ? (
         <div className="relative overflow-hidden rounded-2xl border border-linea">
-          <FotoEncajada src={valor} alt="Vista previa" proporcion={proporcion} />
+          {encaje === 'logo' ? (
+            <div className={`flex ${proporcion} w-full items-center justify-center bg-superficie p-4`}>
+              <LogoJuego src={valor} nombre="vista previa" className="h-full w-full" />
+            </div>
+          ) : (
+            <FotoEncajada src={valor} alt="Vista previa" proporcion={proporcion} />
+          )}
           <button
             type="button"
             onClick={() => onCambio(null)}

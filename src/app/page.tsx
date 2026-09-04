@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PromoExperience } from '@/components/slot/PromoExperience';
 import { Marco } from '@/components/site/Marco';
 import { FichaPuesto, FICHA } from '@/components/site/FichaPuesto';
+import { LogoJuego } from '@/components/jackpots/LogoJuego';
 import {
   getJackpots,
   getMaquinasNuevas,
@@ -188,6 +189,11 @@ export default async function Inicio() {
                         i === 0 ? FICHA[1] : i === 1 ? FICHA[2] : i === 2 ? FICHA[3] : FICHA.casa
                       }`}
                     />
+                    {/* El arte del juego, cuando lo hay. En una tarjeta tan
+                        pequeña se pone chico —32px, igual que la ficha— para
+                        que acompañe al nombre sin quitarle el sitio al monto,
+                        que es lo que la gente viene a mirar. */}
+                    {j.logo && <LogoJuego src={j.logo} nombre={j.nombre} className="h-8 w-8" />}
                     {/* break-words como red de seguridad: si algún día entra
                         una máquina con un nombre de una sola palabra muy larga,
                         que se parta en vez de pintarse sobre el vecino. */}
