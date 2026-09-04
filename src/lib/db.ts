@@ -328,6 +328,44 @@ function crear(): Sql {
         serialize: (x: string) => x,
         parse: (x: string) => x,
       },
+
+      // LOS DOS VECTORES DE NÚMEROS, DECLARADOS A MANO AUNQUE NO HAGA FALTA.
+      //
+      // El driver, al abrir cada conexión, le pregunta al catálogo de Postgres
+      // qué tipos existen ANTES de mandar la consulta de uno. Si esa pregunta
+      // sale bien, estas dos declaraciones sobran. El problema es cuando NO sale
+      // bien, y en producción no sale bien: el 4 de septiembre a la 01:40:39,
+      // en la misma petición en que Postgres mató una consulta por tiempo,
+      // apareció esto:
+      //
+      //     TypeError: (a.puntos ?? []).map is not a function
+      //
+      // `puntos` es el `array_agg` de la curva de cada jackpot. Llegó como la
+      // CADENA "{1234,5678}" en vez de como lista, porque esa conexión se quedó
+      // sin mapa de tipos. Y el resultado es que /jackpots se cae ENTERA —las 18
+      // máquinas— por un fallo que no tiene nada que ver con los jackpots.
+      //
+      // Declarándolos aquí, con su número escrito a mano, ese camino deja de
+      // existir: pase lo que pase con la pregunta al catálogo, estos dos se leen
+      // bien. Es puro cinturón además de tirantes, y no cuesta nada.
+      //
+      //   1005 = smallint[]  -> app.programa.dias, app.spins.reels
+      //   1016 = bigint[]    -> el array_agg de los montos, en getJackpots
+      //
+      // Comprobado en local en las dos direcciones: leer devuelve [0,1,2] y
+      // escribir ${[1,3,5]} guarda {1,3,5}.
+      enteritos: {
+        to: 1005,
+        from: [1005],
+        serialize: (xs: number[]) => `{${xs.join(',')}}`,
+        parse: (x: string) => (x.length <= 2 ? [] : x.slice(1, -1).split(',').map(Number)),
+      },
+      enterotes: {
+        to: 1016,
+        from: [1016],
+        serialize: (xs: number[]) => `{${xs.join(',')}}`,
+        parse: (x: string) => (x.length <= 2 ? [] : x.slice(1, -1).split(',').map(Number)),
+      },
     },
     // LOS PLAZOS DE AQUÍ TIENEN QUE CABER DENTRO DEL PLAZO DE `intentar()`.
     //

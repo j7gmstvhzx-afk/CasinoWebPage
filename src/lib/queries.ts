@@ -703,8 +703,35 @@ export async function intentar<T>(
   for (let n = 1; n <= intentos; n++) {
     let temporizador: ReturnType<typeof setTimeout> | undefined;
     try {
+      // LA CONSULTA SE GUARDA EN UNA VARIABLE Y SE LE PONE UN `.catch` VACÍO.
+      // NO ES CEREMONIA: SIN ESO, LA FUNCIÓN DE VERCEL SE MUERE.
+      //
+      // Cuando el plazo gana la carrera, la consulta de verdad NO desaparece:
+      // sigue viva en Postgres hasta que la mata `statement_timeout`, y entonces
+      // su promesa se rompe con el error 57014. Si nadie la está esperando —y no
+      // la espera nadie, porque la carrera ya terminó— Node lo trata como un
+      // fallo sin dueño y MATA EL PROCESO.
+      //
+      // Pasó en producción el 4 de septiembre a la 01:40:39, y está en el
+      // registro con todas sus letras:
+      //
+      //     Unhandled Rejection: canceling statement due to statement timeout
+      //     ⨯ unhandledRejection: ... code: '57014'
+      //     Node.js process exited with exit status: 128
+      //
+      // Esa línea final es la función muriéndose A MITAD DE LA PETICIÓN. Y no se
+      // lleva solo esa consulta: se lleva todo lo que esa función tuviera entre
+      // manos, y la siguiente visita arranca otra desde cero, fría. Ahí está la
+      // mitad del "a veces carga y a veces no".
+      //
+      // El `.catch` vacío no esconde nada: el fallo YA se registró arriba con su
+      // mensaje. Lo único que hace es decirle a Node que ese cadáver tiene
+      // dueño, para que no se lleve la función por delante.
+      const enMarcha = fn();
+      enMarcha.catch(() => {});
+
       const datos = await Promise.race([
-        fn(),
+        enMarcha,
         new Promise<never>((_, rechazar) => {
           temporizador = setTimeout(
             () => rechazar(new Error(`la consulta pasó de ${limite} ms`)),
