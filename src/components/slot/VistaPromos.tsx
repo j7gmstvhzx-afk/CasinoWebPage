@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { longDate } from '@/lib/format';
+import { cuando } from '@/lib/cartelera';
+import { hoyEnPR } from '@/lib/hora-pr';
 
 /**
  * Promociones del día, antes de la tragamonedas.
@@ -22,6 +23,8 @@ export type PromoPopup = {
   image_path: string | null;
   starts_on: string | null;
   ends_on: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
 };
 
 export function VistaPromos({
@@ -114,12 +117,14 @@ export function VistaPromos({
         <h3 className="mt-5 font-display text-2xl font-bold">{promo.title}</h3>
       )}
 
-      {(promo.starts_on || promo.ends_on) && (
-        <p className="mt-1.5 text-sm text-cian">
-          {promo.starts_on ? longDate(promo.starts_on) : ''}
-          {promo.ends_on ? ` — ${longDate(promo.ends_on)}` : ''}
-        </p>
-      )}
+      {/* La misma frase que la cartelera: "Hoy a las 9:00 p.m.".
+          Aquí `hoyEnPR()` se puede llamar en el navegador sin miedo a que el
+          servidor pinte otra cosa, porque este cartel solo existe DESPUÉS de
+          que la página pida las promociones: no se sirve en el HTML inicial. */}
+      {(() => {
+        const frase = cuando(promo, hoyEnPR());
+        return frase ? <p className="mt-1.5 text-sm text-cian">{frase}</p> : null;
+      })()}
 
       {promo.body && (
         <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-tenue">

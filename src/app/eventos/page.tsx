@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { Marco } from '@/components/site/Marco';
 import { getEventos, paraLaPagina } from '@/lib/queries';
-import { longDate } from '@/lib/format';
+import { agrupar, cuando, esDeHoy } from '@/lib/cartelera';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -47,9 +47,17 @@ export default async function PaginaEventos() {
   const r = await paraLaPagina(() => getEventos(60), 'las promociones', []);
   const eventos = r.datos;
 
+  // La cartelera, no una lista.
+  //
+  // Antes eran dos montones —"Ahora mismo" y "Próximamente"— y en el segundo
+  // cabía por igual lo del sábado y lo del mes que viene, ordenado por el
+  // número que el personal le hubiera puesto a mano. Quien entraba a ver si hay
+  // algo este fin de semana tenía que leerlo todo y hacer la cuenta.
+  //
+  // Ahora son tres, y los dos del futuro salen ordenados por fecha: lo más
+  // cercano primero, que es lo que se está preguntando el que mira.
   const hoy = hoyEnPR();
-  const activos = eventos.filter((e) => !e.starts_on || e.starts_on <= hoy);
-  const proximos = eventos.filter((e) => e.starts_on && e.starts_on > hoy);
+  const { ahora, semana, despues } = agrupar(eventos, hoy);
 
   return (
     <>
@@ -68,8 +76,11 @@ export default async function PaginaEventos() {
           <SeccionVacia mensaje="No hay eventos publicados en este momento. ¡Vuelve pronto!" />
         ) : (
           <div className="space-y-14">
-            {activos.length > 0 && <Grupo titulo="Ahora mismo" eventos={activos} />}
-            {proximos.length > 0 && <Grupo titulo="Próximamente" eventos={proximos} />}
+            {ahora.length > 0 && <Grupo titulo="Ahora mismo" eventos={ahora} hoy={hoy} />}
+            {semana.length > 0 && <Grupo titulo="Esta semana" eventos={semana} hoy={hoy} />}
+            {despues.length > 0 && (
+              <Grupo titulo="Más adelante" eventos={despues} hoy={hoy} />
+            )}
           </div>
         )}
       </section>
@@ -80,9 +91,12 @@ export default async function PaginaEventos() {
 function Grupo({
   titulo,
   eventos,
+  hoy,
 }: {
   titulo: string;
   eventos: Awaited<ReturnType<typeof getEventos>>;
+  /** El día en Puerto Rico, calculado una vez arriba y pasado hacia abajo. */
+  hoy: string;
 }) {
   return (
     <div>
@@ -90,34 +104,42 @@ function Grupo({
       {/* El canto de la ficha, igual que en la portada y en el menú. */}
       <div aria-hidden="true" className="cinta-ficha mt-3 h-[3px] w-16" />
       <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {eventos.map((e) => (
-          <li key={e.id} className="tarjeta overflow-hidden">
-            {/* Los flyers que ya usan en redes son verticales; se respeta esa
-                proporción para no recortarles el texto al centro. */}
-            <Marco imagen={e.image_path} alt={e.title} proporcion="aspect-[4/5]" />
-            <div className="p-5">
-              <h3 className="font-display text-lg font-semibold">{e.title}</h3>
-              <Fechas inicio={e.starts_on} fin={e.ends_on} />
-              {e.body && (
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-tenue">
-                  {e.body}
-                </p>
+        {eventos.map((e) => {
+          const hoyMismo = esDeHoy(e, hoy);
+          const frase = cuando(e, hoy);
+          return (
+            <li
+              key={e.id}
+              /* Lo de hoy se destaca con el borde dorado de la casa. No es
+                 adorno: en una cartelera de doce tarjetas, lo que pasa HOY es
+                 lo único que se puede aprovechar todavía. */
+              className={`tarjeta relative overflow-hidden${
+                hoyMismo ? ' border-dorado/60 shadow-[0_0_0_1px_var(--color-dorado)]' : ''
+              }`}
+            >
+              {/* Los flyers que ya usan en redes son verticales; se respeta esa
+                  proporción para no recortarles el texto al centro. */}
+              <Marco imagen={e.image_path} alt={e.title} proporcion="aspect-[4/5]" />
+
+              {hoyMismo && (
+                <span className="absolute left-3 top-3 rounded-full bg-dorado px-3 py-1 font-display text-xs font-bold uppercase tracking-wide text-tinta shadow">
+                  Hoy
+                </span>
               )}
-            </div>
-          </li>
-        ))}
+
+              <div className="p-5">
+                <h3 className="font-display text-lg font-semibold">{e.title}</h3>
+                {frase && <p className="mt-1.5 text-sm font-medium text-cian">{frase}</p>}
+                {e.body && (
+                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-tenue">
+                    {e.body}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
-  );
-}
-
-function Fechas({ inicio, fin }: { inicio: string | null; fin: string | null }) {
-  if (!inicio && !fin) return null;
-  return (
-    <p className="mt-1.5 text-sm text-cian">
-      {inicio && fin && inicio !== fin
-        ? `${longDate(inicio)} — ${longDate(fin)}`
-        : longDate((inicio ?? fin)!)}
-    </p>
   );
 }

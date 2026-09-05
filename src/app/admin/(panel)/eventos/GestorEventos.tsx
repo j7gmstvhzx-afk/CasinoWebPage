@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { SubirImagen } from '@/components/admin/SubirImagen';
 import { Estado } from '@/components/admin/EstadoPublico';
 import { FotoEncajada } from '@/components/site/FotoEncajada';
-import { longDate } from '@/lib/format';
+import { cuando } from '@/lib/cartelera';
 import { estadoEvento, estadoPopup } from '@/lib/visibilidad';
 
 export type EventoAdmin = {
@@ -15,6 +15,9 @@ export type EventoAdmin = {
   image_path: string | null;
   starts_on: string | null;
   ends_on: string | null;
+  /** Llega como 'HH:MM:SS' desde Postgres; el formulario la usa como 'HH:MM'. */
+  starts_at: string | null;
+  ends_at: string | null;
   published: boolean;
   show_in_popup: boolean;
   sort_order: number;
@@ -26,6 +29,8 @@ type Borrador = {
   image_path: string | null;
   starts_on: string;
   ends_on: string;
+  starts_at: string;
+  ends_at: string;
   show_in_popup: boolean;
   sort_order: number;
 };
@@ -36,6 +41,8 @@ const vacio = (): Borrador => ({
   image_path: null,
   starts_on: '',
   ends_on: '',
+  starts_at: '',
+  ends_at: '',
   show_in_popup: false,
   sort_order: 0,
 });
@@ -46,6 +53,10 @@ const aBorrador = (e: EventoAdmin): Borrador => ({
   image_path: e.image_path,
   starts_on: e.starts_on?.slice(0, 10) ?? '',
   ends_on: e.ends_on?.slice(0, 10) ?? '',
+  // 'HH:MM:SS' -> 'HH:MM': `<input type="time">` no entiende los segundos y se
+  // queda en blanco sin decir nada, así que al editar se perdía la hora.
+  starts_at: e.starts_at?.slice(0, 5) ?? '',
+  ends_at: e.ends_at?.slice(0, 5) ?? '',
   show_in_popup: e.show_in_popup,
   sort_order: e.sort_order,
 });
@@ -112,6 +123,10 @@ export function GestorEventos({
       // para las permanentes.
       starts_on: borrador.starts_on || null,
       ends_on: borrador.ends_on || null,
+      // Vacío es null, no cadena vacía: una promoción de todo el día no tiene
+      // hora, y '' no pasa la validación de la API ni cabe en una columna time.
+      starts_at: borrador.starts_at || null,
+      ends_at: borrador.ends_at || null,
       show_in_popup: borrador.show_in_popup,
       sort_order: borrador.sort_order,
     };
@@ -221,10 +236,63 @@ export function GestorEventos({
                 </Campo>
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Campo etiqueta="Hora de inicio (opcional)" id="hora-inicio">
+                  <input
+                    id="hora-inicio"
+                    type="time"
+                    value={borrador.starts_at}
+                    onChange={(e) => setBorrador({ ...borrador, starts_at: e.target.value })}
+                    className={campo}
+                  />
+                </Campo>
+                <Campo etiqueta="Hora de fin (opcional)" id="hora-fin">
+                  <input
+                    id="hora-fin"
+                    type="time"
+                    value={borrador.ends_at}
+                    onChange={(e) => setBorrador({ ...borrador, ends_at: e.target.value })}
+                    className={campo}
+                  />
+                </Campo>
+              </div>
+
               <p className="text-xs text-tenue">
                 Al pasar la fecha de fin, la promoción desaparece sola de la
-                página. Si la dejas en blanco, se queda hasta que la quites.
+                página. Si la dejas en blanco, se queda hasta que la quites. La
+                hora es solo para decirlo: la promoción no se esconde a su hora
+                de fin, se queda hasta que acabe el día.
               </p>
+
+              {/* LO QUE VA A LEER EL CLIENTE, ANTES DE GUARDARLO.
+                  Las cuatro casillas de arriba se combinan de maneras que no se
+                  adivinan —"del 12 al 15 de septiembre", "termina mañana", "hoy
+                  a las 9:00 p.m."— y quien las llena no tiene por qué saberlo.
+                  Sale la frase de verdad, hecha con la misma función que pinta
+                  la cartelera, así que no puede prometer algo distinto. */}
+              {(() => {
+                const frase = cuando(
+                  {
+                    starts_on: borrador.starts_on || null,
+                    ends_on: borrador.ends_on || null,
+                    starts_at: borrador.starts_at || null,
+                    ends_at: borrador.ends_at || null,
+                  },
+                  hoy,
+                );
+                return (
+                  <p className="rounded-xl border border-linea bg-superficie px-4 py-3 text-sm text-tenue">
+                    En la página se leerá:{' '}
+                    {frase ? (
+                      <strong className="text-cian">{frase}</strong>
+                    ) : (
+                      <span className="italic">
+                        nada — sin fecha ni hora, la tarjeta sale sin esa línea
+                      </span>
+                    )}
+                  </p>
+                );
+              })()}
 
               {/* Lo que decide si el arte se le enseña a TODO el que entra. */}
               <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-dorado/40 bg-dorado/5 p-4">
@@ -350,12 +418,15 @@ export function GestorEventos({
                   ) : null;
                 })()}
 
-                {(e.starts_on || e.ends_on) && (
-                  <p className="mt-1.5 text-xs text-cian">
-                    {e.starts_on ? longDate(e.starts_on) : '—'}
-                    {e.ends_on ? ` → ${longDate(e.ends_on)}` : ''}
-                  </p>
-                )}
+                {/* La misma frase que la página pública, palabra por palabra.
+                    Antes aquí salía "16 de agosto de 2026 → 30 de septiembre de
+                    2026" y en la página otra cosa; ahora las dos salen de
+                    `cuando()`, así que el panel no puede describir mal lo que
+                    el cliente está leyendo. */}
+                {(() => {
+                  const frase = cuando(e, hoy);
+                  return frase ? <p className="mt-1.5 text-xs text-cian">{frase}</p> : null;
+                })()}
 
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
                   <button

@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/verificar-plazos.mjs && node --experimental-strip-types --no-warnings scripts/verificar-youtube.mjs && next build",
+    "build": "node scripts/verificar-plazos.mjs && npm run verificar:youtube && npm run verificar:cartelera && next build",
     "start": "next start",
     "lint": "eslint",
     "smoke": "node scripts/smoke-nav.mjs",
     "smoke:cuenta": "node scripts/smoke-cuenta.mjs",
     "verificar:plazos": "node scripts/verificar-plazos.mjs",
     "verificar:visibilidad": "node scripts/verificar-visibilidad.mjs",
-    "verificar:youtube": "node --experimental-strip-types --no-warnings scripts/verificar-youtube.mjs"
+    "verificar:youtube": "node --experimental-strip-types --no-warnings scripts/verificar-youtube.mjs",
+    "verificar:cartelera": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-cartelera.mjs"
   },
   "dependencies": {
     "jose": "^6.2.9",

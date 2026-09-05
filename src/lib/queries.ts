@@ -417,6 +417,15 @@ export type Evento = {
   image_path: string | null;
   starts_on: string | null;
   ends_on: string | null;
+  /**
+   * La hora del salón, tal cual se guardó. Llega como 'HH:MM:SS'.
+   *
+   * No es un instante: es la hora que sale en el flyer. Quien la enseña es
+   * `cuando()` en `lib/cartelera.ts`; quien decide si el evento se ve siguen
+   * siendo las FECHAS, porque una promoción no desaparece a su hora de fin.
+   */
+  starts_at: string | null;
+  ends_at: string | null;
 };
 
 /**
@@ -428,7 +437,7 @@ export type Evento = {
  */
 export async function getEventos(limite = 60): Promise<Evento[]> {
   return sql<Evento[]>`
-    select id, title, body, image_path, starts_on, ends_on
+    select id, title, body, image_path, starts_on, ends_on, starts_at, ends_at
       from app.events
      where published
        and (ends_on is null or ends_on >= app.gaming_date(now()))
@@ -444,6 +453,8 @@ export type PromoPopup = {
   image_path: string | null;
   starts_on: string | null;
   ends_on: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
 };
 
 /**
@@ -456,7 +467,7 @@ export type PromoPopup = {
  */
 export async function getPromocionesPopup(): Promise<PromoPopup[]> {
   return sql<PromoPopup[]>`
-    select id, title, body, image_path, starts_on, ends_on
+    select id, title, body, image_path, starts_on, ends_on, starts_at, ends_at
       from app.events
      where show_in_popup
        and published

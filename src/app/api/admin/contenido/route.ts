@@ -26,6 +26,19 @@ const fechaOpcional = z
   .nullable()
   .optional();
 
+/**
+ * La hora del salón: 'HH:MM' tal como la manda `<input type="time">`.
+ *
+ * Se acepta también 'HH:MM:SS' porque es la forma en que Postgres devuelve una
+ * columna `time`, y el panel reenvía lo que leyó al guardar un cambio de otro
+ * campo. Sin eso, tocar el título de un evento le borraba la hora.
+ */
+const horaOpcional = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/)
+  .nullable()
+  .optional();
+
 const ESQUEMAS = {
   eventos: z.object({
     title: z.string().trim().min(2).max(140),
@@ -33,6 +46,12 @@ const ESQUEMAS = {
     image_path: z.string().trim().max(500).nullable().optional(),
     starts_on: fechaOpcional,
     ends_on: fechaOpcional,
+    // La hora puede ir sin fecha —una promoción de todos los días a la misma
+    // hora— y la de fin puede ser MENOR que la de inicio: un evento de 9:00
+    // p.m. a 1:00 a.m. cruza la medianoche. Es el horario de la música en vivo,
+    // así que no se valida como si fuera imposible.
+    starts_at: horaOpcional,
+    ends_at: horaOpcional,
     published: z.boolean().optional(),
     // Sale en el pop-up de entrada, antes de la tragamonedas.
     show_in_popup: z.boolean().optional(),

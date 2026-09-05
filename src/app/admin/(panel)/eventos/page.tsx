@@ -20,8 +20,8 @@ export const metadata: Metadata = {
 export default async function PaginaAdminEventos() {
   const r = await intentar(
     () => sql<EventoAdmin[]>`
-      select id, title, body, image_path, starts_on, ends_on, published,
-               show_in_popup, sort_order
+      select id, title, body, image_path, starts_on, ends_on,
+               starts_at, ends_at, published, show_in_popup, sort_order
         from app.events
        order by show_in_popup desc, published desc, sort_order, created_at desc
     `,

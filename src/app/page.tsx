@@ -16,12 +16,14 @@ import {
   paraLaPagina,
   algunoFallo,
 } from '@/lib/queries';
-import { money, relativeUpdate, longDate } from '@/lib/format';
+import { money, relativeUpdate } from '@/lib/format';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
 import { ParteDelDia } from '@/components/site/ParteDelDia';
 import { HorarioTexto } from '@/components/site/HorarioTexto';
 import { PagadoEsteMes } from '@/components/site/PagadoEsteMes';
 import { estadoDelSalon, programaDelDia } from '@/lib/horario';
+import { cuando, esDeHoy } from '@/lib/cartelera';
+import { hoyEnPR } from '@/lib/hora-pr';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
 //
@@ -88,6 +90,11 @@ export default async function Inicio() {
   // `getJackpots` ya devuelve la lista por monto descendente, así que al entrar
   // una lectura nueva desde el panel la máquina sube o baja de puesto sola.
   const destacados = jackpots.slice(0, 5);
+
+  // El día en Puerto Rico, calculado UNA VEZ y pasado a todo lo que lo necesite.
+  // Ver `lib/hora-pr.ts`: el servidor corre en UTC y a partir de las 8 p.m. de
+  // Manatí ya sería mañana.
+  const hoy = hoyEnPR();
 
   return (
     <>
@@ -373,23 +380,26 @@ export default async function Inicio() {
 
           <ul className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {eventos.map((e) => (
-              <li key={e.id} className="tarjeta overflow-hidden">
+              <li key={e.id} className="tarjeta relative overflow-hidden">
                 <Marco imagen={e.image_path} alt={e.title} />
+                {/* La misma marca dorada que en /eventos: lo de hoy se ve de
+                    lejos, sin leer la fecha. */}
+                {esDeHoy(e, hoy) && (
+                  <span className="absolute left-3 top-3 rounded-full bg-dorado px-3 py-1 font-display text-xs font-bold uppercase tracking-wide text-tinta shadow">
+                    Hoy
+                  </span>
+                )}
                 <div className="p-5">
                   <p className="font-display text-lg font-semibold">{e.title}</p>
-                  {/* El rango entero, no solo la fecha de inicio.
-                      Un evento que empezó el 18 y acaba el 17 del mes que viene
-                      está EN CURSO, pero enseñando solo su fecha de inicio se
-                      leía como algo ya pasado — y encima aparecía debajo de dos
-                      eventos futuros. En /eventos ya se mostraba el rango; aquí
-                      faltaba. */}
-                  {(e.starts_on || e.ends_on) && (
-                    <p className="mt-1 text-sm text-cian">
-                      {e.starts_on && e.ends_on && e.starts_on !== e.ends_on
-                        ? `${longDate(e.starts_on)} — ${longDate(e.ends_on)}`
-                        : longDate((e.starts_on ?? e.ends_on)!)}
-                    </p>
-                  )}
+                  {/* CUÁNDO ES, dicho igual que en la cartelera y en el panel.
+                      Aquí salía la fecha cruda, y un evento que empezó el 18 y
+                      acaba el 17 del mes que viene —o sea, EN CURSO— se leía
+                      como algo ya pasado. `cuando()` dice "hasta el 17 de
+                      octubre", que es lo que hay que saber. */}
+                  {(() => {
+                    const frase = cuando(e, hoy);
+                    return frase ? <p className="mt-1 text-sm text-cian">{frase}</p> : null;
+                  })()}
                   {e.body && (
                     <p className="mt-2 line-clamp-3 text-sm text-tenue">{e.body}</p>
                   )}
