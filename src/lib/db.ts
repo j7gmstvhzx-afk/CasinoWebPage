@@ -136,7 +136,22 @@ const GRACIA_AL_CERRAR_S = 12;
  * igual), ni una conexión directa a `db.<ref>.supabase.co`, donde el usuario
  * `postgres` sí es el correcto.
  */
-function normalizarCadena(cadena: string): string {
+/** El pooler de Supabase en modo SESIÓN: un proceso de Postgres por cliente. */
+const PUERTO_SESION = '5432';
+/** El pooler en modo TRANSACCIÓN: muchos clientes por proceso. El bueno aquí. */
+const PUERTO_TRANSACCION = '6543';
+
+/**
+ * LA PUERTA DE ATRÁS, POR SI HAY QUE VOLVER AL MODO SESIÓN SIN TOCAR CÓDIGO.
+ *
+ * Poner `CAM_POOLER_SESION=si` en Vercel deja el puerto como venga. Existe para
+ * que revertir esto sea una casilla y un redespliegue, no un commit a las once
+ * de la noche.
+ */
+const sesionAPropósito = () => /^(si|sí|1|true)$/i.test(process.env.CAM_POOLER_SESION ?? '');
+
+// exportada solo para `scripts/verificar-cadena.mjs`; nadie más la llama.
+export function normalizarCadena(cadena: string): string {
   let u: URL;
   try {
     u = new URL(cadena);
@@ -144,28 +159,79 @@ function normalizarCadena(cadena: string): string {
     return cadena; // formato raro: se deja como está, que falle con su propio error
   }
 
+  // Todo lo de aquí abajo vale SOLO para el pooler. Una conexión directa a
+  // `db.<ref>.supabase.co` es otra cosa: allí el 5432 es el puerto de verdad de
+  // Postgres y el usuario `postgres` es el correcto. Tocarla sería romperla.
   const esPooler = /\.pooler\.supabase\.com$/i.test(u.hostname);
-  const usuario = decodeURIComponent(u.username);
-  if (!esPooler || usuario !== 'postgres') return cadena;
+  if (!esPooler) return cadena;
 
-  const ref = process.env.SUPABASE_URL?.match(
-    /https?:\/\/([a-z0-9]+)\.supabase\.(co|in)/i,
-  )?.[1];
-  if (!ref) {
-    console.error(
-      '[db] La cadena usa el pooler con el usuario "postgres" (le falta el ' +
-        'sufijo del proyecto) y no hay SUPABASE_URL para deducirlo. Corrige ' +
-        'DATABASE_POOL_URL: el usuario debe ser postgres.<ref-del-proyecto>.',
+  let tocada = false;
+
+  // --- El puerto -----------------------------------------------------------
+  //
+  // EL FALLO DEL 5 DE SEPTIEMBRE, ARREGLADO DONDE SE PUEDE ARREGLAR.
+  //
+  // La dirección apuntaba al pooler en modo SESIÓN (5432). En ese modo cada
+  // cliente se queda con un proceso de Postgres entero para él, y este proyecto
+  // solo tiene quince. Una función de Vercel toma el suyo y lo conserva
+  // mientras vive —congelada incluida—, así que basta con que se rehagan varias
+  // páginas a la vez para que la número dieciséis se encuentre con esto:
+  //
+  //     (EMAXCONNSESSION) max clients reached in session mode
+  //     - max clients are limited to pool_size: 15
+  //
+  // y la página se hornee vacía. Pasó con siete pestañas rehaciéndose en el
+  // mismo segundo más el panel.
+  //
+  // El modo TRANSACCIÓN (6543) no tiene ese techo: reparte unos pocos procesos
+  // entre muchos clientes y los devuelve al acabar cada sentencia. Es para lo
+  // que está escrito este archivo entero, empezando por `prepare: false`.
+  //
+  // POR QUÉ SE CORRIGE AQUÍ Y NO EN VERCEL. Es lo mismo que ya se hacía con el
+  // usuario: la dirección lleva la contraseña dentro, así que cambiarla es una
+  // operación manual, delicada y que solo puede hacer el dueño. Una variable
+  // mal puesta no debería dejar el sitio en blanco durante horas cuando el
+  // código sabe perfectamente cuál es el puerto bueno.
+  //
+  // Y POR QUÉ NO VUELVE EL FALLO POR EL QUE SE SALIÓ DEL 6543: aquel era una
+  // SEGUNDA conexión que se abría y se quedaba muda. Desde `max: 1` no hay
+  // segunda conexión que pueda quedarse muda — solo la que ya se demostró que
+  // funciona, en fila.
+  if (u.port === PUERTO_SESION && !sesionAPropósito()) {
+    u.port = PUERTO_TRANSACCION;
+    tocada = true;
+    console.warn(
+      `[db] DATABASE_POOL_URL apunta al pooler en modo sesión (puerto ` +
+        `${PUERTO_SESION}), que solo admite 15 clientes en todo el proyecto. Se ` +
+        `usa el de modo transacción (${PUERTO_TRANSACCION}), que no tiene ese ` +
+        `techo. Para dejarlo como venía: CAM_POOLER_SESION=si.`,
     );
-    return cadena;
   }
 
-  u.username = `postgres.${ref}`;
-  console.warn(
-    `[db] DATABASE_POOL_URL venía con el usuario "postgres"; se corrigió a ` +
-      `"postgres.${ref}" para el pooler. Arréglala en Vercel para no depender de esto.`,
-  );
-  return u.toString();
+  // --- El usuario ----------------------------------------------------------
+  if (decodeURIComponent(u.username) === 'postgres') {
+    const ref = process.env.SUPABASE_URL?.match(
+      /https?:\/\/([a-z0-9]+)\.supabase\.(co|in)/i,
+    )?.[1];
+    if (!ref) {
+      console.error(
+        '[db] La cadena usa el pooler con el usuario "postgres" (le falta el ' +
+          'sufijo del proyecto) y no hay SUPABASE_URL para deducirlo. Corrige ' +
+          'DATABASE_POOL_URL: el usuario debe ser postgres.<ref-del-proyecto>.',
+      );
+    } else {
+      u.username = `postgres.${ref}`;
+      tocada = true;
+      console.warn(
+        `[db] DATABASE_POOL_URL venía con el usuario "postgres"; se corrigió a ` +
+          `"postgres.${ref}" para el pooler. Arréglala en Vercel para no depender de esto.`,
+      );
+    }
+  }
+
+  // Si no hubo nada que tocar se devuelve la cadena ORIGINAL, sin pasarla por
+  // `toString()`: reescribir una URL que ya está bien solo puede estropearla.
+  return tocada ? u.toString() : cadena;
 }
 
 function crear(): Sql {
