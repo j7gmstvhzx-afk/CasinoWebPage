@@ -22,7 +22,9 @@
  * cada build sin costar tiempo.
  */
 
-const { cuando, tramoDe, esDeHoy, agrupar } = await import('../src/lib/cartelera.ts');
+const { cuando, tramoDe, esDeHoy, agrupar, masCercanos } = await import(
+  '../src/lib/cartelera.ts'
+);
 
 /** Sábado 5 de septiembre de 2026. Todos los casos se leen contra este día. */
 const HOY = '2026-09-05';
@@ -161,6 +163,24 @@ comprobar(
   'no se pierde ni se duplica ningún evento por el camino',
 );
 
-const total = CASOS.length + TRAMOS.length + 7;
+// --- Las tres de la portada ------------------------------------------------
+//
+// La portada solo tiene sitio para tres. Antes eran las tres primeras del orden
+// manual del personal, así que la fiesta de octubre podía tapar la música en
+// vivo de esta noche. Tienen que salir las tres MÁS CERCANAS, en el mismo orden
+// que la cartelera.
+const tres = masCercanos(lista, HOY, 3).map((x) => x.id);
+comprobar(
+  tres.join(',') === 'permanente,lunes,sabado-manana',
+  'la portada escoge las tres más cercanas, no las tres primeras de la lista',
+  tres.join(','),
+);
+comprobar(
+  masCercanos(lista, HOY, 99).length === lista.length,
+  'y si caben todas, no se pierde ninguna',
+);
+comprobar(masCercanos([], HOY, 3).length === 0, 'sin promociones no revienta');
+
+const total = CASOS.length + TRAMOS.length + 10;
 console.log(`\n${total} comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);
 process.exit(fallos === 0 ? 0 : 1);

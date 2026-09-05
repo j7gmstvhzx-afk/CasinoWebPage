@@ -22,7 +22,7 @@ import { ParteDelDia } from '@/components/site/ParteDelDia';
 import { HorarioTexto } from '@/components/site/HorarioTexto';
 import { PagadoEsteMes } from '@/components/site/PagadoEsteMes';
 import { estadoDelSalon, programaDelDia } from '@/lib/horario';
-import { cuando, esDeHoy } from '@/lib/cartelera';
+import { cuando, esDeHoy, masCercanos } from '@/lib/cartelera';
 import { hoyEnPR } from '@/lib/hora-pr';
 
 // Esta página se sirve de caché y se rehace cada minuto en segundo plano.
@@ -66,7 +66,14 @@ export default async function Inicio() {
       // veces no" que reportó el dueño. Ver `paraLaPagina` en lib/queries.ts.
       paraLaPagina(getJackpots, 'los premios', []),
       paraLaPagina(() => getMaquinasNuevas(6), 'las máquinas nuevas', []),
-      paraLaPagina(() => getEventos(3), 'las promociones', []),
+      // Se piden DOCE para quedarse con tres.
+      //
+      // La portada solo enseña tres, pero cuáles son las tres depende de la
+      // fecha (ver `masCercanos`), y eso no se puede decidir en la consulta:
+      // el orden de la base es el manual del personal. Pedir solo tres dejaba
+      // fuera lo de esta noche si alguien había puesto la fiesta de octubre
+      // primero. Doce filas de texto no le cuestan nada a nadie.
+      paraLaPagina(() => getEventos(12), 'las promociones', []),
       seguro(getUltimaActualizacion, null),
       // Respaldo: una semana entera sin horario. La banda se esconde sola en vez
       // de anunciar que el casino está cerrado porque una consulta falló.
@@ -95,6 +102,10 @@ export default async function Inicio() {
   // Ver `lib/hora-pr.ts`: el servidor corre en UTC y a partir de las 8 p.m. de
   // Manatí ya sería mañana.
   const hoy = hoyEnPR();
+
+  // Las tres que le importan a quien entra hoy, no las tres primeras de la
+  // lista. Ver `masCercanos` en lib/cartelera.ts.
+  const proximos = masCercanos(eventos, hoy, 3);
 
   return (
     <>
@@ -371,7 +382,7 @@ export default async function Inicio() {
       {/* ---------------------------------------------------------------- */}
       {/* Eventos                                                           */}
       {/* ---------------------------------------------------------------- */}
-      {eventos.length > 0 && (
+      {proximos.length > 0 && (
         <section className="revela contenedor py-14">
           <EncabezadoSeccion
             titulo="Eventos y promociones"
@@ -379,7 +390,7 @@ export default async function Inicio() {
           />
 
           <ul className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {eventos.map((e) => (
+            {proximos.map((e) => (
               <li key={e.id} className="tarjeta relative overflow-hidden">
                 <Marco imagen={e.image_path} alt={e.title} />
                 {/* La misma marca dorada que en /eventos: lo de hoy se ve de

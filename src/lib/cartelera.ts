@@ -193,3 +193,25 @@ export function agrupar<T extends CamposCartelera>(
   grupos.despues.sort(porFecha);
   return grupos;
 }
+
+/**
+ * Las `n` promociones más cercanas, para el trozo de cartelera de la portada.
+ *
+ * La portada solo tiene sitio para tres, y las escogía la consulta por el
+ * `sort_order` que el personal hubiera puesto a mano. Con la cartelera repartida
+ * por fechas eso se convirtió en un problema visible: la fiesta de octubre podía
+ * ocupar las tres tarjetas y la música en vivo de ESTA NOCHE quedarse fuera,
+ * porque alguien le puso un número más alto en marzo.
+ *
+ * El orden es el mismo que el de la cartelera —lo que está pasando, luego esta
+ * semana, luego lo de más adelante— así que las dos páginas cuentan la misma
+ * historia y la portada nunca esconde lo de hoy.
+ */
+export function masCercanos<T extends CamposCartelera>(
+  eventos: T[],
+  hoy: string,
+  n: number,
+): T[] {
+  const { ahora, semana, despues } = agrupar(eventos, hoy);
+  return [...ahora, ...semana, ...despues].slice(0, n);
+}
