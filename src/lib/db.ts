@@ -258,6 +258,17 @@ function crear(): Sql {
   const enBuild = process.env.NEXT_PHASE === 'phase-production-build';
   const corregida = normalizarCadena(cadena);
 
+  // ¿Estamos hablando con el pooler en MODO TRANSACCIÓN? Solo puede ser cierto
+  // con `CAM_POOLER_TRANSACCION=si`, o si algún día la dirección de Vercel
+  // apunta ya al 6543. Cambia lo que se manda en el saludo inicial: ver abajo.
+  const enTransaccion = (() => {
+    try {
+      return new URL(corregida).port === PUERTO_TRANSACCION;
+    } catch {
+      return false;
+    }
+  })();
+
   // Huella de la conexión, SIN la contraseña. Cuando el sitio sale vacío, la
   // pregunta siempre es la misma —  ¿a qué base está hablando y como quién? —  y
   // sin esto hay que adivinarlo desde un error que no lo dice.
@@ -533,7 +544,27 @@ function crear(): Sql {
     // conexión que pueda quedarse muda.
     idle_timeout: 100,
     ssl: local ? false : 'require',
-    connection: plazosDelServidor,
+    // EN MODO TRANSACCIÓN NO SE MANDAN AJUSTES EN EL SALUDO, Y ES LA SOSPECHA
+    // NÚMERO UNO DE POR QUÉ EL 6543 SE QUEDA MUDO.
+    //
+    // `statement_timeout` y compañía viajan como parámetros de arranque de la
+    // conexión. El pooler en modo transacción reparte una misma conexión de
+    // base entre varios clientes, así que no puede aceptar que cada uno traiga
+    // los suyos: lo documentado es que solo admite una lista corta. Cuando se
+    // probó el 6543 en producción, la conexión se abría y la primera consulta
+    // no volvía nunca —ni un error, silencio— que es exactamente lo que se ve
+    // cuando el saludo no se completa.
+    //
+    // No está demostrado. Está preparado: el día que se vuelva a encender el
+    // interruptor, se enciende ya con esta variable controlada, y si entonces
+    // contesta, la respuesta era ésta. Si sigue mudo, no era el saludo y hay
+    // que buscar en el anfitrión o en el plan de Supabase.
+    //
+    // Lo que se pierde mientras tanto: la red de seguridad del lado del
+    // servidor. Nuestros propios plazos (6 s y 6,5 s) siguen puestos, así que
+    // la página no se queda colgada; lo que puede pasar es que una consulta
+    // abandonada siga corriendo en Postgres un rato más.
+    connection: enTransaccion ? {} : plazosDelServidor,
   });
 
   // GLOBALTHIS ES EL ÚNICO SITIO DONDE VIVE EL POOL, TAMBIÉN EN PRODUCCIÓN.
