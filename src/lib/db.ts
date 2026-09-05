@@ -433,7 +433,39 @@ function crear(): Sql {
     //
     // El pooler de Supabase en modo transacción está hecho para sostener
     // conexiones ociosas: es su trabajo.
-    idle_timeout: 180,
+    //
+    // CIEN Y NO CIENTO OCHENTA, y el motivo salió de un fallo en vivo.
+    //
+    // Ciento ochenta nunca llegaba a cumplirse: `MAX_REPOSO_MS` (90 s) tira el
+    // pool antes, así que la única consecuencia real de los 180 era que un
+    // proceso caliente y quieto SEGUÍA OCUPANDO SU SITIO en el pooler hasta que
+    // Vercel lo apagara. Con el pooler en modo sesión eso es caro de verdad: en
+    // ese modo cada cliente se queda con un proceso de Postgres para él solo y
+    // el proyecto solo tiene quince. El 5 de septiembre a las 09:20 se vio
+    // entero en los registros — siete páginas rehaciéndose en el mismo segundo,
+    // más el panel, todas contra el mismo techo:
+    //
+    //     (EMAXCONNSESSION) max clients reached in session mode
+    //     - max clients are limited to pool_size: 15
+    //
+    // Con cien, un proceso caliente y quieto suelta su sitio a los cien
+    // segundos en vez de a los tres minutos: casi la mitad de tiempo ocupando
+    // una de las quince plazas sin usarla.
+    //
+    // NO SE BAJA MÁS, y el guion de plazos lo impide a propósito: `idle_timeout`
+    // tiene que seguir siendo MAYOR que `MAX_REPOSO_MS` (90 s). Quien decide si
+    // una conexión vale es el RELOJ, mirado al pedir el pool, no un
+    // temporizador — en una función congelada los temporizadores no corren, que
+    // es justo el caso en el que hace falta decidir. Si el temporizador fuera el
+    // más corto, el que cierra sería el único que no funciona cuando importa.
+    //
+    // Esto ALIVIA, NO ARREGLA. El techo de quince es del modo sesión, y quien
+    // lo quita es la dirección de la base: el pooler en modo TRANSACCIÓN
+    // (puerto 6543) multiplexa y no tiene ese límite. Es para lo que está
+    // escrito este archivo (`prepare: false`), y con `max: 1` ya no puede
+    // repetirse el fallo por el que se salió de ahí — no hay una segunda
+    // conexión que pueda quedarse muda.
+    idle_timeout: 100,
     ssl: local ? false : 'require',
     connection: plazosDelServidor,
   });

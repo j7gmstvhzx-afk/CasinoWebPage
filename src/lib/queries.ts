@@ -630,6 +630,18 @@ function esTransitorio(e: unknown): boolean {
  * conexión que se quedó muerta mientras la función estaba congelada. El porqué,
  * entero, está en `descartarPool` en lib/db.ts.
  */
+/**
+ * ¿Es "no caben más conexiones" del pooler de Supabase?
+ *
+ * NO SE REINTENTA, y por eso no está en `esTransitorio`: cuando el pooler está
+ * lleno, volver a pedir en el mismo instante es ponerse otra vez al final de la
+ * misma cola llena. Lo único que consigue es gastar el plazo de la página.
+ */
+function poolerLleno(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /EMAXCONNSESSION|max clients reached/i.test(msg);
+}
+
 function esPlazoAgotado(e: unknown): boolean {
   if ((e as { code?: string })?.code === '57014') return true;
   const msg = e instanceof Error ? e.message : String(e);
@@ -767,6 +779,23 @@ export async function intentar<T>(
       ultimo = e;
       const vale = esTransitorio(e) && n < intentos;
       console.error(`[consulta fallida] intento ${n}/${intentos}`, vale ? '(se reintenta)' : '', e);
+
+      // EL POOLER LLENO SE DICE CON PALABRAS, NO CON UN CÓDIGO.
+      //
+      // `XX000 (EMAXCONNSESSION) max clients reached in session mode` no lo
+      // entiende nadie a las once de la noche, y se parece a "la base está
+      // caída" cuando no lo está: la base contesta perfectamente, lo que está
+      // lleno es la sala de espera. Como en el plan Hobby los registros duran
+      // UNA HORA, la línea tiene que explicarse sola la primera vez que se lea.
+      if (poolerLleno(e)) {
+        console.error(
+          '[diagnóstico] el pooler está lleno: la base rechaza conexiones ' +
+            'nuevas, no es que falten datos. En modo sesión el proyecto solo ' +
+            'admite 15 clientes a la vez y cada función se queda con el suyo. ' +
+            'Se quita cambiando DATABASE_POOL_URL al pooler en modo ' +
+            'transacción (puerto 6543), que multiplexa.',
+        );
+      }
 
       if (esPlazoAgotado(e)) {
         // Los dos números que dicen cuál de las dos causas fue. Con el plan
