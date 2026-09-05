@@ -39,7 +39,7 @@ const comprobar = (ok, que, detalle = '') => {
 function con(entorno, cadena) {
   const antes = { ...process.env };
   Object.assign(process.env, entorno);
-  for (const k of ['SUPABASE_URL', 'CAM_POOLER_SESION']) {
+  for (const k of ['SUPABASE_URL', 'CAM_POOLER_TRANSACCION']) {
     if (!(k in entorno)) delete process.env[k];
   }
   try {
@@ -53,21 +53,31 @@ function con(entorno, cadena) {
 const conRef = { SUPABASE_URL: `https://${REF}.supabase.co` };
 const usuario = `postgres.${REF}`;
 
-// --- Lo que SÍ se corrige --------------------------------------------------
+// --- El puerto: por defecto NO se toca -------------------------------------
+//
+// Se probó en producción cambiarlo al 6543 y el sitio se cayó entero: la
+// conexión se abre y no contesta. El detalle está en `aTransacción` en db.ts.
+// Lo que se comprueba aquí es que ese cambio está APAGADO y que el interruptor
+// sigue funcionando, para poder volver a probarlo sin tocar código.
 {
-  const salida = con(conRef, `postgresql://${usuario}:${CLAVE}@${POOLER}:5432/postgres`);
+  const entrada = `postgresql://${usuario}:${CLAVE}@${POOLER}:5432/postgres`;
+  comprobar(con(conRef, entrada) === entrada, 'el puerto del pooler NO se cambia por su cuenta');
+
+  const salida = con({ ...conRef, CAM_POOLER_TRANSACCION: 'si' }, entrada);
   const u = new URL(salida);
-  comprobar(u.port === '6543', 'el modo sesión (5432) pasa a modo transacción (6543)', salida.replace(CLAVE, '···'));
+  comprobar(u.port === '6543', 'con CAM_POOLER_TRANSACCION=si sí pasa al 6543', salida.replace(CLAVE, '···'));
   comprobar(u.password === CLAVE, 'y la contraseña sale exactamente igual que entró');
   comprobar(decodeURIComponent(u.username) === usuario, 'y el usuario no se toca');
   comprobar(u.hostname === POOLER && u.pathname === '/postgres', 'y el servidor y la base tampoco');
 }
+
+// --- Lo que SÍ se corrige siempre: el usuario sin el sufijo del proyecto ----
 {
   const salida = con(conRef, `postgresql://postgres:${CLAVE}@${POOLER}:5432/postgres`);
   const u = new URL(salida);
   comprobar(
-    u.port === '6543' && decodeURIComponent(u.username) === usuario,
-    'las dos cosas a la vez: puerto y usuario sin sufijo',
+    decodeURIComponent(u.username) === usuario && u.port === '5432',
+    'el usuario "postgres" se completa con el proyecto, y el puerto se deja',
   );
 }
 {
@@ -76,7 +86,10 @@ const usuario = `postgres.${REF}`;
   // authentication failed" — el mensaje que manda a cambiar la contraseña
   // buena.
   const rara = 'a%40b%3Ac';
-  const salida = con(conRef, `postgresql://${usuario}:${rara}@${POOLER}:5432/postgres`);
+  const salida = con(
+    { ...conRef, CAM_POOLER_TRANSACCION: 'si' },
+    `postgresql://${usuario}:${rara}@${POOLER}:5432/postgres`,
+  );
   comprobar(new URL(salida).password === rara, 'una contraseña con símbolos codificados sale intacta');
 }
 
@@ -101,21 +114,23 @@ for (const [entrada, porque] of intactas) {
   comprobar(salida === entrada, porque, salida === entrada ? '' : `salió ${salida.replace(CLAVE, '···')}`);
 }
 
-// --- La puerta de atrás ----------------------------------------------------
+// --- Sin SUPABASE_URL ------------------------------------------------------
 {
-  const entrada = `postgresql://${usuario}:${CLAVE}@${POOLER}:5432/postgres`;
-  const salida = con({ ...conRef, CAM_POOLER_SESION: 'si' }, entrada);
-  comprobar(salida === entrada, 'con CAM_POOLER_SESION=si el puerto se deja como venga');
+  // No se puede deducir el proyecto, así que el usuario se queda como está y se
+  // avisa por el registro. Lo que NO puede pasar es que se estropee la cadena.
+  const entrada = `postgresql://postgres:${CLAVE}@${POOLER}:5432/postgres`;
+  comprobar(con({}, entrada) === entrada, 'sin SUPABASE_URL la cadena se devuelve intacta');
 }
 {
-  // Sin SUPABASE_URL no se puede deducir el proyecto, así que el usuario se
-  // queda como está (y se avisa) — pero el puerto sí se arregla igual.
-  const salida = con({}, `postgresql://postgres:${CLAVE}@${POOLER}:5432/postgres`);
+  // El interruptor del puerto no depende de SUPABASE_URL: son dos arreglos
+  // independientes y uno no puede llevarse al otro por delante.
+  const salida = con({ CAM_POOLER_TRANSACCION: 'si' }, `postgresql://postgres:${CLAVE}@${POOLER}:5432/postgres`);
+  const u = new URL(salida);
   comprobar(
-    new URL(salida).port === '6543' && decodeURIComponent(new URL(salida).username) === 'postgres',
-    'sin SUPABASE_URL se arregla el puerto aunque no se pueda arreglar el usuario',
+    u.port === '6543' && decodeURIComponent(u.username) === 'postgres',
+    'y aun así el interruptor del puerto sigue funcionando solo',
   );
 }
 
-console.log(`\n13 comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);
+console.log(`\n14 comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);
 process.exit(fallos === 0 ? 0 : 1);

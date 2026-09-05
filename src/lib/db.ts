@@ -142,13 +142,38 @@ const PUERTO_SESION = '5432';
 const PUERTO_TRANSACCION = '6543';
 
 /**
- * LA PUERTA DE ATRÁS, POR SI HAY QUE VOLVER AL MODO SESIÓN SIN TOCAR CÓDIGO.
+ * ¿SE PASA AL POOLER EN MODO TRANSACCIÓN? POR DEFECTO NO. LO DECIDIÓ PRODUCCIÓN.
  *
- * Poner `CAM_POOLER_SESION=si` en Vercel deja el puerto como venga. Existe para
- * que revertir esto sea una casilla y un redespliegue, no un commit a las once
- * de la noche.
+ * Esto estuvo encendido durante un despliegue del 5 de septiembre y hay que
+ * dejar escrito lo que se midió, porque la tentación de volver a intentarlo es
+ * enorme: el modo transacción es, en teoría, lo correcto para funciones sin
+ * servidor, y el techo de quince clientes del modo sesión es un problema real.
+ *
+ * Lo que pasó al encenderlo, en los registros de las 09:44:
+ *
+ *     [db] host=aws-0-us-east-1.pooler.supabase.com puerto=6543 ...
+ *     [consulta fallida] Error: la consulta pasó de 6000 ms
+ *     [diagnóstico] pool de 6009 ms; último acierto hace 5909 ms
+ *
+ * "Pool de 6009 ms" con "último acierto hace 5909" significa que ese pool
+ * ACABABA DE NACER y NUNCA acertó una: no es una conexión podrida por
+ * congelación ni una base saturada. Por el 6543 la conexión se abre —si no se
+ * abriera saltaría `connect_timeout` a los 5 s, antes— y se queda muda. Es el
+ * mismo síntoma por el que se salió del 6543 la vez anterior, y `max: 1` NO lo
+ * arregla: falla ya la primera consulta, no la segunda.
+ *
+ * Así que el orden de males, medido y no supuesto:
+ *
+ *   - 5432 (sesión): funciona, con techo de 15 clientes en todo el proyecto.
+ *     Cuando se juntan varias páginas rehaciéndose, alguna se hornea vacía.
+ *   - 6543 (transacción): sin techo, y no contesta. El sitio entero en blanco.
+ *
+ * Se queda el 5432. Para volver a probar el 6543 cuando haya algo nuevo que
+ * probar —otro anfitrión, otro plan de Supabase, un ajuste del saludo inicial—
+ * basta con poner `CAM_POOLER_TRANSACCION=si` en Vercel y redesplegar: no hace
+ * falta tocar código, y se apaga igual de rápido si vuelve a quedarse mudo.
  */
-const sesionAPropósito = () => /^(si|sí|1|true)$/i.test(process.env.CAM_POOLER_SESION ?? '');
+const aTransacción = () => /^(si|sí|1|true)$/i.test(process.env.CAM_POOLER_TRANSACCION ?? '');
 
 // exportada solo para `scripts/verificar-cadena.mjs`; nadie más la llama.
 export function normalizarCadena(cadena: string): string {
@@ -169,42 +194,17 @@ export function normalizarCadena(cadena: string): string {
 
   // --- El puerto -----------------------------------------------------------
   //
-  // EL FALLO DEL 5 DE SEPTIEMBRE, ARREGLADO DONDE SE PUEDE ARREGLAR.
-  //
-  // La dirección apuntaba al pooler en modo SESIÓN (5432). En ese modo cada
-  // cliente se queda con un proceso de Postgres entero para él, y este proyecto
-  // solo tiene quince. Una función de Vercel toma el suyo y lo conserva
-  // mientras vive —congelada incluida—, así que basta con que se rehagan varias
-  // páginas a la vez para que la número dieciséis se encuentre con esto:
-  //
-  //     (EMAXCONNSESSION) max clients reached in session mode
-  //     - max clients are limited to pool_size: 15
-  //
-  // y la página se hornee vacía. Pasó con siete pestañas rehaciéndose en el
-  // mismo segundo más el panel.
-  //
-  // El modo TRANSACCIÓN (6543) no tiene ese techo: reparte unos pocos procesos
-  // entre muchos clientes y los devuelve al acabar cada sentencia. Es para lo
-  // que está escrito este archivo entero, empezando por `prepare: false`.
-  //
-  // POR QUÉ SE CORRIGE AQUÍ Y NO EN VERCEL. Es lo mismo que ya se hacía con el
-  // usuario: la dirección lleva la contraseña dentro, así que cambiarla es una
-  // operación manual, delicada y que solo puede hacer el dueño. Una variable
-  // mal puesta no debería dejar el sitio en blanco durante horas cuando el
-  // código sabe perfectamente cuál es el puerto bueno.
-  //
-  // Y POR QUÉ NO VUELVE EL FALLO POR EL QUE SE SALIÓ DEL 6543: aquel era una
-  // SEGUNDA conexión que se abría y se quedaba muda. Desde `max: 1` no hay
-  // segunda conexión que pueda quedarse muda — solo la que ya se demostró que
-  // funciona, en fila.
-  if (u.port === PUERTO_SESION && !sesionAPropósito()) {
+  // POR DEFECTO NO SE TOCA. Se probó cambiarlo y el sitio se cayó entero; el
+  // porqué, con los números, está arriba en `aTransacción`. Queda como interruptor
+  // para poder volver a probarlo sin tocar código el día que haya algo nuevo.
+  if (u.port === PUERTO_SESION && aTransacción()) {
     u.port = PUERTO_TRANSACCION;
     tocada = true;
     console.warn(
-      `[db] DATABASE_POOL_URL apunta al pooler en modo sesión (puerto ` +
-        `${PUERTO_SESION}), que solo admite 15 clientes en todo el proyecto. Se ` +
-        `usa el de modo transacción (${PUERTO_TRANSACCION}), que no tiene ese ` +
-        `techo. Para dejarlo como venía: CAM_POOLER_SESION=si.`,
+      `[db] CAM_POOLER_TRANSACCION está encendido: se cambia el puerto ` +
+        `${PUERTO_SESION} (modo sesión) por el ${PUERTO_TRANSACCION} (modo ` +
+        `transacción). Si las consultas empiezan a pasarse de los 6000 ms sin ` +
+        `un solo acierto, es esto: apágalo y vuelve a desplegar.`,
     );
   }
 
