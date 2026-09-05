@@ -31,7 +31,7 @@ export default async function PaginaClientes() {
     intentar(
       () => sql<Cliente[]>`
         select p.id, p.full_name, p.phone_e164, m.name as municipality, p.created_at,
-               (select count(*) from app.spins s where s.player_id = p.id) as tiradas
+               (select count(*)::int from app.spins s where s.player_id = p.id) as tiradas
           from app.players p
           join app.municipalities m on m.id = p.municipality_id
          where p.blocked_at is null

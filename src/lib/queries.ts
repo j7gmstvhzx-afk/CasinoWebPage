@@ -674,6 +674,38 @@ let ultimoExito = 0;
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * Cuánto se espera antes de reintentar. NUNCA EL MISMO NÚMERO DOS VECES.
+ *
+ * EL PROBLEMA: TODOS REINTENTAN A LA VEZ
+ * ---------------------------------------
+ * Una pausa fija hace que un tropiezo compartido se convierta en una segunda
+ * embestida perfectamente sincronizada. Aquí no es teórico: un despliegue
+ * hornea las nueve páginas en el mismo segundo, así que caducan casi juntas, y
+ * cuando el visitante que llega después las hace rehacerse a la vez, TODAS
+ * piden conexión en el mismo instante. Si el pooler está lleno —quince clientes
+ * en todo el proyecto— todas fallan, y con una pausa fija de 400 ms todas
+ * vuelven a pedirla exactamente 400 ms después. La segunda ola es tan
+ * simultánea como la primera. Se vio el 5 de septiembre a las 09:20: siete
+ * páginas y el panel, mismo segundo, mismo error.
+ *
+ * LA SOLUCIÓN, QUE ES LA DE SIEMPRE: RUIDO
+ * -----------------------------------------
+ * Se le suma azar a la espera para que los que tropezaron juntos vuelvan
+ * separados. Es lo que la industria llama backoff con jitter (AWS lo publicó
+ * como "Exponential Backoff and Jitter"; el libro de SRE de Google lo trata en
+ * el capítulo de sobrecarga). No hace la base más rápida: reparte la cola.
+ *
+ * EL AZAR VA DENTRO DEL PRESUPUESTO QUE YA HABÍA, y eso es a propósito.
+ * La espera queda entre la mitad y el total de `base`, nunca más. Así el
+ * reparto de trescientos milisegundos no toca el cálculo que comprueba
+ * `scripts/verificar-plazos.mjs` —que los intentos y sus pausas quepan en los
+ * quince segundos de la función— y no hay dos verdades sobre lo mismo.
+ */
+function esperaDeReintento(base: number): number {
+  return base / 2 + Math.random() * (base / 2);
+}
+
+/**
  * Cuánto espera el PANEL por cada intento. Más que una página pública.
  *
  * En una página pública, una sección que no carga se queda vacía y el visitante
@@ -812,7 +844,7 @@ export async function intentar<T>(
       }
 
       if (!vale) break;
-      await dormir(pausa);
+      await dormir(esperaDeReintento(pausa));
     } finally {
       // Sin esto, el temporizador mantiene vivo el proceso hasta que vence,
       // incluso cuando la consulta respondió a tiempo.

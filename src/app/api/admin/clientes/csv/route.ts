@@ -33,8 +33,8 @@ export async function GET() {
     }[]
   >`
     select p.full_name, p.phone_e164, m.name as municipality, p.created_at,
-           (select count(*) from app.spins s where s.player_id = p.id) as tiradas,
-           (select count(*) from app.wins  w where w.player_id = p.id) as premios
+           (select count(*)::int from app.spins s where s.player_id = p.id) as tiradas,
+           (select count(*)::int from app.wins  w where w.player_id = p.id) as premios
       from app.players p
       join app.municipalities m on m.id = p.municipality_id
      where p.blocked_at is null
