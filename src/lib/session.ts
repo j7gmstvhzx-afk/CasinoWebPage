@@ -36,7 +36,17 @@ export async function signToken(
 export async function readToken(token?: string): Promise<Record<string, string> | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secretKey(), { issuer: 'cam-giveaway' });
+    // `algorithms` FIJO A HS256, no es redundante.
+    //
+    // La clave es simétrica, así que jose ya no aceptaría RS256 ni `alg: none`.
+    // Pero clavar el algoritmo aquí cierra la puerta a que un cambio futuro de
+    // clave o de librería reabra la "confusión de algoritmo" sin que nadie lo
+    // note. Un token que llegue con cualquier otro `alg` se rechaza como si
+    // estuviera manipulado, que es lo que es.
+    const { payload } = await jwtVerify(token, secretKey(), {
+      issuer: 'cam-giveaway',
+      algorithms: ['HS256'],
+    });
     return payload as Record<string, string>;
   } catch {
     // Firma inválida, expirado o manipulado. Se trata como "sin sesión".

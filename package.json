@@ -15,7 +15,9 @@
     "verificar:cartelera": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-cartelera.mjs",
     "verificar:cadena": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-cadena.mjs",
     "verificar:rutas": "node --experimental-strip-types --no-warnings scripts/verificar-plazo-ruta.mjs",
-    "verificar:semanas": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-semanas.mjs"
+    "verificar:semanas": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-semanas.mjs",
+    "auditoria:forense": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/auditoria-forense.mjs",
+    "verificar:blindaje": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-blindaje.mjs"
   },
   "dependencies": {
     "jose": "^6.2.9",
