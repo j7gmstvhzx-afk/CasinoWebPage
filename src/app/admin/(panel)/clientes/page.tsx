@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { sql } from '@/lib/db';
 import { intentar, LIMITE_PANEL_MS, algunoFallo } from '@/lib/queries';
 import { formatPhone } from '@/lib/phone';
+import { TelefonoOculto } from '@/components/admin/TelefonoOculto';
 import { dateTime } from '@/lib/format';
 import { FalloDeCarga } from '../FalloDeCarga';
 
@@ -129,7 +130,9 @@ export default async function PaginaClientes() {
               {clientes.map((c) => (
                 <tr key={c.id} className="border-b border-linea/50">
                   <td className="py-2.5 pr-4">{c.full_name}</td>
-                  <td className="py-2.5 pr-4 tabular">{formatPhone(c.phone_e164)}</td>
+                  <td className="py-2.5 pr-4">
+                    <TelefonoOculto telefono={formatPhone(c.phone_e164)} />
+                  </td>
                   <td className="py-2.5 pr-4 text-tenue">{c.municipality}</td>
                   <td className="py-2.5 pr-4 tabular">{c.tiradas}</td>
                   <td className="py-2.5 text-tenue">{dateTime(c.created_at)}</td>

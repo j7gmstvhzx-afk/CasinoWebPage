@@ -80,3 +80,28 @@ export function maskPhoneInput(raw: string): string {
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
+
+/**
+ * "(787) 236-0147" -> "(787) •••-0147".
+ *
+ * POR QUÉ SE TAPA EN LA PANTALLA DEL PANEL
+ * -----------------------------------------
+ * La lista de clientes se abre en una computadora que está en el salón, a la
+ * vista. Ahí, cien celulares completos en pantalla son cien celulares que ve
+ * quien pase por detrás, que salen en cualquier foto que alguien le haga a la
+ * pantalla y que se van enteros en una captura compartida por WhatsApp. Nada de
+ * eso requiere robar una contraseña.
+ *
+ * Se dejan los TRES PRIMEROS y los CUATRO ÚLTIMOS a propósito: es lo que hace
+ * falta para reconocer un número que ya se conoce —"sí, ese es el de doña
+ * Carmen"— sin publicar el que no se conoce. Es la misma convención que usa un
+ * banco en un recibo.
+ *
+ * El número entero sigue estando a un clic, y ese clic es justamente el punto:
+ * enseñarlo pasa a ser un acto deliberado en vez de lo que ocurre solo.
+ */
+export function enmascararTelefono(formateado: string): string {
+  const d = (formateado ?? '').replace(/\D+/g, '').replace(/^1/, '');
+  if (d.length !== 10) return formateado;
+  return `(${d.slice(0, 3)}) •••-${d.slice(6)}`;
+}

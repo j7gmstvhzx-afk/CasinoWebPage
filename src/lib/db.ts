@@ -543,7 +543,29 @@ function crear(): Sql {
     // repetirse el fallo por el que se salió de ahí — no hay una segunda
     // conexión que pueda quedarse muda.
     idle_timeout: 100,
-    ssl: local ? false : 'require',
+    // TLS CONTRA LA BASE: CIFRADO SIEMPRE, Y COMPROBANDO CON QUIÉN SE HABLA
+    // CUANDO SE ENCIENDE.
+    //
+    // `'require'` cifra el tráfico pero NO comprueba el certificado del
+    // servidor: acepta a cualquiera que conteste en esa dirección. Cifrar sin
+    // verificar protege de quien escucha el cable, no de quien se pone en
+    // medio. Lo correcto es verificar, y por eso está esto aquí.
+    //
+    // NO se enciende por defecto, y el motivo es de prudencia, no técnico: no
+    // hay forma de probarlo desde el entorno de desarrollo —no se llega a la
+    // base de producción desde aquí— y si el certificado no valida, el sitio se
+    // queda entero sin base. Ya pasó una vez hoy por cambiar algo de la
+    // conexión sin poder probarlo.
+    //
+    // Para encenderlo: CAM_TLS_VERIFICAR=si en Vercel y redesplegar. Si algo
+    // fuera mal, en los registros saldrían errores de certificado
+    // (SELF_SIGNED_CERT_IN_CHAIN, UNABLE_TO_VERIFY_LEAF_SIGNATURE) y se apaga
+    // quitando la variable. En local no aplica: ahí no hay TLS.
+    ssl: local
+      ? false
+      : /^(si|sí|1|true)$/i.test(process.env.CAM_TLS_VERIFICAR ?? '')
+        ? { rejectUnauthorized: true }
+        : 'require',
     // EN MODO TRANSACCIÓN NO SE MANDAN AJUSTES EN EL SALUDO, Y ES LA SOSPECHA
     // NÚMERO UNO DE POR QUÉ EL 6543 SE QUEDA MUDO.
     //

@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { formatPhone } from '@/lib/phone';
 import { hoyEnPR } from '@/lib/hora-pr';
+import { getClientIp } from '@/lib/session';
 import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
@@ -87,6 +88,27 @@ async function manejarGet() {
       ].join(','),
     ),
   ];
+
+  // QUEDA CONSTANCIA DE QUE ALGUIEN SE LLEVÓ LA LISTA.
+  //
+  // Este archivo es lo más sensible que produce el sitio: el nombre, el pueblo
+  // y el CELULAR de todos los clientes, en un archivo que sale del sistema y ya
+  // no se puede controlar. Descargarlo es legítimo —es para mercadeo— pero
+  // tiene que dejar rastro, porque el día que esa lista aparezca donde no debe,
+  // la primera pregunta va a ser cuándo salió y cuántas filas iban.
+  //
+  // Se guarda en `risk_events`, que es donde ya viven los intentos de entrada
+  // fallidos. No se guarda QUIÉN lo hizo porque hoy no se puede saber: el panel
+  // tiene una sola contraseña para todo el personal. Esa es la razón principal
+  // para pasar a cuentas por empleado.
+  //
+  // Si el registro falla no se cancela la descarga: la lista es el trabajo y el
+  // apunte es la contabilidad. Se anota el fallo y se sigue.
+  await sql`
+    insert into app.risk_events (ip_inet, kind, score, detail)
+    values (${await getClientIp()}::inet, 'export_clientes', 0,
+            ${sql.json({ filas: filas.length })})
+  `.catch((e) => console.error('[auditoría] no se pudo anotar la exportación', e));
 
   const fecha = hoyEnPR();
 
