@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/verificar-plazos.mjs && npm run verificar:youtube && npm run verificar:cartelera && npm run verificar:cadena && npm run verificar:rutas && next build",
+    "build": "node scripts/verificar-plazos.mjs && npm run verificar:youtube && npm run verificar:cartelera && npm run verificar:cadena && npm run verificar:rutas && npm run verificar:semanas && next build",
     "start": "next start",
     "lint": "eslint",
     "smoke": "node scripts/smoke-nav.mjs",
@@ -14,7 +14,8 @@
     "verificar:youtube": "node --experimental-strip-types --no-warnings scripts/verificar-youtube.mjs",
     "verificar:cartelera": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-cartelera.mjs",
     "verificar:cadena": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-cadena.mjs",
-    "verificar:rutas": "node --experimental-strip-types --no-warnings scripts/verificar-plazo-ruta.mjs"
+    "verificar:rutas": "node --experimental-strip-types --no-warnings scripts/verificar-plazo-ruta.mjs",
+    "verificar:semanas": "node --experimental-strip-types --no-warnings --import ./scripts/lib/registrar-ts.mjs scripts/verificar-semanas.mjs"
   },
   "dependencies": {
     "jose": "^6.2.9",

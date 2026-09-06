@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { getGanadores, paraLaPagina, type Ganador } from '@/lib/queries';
 import { Monto } from '@/components/site/Monto';
-import { longDate } from '@/lib/format';
+import { moneyShort, longDate } from '@/lib/format';
+import { hoyEnPR } from '@/lib/hora-pr';
+import { porSemanas, type Semana } from '@/lib/semanas';
 
 // NO SON 60 EN TODAS, Y ESO ES EL ARREGLO, NO UN DESCUIDO.
 //
@@ -48,8 +50,19 @@ export const metadata: Metadata = {
  * marca, con el pueblo debajo. Es la misma jerarquía del tablero de premios.
  */
 export default async function PaginaGanadores() {
-  const r = await paraLaPagina(() => getGanadores(24), 'el muro de ganadores', [] as Ganador[]);
+  // SESENTA Y NO VEINTICUATRO.
+  //
+  // Con el muro repartido por semanas, el límite deja de ser "cuántas tarjetas
+  // caben" y pasa a ser "hasta dónde llega el historial". Con veinticuatro, la
+  // semana más antigua salía cortada por la mitad sin decirlo: el desplegable
+  // prometía una semana entera y enseñaba los tres premios que cupieron.
+  const r = await paraLaPagina(() => getGanadores(60), 'el muro de ganadores', [] as Ganador[]);
   const ganadores = r.datos;
+
+  // El día en Puerto Rico, calculado en el servidor y pasado hacia abajo: si el
+  // navegador mirara su propio reloj, en la medianoche del domingo el título de
+  // la primera semana cambiaría solo y React tiraría la página abajo.
+  const semanas = porSemanas(ganadores, (g) => g.ganoEn, hoyEnPR());
 
   return (
     <>
@@ -67,14 +80,72 @@ export default async function PaginaGanadores() {
         ) : ganadores.length === 0 ? (
           <SeccionVacia mensaje="Pronto verás aquí los últimos premios pagados del salón." />
         ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {ganadores.map((g) => (
-              <Tarjeta key={g.id} g={g} />
+          <div className="space-y-3">
+            {semanas.map((s, i) => (
+              /* LA PRIMERA SEMANA ABIERTA, LAS DEMÁS CERRADAS.
+                 Quien entra quiere ver lo último; el resto es historial y se
+                 abre si le interesa. Abrirlas todas sería la lista de siempre
+                 con cabeceras en medio. */
+              <SemanaDesplegable key={s.lunes} semana={s} abierta={i === 0} />
             ))}
-          </ul>
+          </div>
         )}
       </section>
     </>
+  );
+}
+
+/**
+ * Una semana, plegable.
+ *
+ * SE USA `<details>` DEL NAVEGADOR, NO UN COMPONENTE CON ESTADO.
+ *
+ * Es la etiqueta que existe justo para esto, y trae de fábrica lo que si no
+ * habría que escribir a mano y mantener: abre y cierra con el teclado, se
+ * anuncia sola al lector de pantalla como "contraído/expandido", y el buscador
+ * de la página (Ctrl+F) encuentra lo de dentro aunque esté cerrado.
+ *
+ * Y sobre todo: FUNCIONA SIN JAVASCRIPT. Esta página se sirve de caché y el
+ * visitante puede tocar el desplegable antes de que el navegador termine de
+ * cargar los guiones. Con un `useState` habría un momento en que pulsar no hace
+ * nada; con `<details>`, no.
+ *
+ * El resumen dice cuántos premios y cuánto suman, que es lo que hace que valga
+ * la pena abrirlo. Una fila que solo dijera "Del 17 al 23 de agosto" no da
+ * ninguna razón para tocarla.
+ */
+function SemanaDesplegable({ semana, abierta }: { semana: Semana<Ganador>; abierta: boolean }) {
+  const total = semana.items.reduce((n, g) => n + g.montoCentavos, 0);
+  const n = semana.items.length;
+
+  return (
+    <details open={abierta} className="group tarjeta overflow-hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 transition-colors hover:bg-superficie [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-tenue transition-transform duration-200 group-open:rotate-90"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-lg font-semibold">{semana.titulo}</span>
+          <span className="mt-0.5 block text-sm text-tenue">
+            {n === 1 ? '1 premio' : `${n} premios`} · {moneyShort(total)}
+          </span>
+        </span>
+      </summary>
+
+      <div className="border-t border-linea p-5">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {semana.items.map((g) => (
+            <Tarjeta key={g.id} g={g} />
+          ))}
+        </ul>
+      </div>
+    </details>
   );
 }
 
