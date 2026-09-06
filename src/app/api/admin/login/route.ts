@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { getClientIp } from '@/lib/session';
 import { verificarContrasena, crearSesionAdmin, cookieAdmin, cookieAdminBorrar } from '@/lib/admin-auth';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,15 @@ export const dynamic = 'force-dynamic';
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
 
-export async function POST(req: NextRequest) {
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const POST = conPlazo('entrar al panel', manejarPost);
+export const DELETE = conPlazo('salir del panel', manejarDelete);
+
+async function manejarPost(req: NextRequest) {
   const ip = await getClientIp();
   const { contrasena } = (await req.json().catch(() => ({}))) as { contrasena?: string };
 
@@ -38,7 +47,7 @@ export async function POST(req: NextRequest) {
   return res;
 }
 
-export async function DELETE() {
+async function manejarDelete() {
   const res = NextResponse.json({ ok: true });
   res.headers.append('Set-Cookie', cookieAdminBorrar());
   return res;

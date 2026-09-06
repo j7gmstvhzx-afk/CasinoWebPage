@@ -3,12 +3,20 @@ import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { formatPhone } from '@/lib/phone';
 import { hoyEnPR } from '@/lib/hora-pr';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const GET = conPlazo('exportar la lista de clientes', manejarGet);
 
 /**
  * Exportación de la lista de clientes para mercadeo.
@@ -17,7 +25,7 @@ export const maxDuration = 15;
  * codificación local y convierte "Manatí" en "ManatÃ­" — que es exactamente el
  * archivo que el personal va a abrir.
  */
-export async function GET() {
+async function manejarGet() {
   if (!(await esAdmin())) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }

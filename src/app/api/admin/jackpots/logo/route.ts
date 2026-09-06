@@ -4,12 +4,20 @@ import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { borrarImagen } from '@/lib/storage';
 import { refrescarPublico } from '@/lib/revalidar';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const PATCH = conPlazo('guardar el logo', manejarPatch);
 
 /**
  * El logo del juego de una máquina de jackpot.
@@ -31,7 +39,7 @@ const Cuerpo = z.object({
   image_path: z.string().trim().min(1).max(500).nullable(),
 });
 
-export async function PATCH(req: NextRequest) {
+async function manejarPatch(req: NextRequest) {
   if (!(await esAdmin())) {
     return NextResponse.json({ ok: false, error: 'No autorizado.' }, { status: 401 });
   }

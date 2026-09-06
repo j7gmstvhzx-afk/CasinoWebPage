@@ -55,6 +55,7 @@ const q = leer('src/lib/queries.ts');
 const db = leer('src/lib/db.ts');
 const pagina = leer('src/app/admin/(panel)/maquinas-nuevas/page.tsx');
 const config = leer('next.config.ts');
+const rutas = leer('src/lib/plazo-ruta.ts');
 
 // El techo del build sale de next.config.ts si está puesto a mano; si no, del
 // valor por defecto de Next, que es 60 s.
@@ -73,6 +74,7 @@ const v = {
   enTx:      num(db, /idle_in_transaction_session_timeout: ([\d_]+)/, 'idle_in_transaction_session_timeout'),
   sentencia: num(db, /statement_timeout: enBuild \? [\d_]+ : ([\d_]+)/, 'statement_timeout'),
   techo:     num(pagina, /maxDuration = (\d+)/, 'maxDuration') * 1000,
+  escritura: num(rutas, /LIMITE_ESCRITURA_MS = ([\d_]+)/, 'LIMITE_ESCRITURA_MS'),
 
   // Los del build.
   build:          num(q,  /LIMITE_BUILD_MS = ([\d_]+)/, 'LIMITE_BUILD_MS'),
@@ -91,6 +93,14 @@ const reglas = [
   ['los intentos del panel caben en el techo',
    v.intentos * v.panel + (v.intentos - 1) * v.pausa < v.techo],
   ['el corte del servidor es mayor que el del cliente', v.sentencia > v.panel],
+
+  // Las escrituras no van por `intentar()` —no se reintenta un guardado— así
+  // que su plazo lo pone `conPlazo` en la ruta. Tiene que quedar ENTRE los dos
+  // que ya existen: por encima del corte de Postgres, para que dispare antes el
+  // que sabe decir POR QUÉ falló; y por debajo del techo de la función, para
+  // que dé tiempo a contestar en vez de morirse sin explicación.
+  ['Postgres corta una escritura antes que nuestro plazo', v.escritura > v.sentencia],
+  ['y nuestro plazo de escritura cabe en el techo de la función', v.escritura < v.techo],
 
   // El reloj tiene que decidir ANTES que el temporizador, porque en una función
   // congelada el temporizador puede no llegar a correr nunca. Ver MAX_REPOSO_MS

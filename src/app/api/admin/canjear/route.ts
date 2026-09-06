@@ -3,12 +3,20 @@ import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { normalizeVoucherCode } from '@/lib/voucher';
 import { buscarCupon, MENSAJES_CUPON } from '@/lib/vouchers';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const POST = conPlazo('canjear el cupón', manejarPost);
 
 /**
  * Canje de cupones.
@@ -25,7 +33,7 @@ export const maxDuration = 15;
 
 type Cuerpo = { accion?: 'buscar' | 'canjear'; codigo?: string };
 
-export async function POST(req: NextRequest) {
+async function manejarPost(req: NextRequest) {
   if (!(await esAdmin())) {
     return NextResponse.json({ ok: false, mensaje: 'No autorizado.' }, { status: 401 });
   }

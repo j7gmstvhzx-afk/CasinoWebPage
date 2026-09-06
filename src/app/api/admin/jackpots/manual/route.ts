@@ -3,12 +3,22 @@ import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { refrescarPublico } from '@/lib/revalidar';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const POST = conPlazo('guardar los montos', manejarPost);
+export const PATCH = conPlazo('guardar los montos', manejarPatch);
+export const DELETE = conPlazo('borrar el monto', manejarDelete);
 
 /**
  * Entrada manual de los montos del día.
@@ -41,7 +51,7 @@ const Cuerpo = z.object({
     .optional(),
 });
 
-export async function POST(req: NextRequest) {
+async function manejarPost(req: NextRequest) {
   if (!(await esAdmin())) {
     return NextResponse.json({ ok: false, error: 'No autorizado.' }, { status: 401 });
   }
@@ -114,7 +124,7 @@ const Editar = z.object({
   banco: z.number().int().min(0).max(32767).optional(),
 });
 
-export async function PATCH(req: NextRequest) {
+async function manejarPatch(req: NextRequest) {
   if (!(await esAdmin())) {
     return NextResponse.json({ ok: false, error: 'No autorizado.' }, { status: 401 });
   }
@@ -186,7 +196,7 @@ export async function PATCH(req: NextRequest) {
  * lectura anterior" y cualquier cuenta que se quiera hacer después. Una máquina
  * que sale del salón deja de publicarse; lo que ya pasó no se reescribe.
  */
-export async function DELETE(req: NextRequest) {
+async function manejarDelete(req: NextRequest) {
   if (!(await esAdmin())) {
     return NextResponse.json({ ok: false, error: 'No autorizado.' }, { status: 401 });
   }

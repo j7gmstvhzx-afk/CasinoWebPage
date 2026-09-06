@@ -16,12 +16,21 @@ import {
   cookieHeader,
   SESSION_COOKIE,
 } from '@/lib/session';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const POST = conPlazo('entrar a tu cuenta', manejarPost);
+export const DELETE = conPlazo('cerrar la sesión', manejarDelete);
 
 /**
  * Entrar a una cuenta que ya existe.
@@ -65,7 +74,7 @@ const Entrada = z.object({
 const error = (mensaje: string, status = 400) =>
   NextResponse.json({ ok: false, mensaje }, { status });
 
-export async function POST(req: NextRequest) {
+async function manejarPost(req: NextRequest) {
   const crudo = await req.json().catch(() => null);
   const parsed = Entrada.safeParse(crudo ?? {});
   if (!parsed.success) {
@@ -209,7 +218,7 @@ export async function POST(req: NextRequest) {
  * En el casino un mismo celular pasa de mano en mano. Sin una forma de salir,
  * el segundo cliente vería el nombre del primero y no podría jugar.
  */
-export async function DELETE() {
+async function manejarDelete() {
   const { playerId } = await getSession();
   const res = NextResponse.json({ ok: true, estabaDentro: Boolean(playerId) });
   // Max-Age=0 borra la cookie. Los demás atributos tienen que ser idénticos a

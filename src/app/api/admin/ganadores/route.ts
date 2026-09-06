@@ -4,10 +4,20 @@ import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { refrescarPublico } from '@/lib/revalidar';
 import { hoyEnPR } from '@/lib/hora-pr';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const POST = conPlazo('guardar el ganador', manejarPost);
+export const PATCH = conPlazo('guardar los cambios', manejarPatch);
+export const DELETE = conPlazo('borrar el ganador', manejarDelete);
 
 /**
  * El muro de ganadores: pueblo y cantidad.
@@ -38,7 +48,7 @@ function no(mensaje: string, status = 400) {
   return NextResponse.json({ ok: false, error: mensaje }, { status });
 }
 
-export async function POST(req: NextRequest) {
+async function manejarPost(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 
   const parsed = Cuerpo.safeParse(await req.json().catch(() => ({})));
@@ -81,7 +91,7 @@ export async function POST(req: NextRequest) {
  * Se manda solo el estado nuevo, no la fila entera: así el botón no puede
  * pisar sin querer el pueblo ni la cantidad.
  */
-export async function PATCH(req: NextRequest) {
+async function manejarPatch(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 
   const cuerpo = await req.json().catch(() => ({}));
@@ -102,7 +112,7 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest) {
+async function manejarDelete(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 
   const id = new URL(req.url).searchParams.get('id');

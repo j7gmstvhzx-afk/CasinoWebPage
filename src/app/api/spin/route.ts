@@ -14,12 +14,21 @@ import {
 } from '@/lib/session';
 import { nextMidnightPr } from '@/lib/format';
 import { getPromocionesPopup, seguro } from '@/lib/queries';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const GET = conPlazo('leer tu tirada de hoy', manejarGet);
+export const POST = conPlazo('registrar tu tirada', manejarPost);
 
 const Registro = z.object({
   nombre: z.string().trim().min(3).max(120).optional(),
@@ -54,7 +63,7 @@ const error = (codigo: string, mensaje: string, status = 400) =>
  * mostrarle el resultado de hoy si ya tiró, sin disparar una tirada como efecto
  * secundario de abrir la página.
  */
-export async function GET() {
+async function manejarGet() {
   const { playerId } = await getSession();
 
   // Las promociones del pop-up viajan en esta misma respuesta en vez de en una
@@ -99,7 +108,7 @@ export async function GET() {
   });
 }
 
-export async function POST(req: NextRequest) {
+async function manejarPost(req: NextRequest) {
   const ip = await getClientIp();
   const ua = (req.headers.get('user-agent') ?? '').slice(0, 512);
 

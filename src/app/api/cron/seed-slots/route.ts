@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { sql } from '@/lib/db';
+import { conPlazo, LIMITE_ESCRITURA_LARGA_MS } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Techo de la función: por defecto Vercel deja llegar a 300 s, y ahí es donde
 // se quedaron colgadas las peticiones en producción.
 export const maxDuration = 60;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const GET = conPlazo('preparar las tiradas del día', manejarGet, LIMITE_ESCRITURA_LARGA_MS);
 
 /**
  * Siembra los premios de los próximos días.
@@ -21,7 +29,7 @@ export const maxDuration = 60;
  * Se siembran 7 días de una vez para que el sistema aguante una semana entera
  * de fallos del cron sin que la promoción se rompa. Es idempotente.
  */
-export async function GET(req: NextRequest) {
+async function manejarGet(req: NextRequest) {
   const secreto = process.env.CRON_SECRET;
   const cabecera = req.headers.get('authorization') ?? '';
 

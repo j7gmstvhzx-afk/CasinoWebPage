@@ -3,10 +3,19 @@ import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { refrescarPublico } from '@/lib/revalidar';
+import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
+
+/*
+ * El plazo de estas rutas. Escriben en la base, así que NO se reintentan:
+ * cuando un guardado no contesta no se sabe si llegó, y repetirlo a ciegas
+ * es apostar. Ver src/lib/plazo-ruta.ts.
+ */
+export const POST = conPlazo('guardar el horario', manejarPost);
+export const DELETE = conPlazo('borrar la excepción', manejarDelete);
 
 /**
  * El horario del salón, la programación semanal y las excepciones.
@@ -66,7 +75,7 @@ function no(mensaje: string, status = 400) {
   return NextResponse.json({ ok: false, error: mensaje }, { status });
 }
 
-export async function POST(req: NextRequest) {
+async function manejarPost(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 
   const parsed = Cuerpo.safeParse(await req.json().catch(() => ({})));
@@ -136,7 +145,7 @@ export async function POST(req: NextRequest) {
 }
 
 /** Borra una entrada del programa, o una excepción de fecha. */
-export async function DELETE(req: NextRequest) {
+async function manejarDelete(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 
   const url = new URL(req.url);
