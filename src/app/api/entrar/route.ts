@@ -17,6 +17,7 @@ import {
   SESSION_COOKIE,
 } from '@/lib/session';
 import { conPlazo } from '@/lib/plazo-ruta';
+import { revocarSesionesJugador } from '@/lib/revocar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -220,6 +221,17 @@ async function manejarPost(req: NextRequest) {
  */
 async function manejarDelete() {
   const { playerId } = await getSession();
+
+  // Igual que en el panel: salir cierra las sesiones de ESTE jugador en todos
+  // sus aparatos, no solo borra la cookie de este navegador. Ver lib/revocar.ts.
+  // En el casino un mismo celular pasa de mano en mano; que "salir" deje la
+  // sesión viva en otro sitio sería justo lo que hay que evitar.
+  if (playerId) {
+    await revocarSesionesJugador(playerId).catch((e) =>
+      console.error('[sesión] no se pudo mover el sello del jugador al salir', e),
+    );
+  }
+
   const res = NextResponse.json({ ok: true, estabaDentro: Boolean(playerId) });
   // Max-Age=0 borra la cookie. Los demás atributos tienen que ser idénticos a
   // los de cuando se creó o el navegador la deja donde está.

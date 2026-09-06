@@ -2,6 +2,7 @@ import 'server-only';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { signToken, readToken } from './session';
+import { selloAdmin, tokenVigente, emitidoEnMs } from './revocar';
 
 /**
  * Acceso al panel de empleados.
@@ -43,7 +44,17 @@ export async function crearSesionAdmin(): Promise<string> {
 export async function esAdmin(): Promise<boolean> {
   const jar = await cookies();
   const t = await readToken(jar.get(ADMIN_COOKIE)?.value);
-  return t?.rol === 'staff';
+  if (t?.rol !== 'staff') return false;
+
+  // LA FIRMA NO BASTA: HAY QUE MIRAR SI LA SESIÓN FUE CERRADA.
+  //
+  // Un token bien firmado y sin caducar puede estar REVOCADO: alguien pulsó
+  // "Salir" en cualquier aparato y eso cierra todas las sesiones del panel. Sin
+  // esta comprobación, salir solo limpiaba el navegador que tenías delante y el
+  // token seguía abriendo el panel siete días más desde cualquier otro sitio.
+  // Ver src/lib/revocar.ts.
+  const sello = await selloAdmin();
+  return tokenVigente(emitidoEnMs(t), sello);
 }
 
 export function cookieAdmin(valor: string): string {

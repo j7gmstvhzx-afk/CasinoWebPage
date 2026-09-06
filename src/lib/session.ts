@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
+import { emitidoEnMs } from './revocar-hora';
 import { cookies, headers } from 'next/headers';
 
 /**
@@ -22,10 +23,20 @@ const secretKey = () => {
 };
 
 export async function signToken(
-  payload: Record<string, string>,
+  payload: Record<string, string | number>,
   days = SESSION_DAYS,
 ): Promise<string> {
-  return new SignJWT(payload)
+  // `ms`: LA HORA DE EMISIÓN CON MILISEGUNDOS, y no es un capricho.
+  //
+  // El `iat` que pone el estándar va en SEGUNDOS. La revocación compara esa
+  // hora contra un sello que sí tiene milisegundos (ver lib/revocar.ts), y con
+  // solo segundos pasaba esto: si alguien salía y volvía a entrar dentro del
+  // MISMO segundo, el token nuevo apuntaba al comienzo de ese segundo, el sello
+  // a un instante posterior dentro de él, y la sesión recién abierta nacía
+  // muerta. Salió en la prueba de "salir y volver a entrar".
+  //
+  // Con `ms` la comparación es exacta y ese empate no existe.
+  return new SignJWT({ ...payload, ms: Date.now() })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setIssuer('cam-giveaway')
@@ -57,13 +68,23 @@ export async function readToken(token?: string): Promise<Record<string, string> 
 export async function getSession(): Promise<{
   playerId: string | null;
   deviceId: string | null;
+  /**
+   * Hora de emisión del token de sesión, en milisegundos. Hace falta para
+   * comprobar si la sesión fue REVOCADA desde entonces: ver `tokenVigente` en
+   * lib/revocar.ts. Sin sesión, null.
+   */
+  sesionEmitidoMs: number | null;
 }> {
   const jar = await cookies();
   const [sess, dev] = await Promise.all([
     readToken(jar.get(SESSION_COOKIE)?.value),
     readToken(jar.get(DEVICE_COOKIE)?.value),
   ]);
-  return { playerId: sess?.pid ?? null, deviceId: dev?.did ?? null };
+  return {
+    playerId: sess?.pid ?? null,
+    deviceId: dev?.did ?? null,
+    sesionEmitidoMs: emitidoEnMs(sess),
+  };
 }
 
 export function cookieHeader(name: string, value: string, days = SESSION_DAYS): string {

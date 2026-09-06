@@ -20,6 +20,17 @@
 
 import { readFileSync } from 'node:fs';
 
+// .env.local a mano: este guion no pasa por Next, que es quien normalmente lo
+// carga. Hace falta para SESSION_SECRET y DATABASE_POOL_URL en el escenario 9.
+try {
+  for (const l of readFileSync(new URL('../.env.local', import.meta.url), 'utf8').split('\n')) {
+    const m = /^([A-Z_]+)=(.*)$/.exec(l.trim());
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"|"$/g, '');
+  }
+} catch {
+  /* sin .env.local: se usa lo que haya en el entorno */
+}
+
 const BASE = process.env.BASE ?? 'http://127.0.0.1:3100';
 
 if (!/localhost|127\.0\.0\.1/.test(BASE)) {
@@ -281,6 +292,104 @@ nota('8 · XSS ALMACENADO — guardar <script> y que le explote a otro en la car
   }
 }
 
+
+// ===========================================================================
+nota('9 · SALIR DE VERDAD — que cerrar sesión mate el token en el servidor');
+// ===========================================================================
+{
+  // ESTE ES EL ESCENARIO QUE MÁS SE PARECE A LO QUE PASA EN LA VIDA REAL:
+  // alguien copió la cookie, o quedó en una tablet prestada. Si "salir" solo
+  // borra la cookie del navegador que tienes delante, el token sigue abriendo el
+  // panel desde cualquier otro sitio hasta que caduque solo (siete días).
+  //
+  // Se prueba GUARDANDO la cookie, saliendo, y volviendo a usar LA MISMA cookie.
+  // El escenario 3 agotó el limitador de intentos a propósito. Aquí hace falta
+  // poder entrar de verdad, así que se vacía — es la base LOCAL de pruebas, y
+  // vaciarla es lo mismo que esperar una hora.
+  {
+    const { sql: sqlLimpia } = await import('../src/lib/db.ts');
+    await sqlLimpia`delete from app.rate_events`.catch(() => {});
+  }
+
+  const c = clave();
+  if (!c) {
+    console.log('  (sin ADMIN_PASSWORD: no se pudo probar)');
+  } else {
+    const entrada = await json('/api/admin/login', { contrasena: c });
+    const galleta = entrada.headers.get('set-cookie')?.split(';')[0] ?? '';
+
+    const antes = await req('/api/admin/clientes/csv', { headers: { cookie: galleta } });
+    linea(antes.status === 200, 'la sesión recién abierta funciona (control)', `status ${antes.status}`);
+
+    await req('/api/admin/login', { method: 'DELETE', headers: { cookie: galleta } });
+
+    // La MISMA cookie, después de salir. Antes de este cambio, esto daba 200.
+    const despues = await req('/api/admin/clientes/csv', { headers: { cookie: galleta } });
+    linea(
+      despues.status === 401,
+      'tras salir, el MISMO token ya no abre el panel desde ningún lado',
+      `status ${despues.status} (antes de este arreglo daba 200)`,
+    );
+
+    // Y se puede volver a entrar con normalidad: revocar no rompe el login.
+    const otra = await json('/api/admin/login', { contrasena: c });
+    const galleta2 = otra.headers.get('set-cookie')?.split(';')[0] ?? '';
+    const reentrada = await req('/api/admin/clientes/csv', { headers: { cookie: galleta2 } });
+    linea(reentrada.status === 200, 'y se puede volver a entrar después de salir', `status ${reentrada.status}`);
+    cookieAdmin = galleta2;
+  }
+
+  // --- El jugador: mismo principio, sello por persona --------------------
+  //
+  // Se firma un token de jugador a mano (con el mismo secreto que usa el sitio)
+  // para poder controlar su hora de emisión, se comprueba que sirve, se marca la
+  // sesión como cerrada en la base y se comprueba que deja de servir.
+  const { sql } = await import('../src/lib/db.ts');
+  const { SignJWT } = await import('jose');
+
+  const [jug] = await sql`select id from app.players where blocked_at is null limit 1`;
+  if (!jug) {
+    console.log('  (sin jugadores en la base local: no se pudo probar)');
+  } else {
+    const secreto = new TextEncoder().encode(process.env.SESSION_SECRET);
+    const token = await new SignJWT({ pid: jug.id, ms: Date.now() })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setIssuer('cam-giveaway')
+      .setExpirationTime('1d')
+      .sign(secreto);
+    const galleta = `__Host-cam_sess=${token}`;
+
+    await sql`update app.players set sessions_valid_from = null where id = ${jug.id}`;
+    const antes = await req('/api/spin', { headers: { cookie: galleta } });
+    const reconocido = /"registrado":true/.test(antes.texto);
+    linea(reconocido, 'la sesión del jugador funciona (control)', reconocido ? '' : antes.texto.slice(0, 90));
+
+    // "Salir" en cualquiera de sus aparatos: se mueve el sello.
+    await sql`update app.players set sessions_valid_from = now() where id = ${jug.id}`;
+    const despues = await req('/api/spin', { headers: { cookie: galleta } });
+    const sigue = /"registrado":true/.test(despues.texto);
+    linea(!sigue, 'tras salir, el MISMO token del jugador deja de valer', sigue ? 'SIGUE ENTRANDO' : 'ya no lo reconoce');
+
+    // Y la tirada tampoco pasa con una sesión cerrada.
+    const tirada = await req('/api/spin', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: galleta },
+      // Datos VÁLIDOS a propósito: si no pasaran la validación, la respuesta
+      // sería 400 y no llegaríamos a comprobar lo que importa, que es la sesión.
+      body: JSON.stringify({
+        nombre: 'Prueba Forense',
+        celular: '7872223333',
+        puebloId: 1,
+        acepta: true,
+        contrasena: 'claveDePrueba12',
+      }),
+    });
+    linea(tirada.status === 401, 'y con la sesión cerrada no se puede tirar', `status ${tirada.status}`);
+
+    await sql`update app.players set sessions_valid_from = null where id = ${jug.id}`;
+  }
+}
 
 console.log(`\n${fallos === 0 ? 'Todo aguantó.' : `${fallos} escenario(s) ENTRARON — revisar arriba.`}`);
 process.exit(fallos === 0 ? 0 : 1);

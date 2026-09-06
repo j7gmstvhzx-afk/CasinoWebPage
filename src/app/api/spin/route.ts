@@ -15,6 +15,7 @@ import {
 import { nextMidnightPr } from '@/lib/format';
 import { getPromocionesPopup, seguro } from '@/lib/queries';
 import { conPlazo } from '@/lib/plazo-ruta';
+import { sesionJugadorVigente, tokenVigente } from '@/lib/revocar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,7 +65,7 @@ const error = (codigo: string, mensaje: string, status = 400) =>
  * secundario de abrir la página.
  */
 async function manejarGet() {
-  const { playerId } = await getSession();
+  const { playerId, sesionEmitidoMs } = await getSession();
 
   // Las promociones del pop-up viajan en esta misma respuesta en vez de en una
   // llamada aparte: el modal ya hace esta petición al abrirse, y una segunda
@@ -78,13 +79,14 @@ async function manejarGet() {
   const [fila] = await sql<
     {
       full_name: string;
+      sessions_valid_from: Date | null;
       is_winner: boolean | null;
       reels: number[] | null;
       code: string | null;
       expires_at: string | null;
     }[]
   >`
-    select p.full_name, s.is_winner, s.reels, v.code, v.expires_at
+    select p.full_name, p.sessions_valid_from, s.is_winner, s.reels, v.code, v.expires_at
       from app.players p
       left join app.spins s
         on s.player_id = p.id and s.gaming_date = app.gaming_date(now())
@@ -94,6 +96,15 @@ async function manejarGet() {
   `;
 
   if (!fila) return NextResponse.json({ ok: true, registrado: false, promos });
+
+  // LA SESIÓN PUEDE ESTAR CERRADA AUNQUE EL TOKEN ESTÉ BIEN FIRMADO.
+  //
+  // Si el jugador pulsó "Salir" en cualquier aparato, este token dejó de valer
+  // en ese instante. Se responde como si no hubiera sesión: la pantalla pide
+  // entrar otra vez, que es lo que tiene que pasar. Ver lib/revocar.ts.
+  if (!tokenVigente(sesionEmitidoMs, fila.sessions_valid_from)) {
+    return NextResponse.json({ ok: true, registrado: false, promos });
+  }
 
   return NextResponse.json({
     ok: true,
@@ -117,10 +128,17 @@ async function manejarPost(req: NextRequest) {
   if (!parsed.success) return error('DATOS_INVALIDOS', 'Revisa los datos del formulario.');
   if (parsed.data.website) return error('DATOS_INVALIDOS', 'Revisa los datos del formulario.');
 
-  const { playerId: sesion, deviceId } = await getSession();
+  const { playerId: sesion, deviceId, sesionEmitidoMs } = await getSession();
   const dispositivo = deviceId ?? randomUUID();
   const cookiesNuevas: string[] = [];
   if (!deviceId) cookiesNuevas.push(cookieHeader(DEVICE_COOKIE, await signToken({ did: dispositivo })));
+
+  // Una sesión cerrada no tira. Si el token está revocado se pide entrar de
+  // nuevo en vez de dejarlo pasar o registrarlo al vuelo por debajo, que sería
+  // reabrirle la sesión a quien acaba de cerrarla.
+  if (sesion && !(await sesionJugadorVigente(sesion, sesionEmitidoMs))) {
+    return error('SESION_CERRADA', 'Cerraste la sesión. Entra otra vez para jugar.', 401);
+  }
 
   let playerId = sesion;
 

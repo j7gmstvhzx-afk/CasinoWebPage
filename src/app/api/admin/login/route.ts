@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { getClientIp } from '@/lib/session';
 import { verificarContrasena, crearSesionAdmin, cookieAdmin, cookieAdminBorrar } from '@/lib/admin-auth';
 import { conPlazo } from '@/lib/plazo-ruta';
+import { revocarSesionesAdmin } from '@/lib/revocar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,26 @@ async function manejarPost(req: NextRequest) {
 }
 
 async function manejarDelete() {
-  const res = NextResponse.json({ ok: true });
+  // SALIR CIERRA LA SESIÓN EN EL SERVIDOR, NO SOLO EN ESTE NAVEGADOR.
+  //
+  // Borrar la cookie limpia el aparato que tienes delante. Mover el sello
+  // invalida TODOS los tokens del panel emitidos hasta ahora, estén donde
+  // estén: otra tablet, un token copiado, una pestaña olvidada. Con una
+  // contraseña compartida es la semántica correcta —si se pierde un aparato,
+  // salir en cualquier otro lo deja fuera— y es lo que se pidió.
+  //
+  // Si la base fallara, el borrado de la cookie se hace igual y se avisa: se
+  // sale de este navegador aunque no se haya podido revocar en el servidor.
+  // Vale más eso que devolver un error y dejar la sesión abierta también aquí.
+  let revocado = true;
+  try {
+    await revocarSesionesAdmin();
+  } catch (e) {
+    revocado = false;
+    console.error('[sesión] no se pudo mover el sello del panel al salir', e);
+  }
+
+  const res = NextResponse.json({ ok: true, revocado });
   res.headers.append('Set-Cookie', cookieAdminBorrar());
   return res;
 }
