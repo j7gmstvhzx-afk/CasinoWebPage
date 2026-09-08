@@ -25,7 +25,7 @@
  * de su fin, se queda hasta que acaba el día. La hora es información, no filtro.
  */
 
-import { DIAS, MESES, aMinutos, comoHora, diaSemanaDe, sumarDias } from './hora-pr';
+import { DIAS, aMinutos, comoHora, diaSemanaDe, fechaLarga, sumarDias } from './hora-pr';
 
 export type CamposCartelera = {
   starts_on: string | null;
@@ -40,14 +40,6 @@ export const DIAS_SEMANA = 7;
 // =============================================================================
 // La frase
 // =============================================================================
-
-/** "12 de septiembre". El año solo cuando no es el de hoy, que si no es ruido. */
-function fechaLarga(f: string, hoy: string): string {
-  const [anio, mes, dia] = f.split('-');
-  const nombre = MESES[Number(mes) - 1] ?? '';
-  const base = `${Number(dia)} de ${nombre}`;
-  return anio === hoy.slice(0, 4) ? base : `${base} de ${anio}`;
-}
 
 /**
  * "hoy", "mañana", "el sábado 12 de septiembre", "el 12 de octubre".

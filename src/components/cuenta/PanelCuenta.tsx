@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FormularioRegistro, FormularioEntrar } from '@/components/cuenta/formularios';
+import { Historial } from '@/components/cuenta/Historial';
 import { formatVoucherCode } from '@/lib/voucher';
 import { untilLabel } from '@/lib/format';
 import { PROMO } from '@/lib/site';
@@ -201,6 +202,10 @@ function Resumen({ datos, onSalir }: { datos: Cuenta; onSalir: () => void }) {
           </p>
         </div>
       )}
+
+      {/* Debajo del día de hoy, lo que la cuenta lleva guardado desde siempre.
+          Se pide solo, en su propia llamada: ver components/cuenta/Historial. */}
+      <Historial yaSaleHoy={Boolean(gano && datos.voucher)} />
     </div>
   );
 }

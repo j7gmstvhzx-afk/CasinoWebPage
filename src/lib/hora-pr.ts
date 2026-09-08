@@ -120,3 +120,17 @@ export function nombreMesDe(iso: string): { mes: string; anio: string } {
   const [anio, mes] = iso.split('-');
   return { mes: MESES[Number(mes) - 1] ?? '', anio };
 }
+
+/**
+ * "12 de septiembre". El año solo cuando no es el de hoy, que si no es ruido.
+ *
+ * Vivía privada dentro de `cartelera.ts`. Sale aquí porque el historial de la
+ * cuenta dice la misma clase de fecha, y una segunda copia del array de meses
+ * es exactamente lo que `nombreMesDe` (justo arriba) existe para evitar.
+ */
+export function fechaLarga(f: string, hoy: string): string {
+  const [anio, mes, dia] = f.split('-');
+  const nombre = MESES[Number(mes) - 1] ?? '';
+  const base = `${Number(dia)} de ${nombre}`;
+  return anio === hoy.slice(0, 4) ? base : `${base} de ${anio}`;
+}
