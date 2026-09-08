@@ -29,7 +29,11 @@ const {
 } = await import('../src/lib/historial-texto.ts');
 
 let fallos = 0;
+// El total se cuenta, no se escribe a mano: tecleado se queda atrás en cuanto
+// se añade un caso, y el resumen pasa a mentir.
+let total = 0;
 const comprobar = (ok, que, detalle = '') => {
+  total++;
   if (!ok) fallos++;
   console.log(`${ok ? '  ok  ' : 'FALLA '} ${que}${detalle ? `\n         ${detalle}` : ''}`);
 };
@@ -107,5 +111,5 @@ igual(tituloDePremios(0), 'Todavía no has ganado', 'no haber ganado se dice ent
 igual(tituloDePremios(1), 'Ganaste una vez', 'una vez, en singular');
 igual(tituloDePremios(3), 'Has ganado 3 veces', 'y varias, con el número');
 
-console.log(`\n27 comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);
+console.log(`\n${total} comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);
 process.exit(fallos === 0 ? 0 : 1);

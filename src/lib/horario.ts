@@ -239,3 +239,30 @@ export function resumenSemana(h: HorarioSitio): { dias: string; horas: string }[
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * ¿Hay algún día con una sola hora escrita?
+ *
+ * POR QUÉ ES UNA FUNCIÓN Y NO UN `if` EN LA RUTA
+ * ----------------------------------------------
+ * La API guardaba un día a medias como CERRADO, en silencio. La pantalla del
+ * panel lo impide, así que hacía falta llegar por otro camino para provocarlo
+ * —  y "por otro camino" incluye una pestaña vieja, un reintento a medio
+ * enviar, o el propio panel el día que alguien le cambie algo. El resultado
+ * era el peor posible: el dueño escribe "abre 8:00", se le olvida el cierre, el
+ * panel dice "Guardado", y el lunes queda anunciado como CERRADO en la portada,
+ * en el pie de todas las páginas y en Contacto.
+ *
+ * Cerrado se pide dejando las DOS vacías. Una sola es un descuido, y un
+ * descuido se contesta, no se interpreta.
+ *
+ * Devuelve el número de día (0 = domingo) del primero que esté a medias, o
+ * `null` si la semana está bien. Aquí y no en la ruta para poder probarlo sin
+ * levantar el servidor: ver scripts/verificar-horario.mjs.
+ */
+export function diaAMedias(
+  dias: { dia: number; abre: string | null; cierra: string | null }[],
+): number | null {
+  const malo = dias.find((d) => Boolean(d.abre) !== Boolean(d.cierra));
+  return malo ? malo.dia : null;
+}

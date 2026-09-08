@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { refrescarPublico } from '@/lib/revalidar';
+import { diaAMedias } from '@/lib/horario';
+import { DIAS } from '@/lib/hora-pr';
 import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
@@ -83,13 +85,29 @@ async function manejarPost(req: NextRequest) {
   const d = parsed.data;
 
   if (d.que === 'semana') {
+    // UN DÍA A MEDIAS NO SE INTERPRETA, SE DEVUELVE.
+    //
+    // Antes, si llegaba la hora de apertura sin la de cierre, las dos se
+    // guardaban como null — o sea, el día quedaba CERRADO — y la respuesta
+    // decía "ok". La rama de las excepciones, tres pantallas más abajo, ya
+    // contestaba a este mismo descuido; la de la semana no. Se dice qué día es
+    // para no obligar a repasar los siete.
+    const aMedias = diaAMedias(d.dias);
+    if (aMedias !== null) {
+      return no(
+        `El ${DIAS[aMedias]} tiene una sola hora. Escribe la de apertura y la de cierre, ` +
+          'o déjalas las dos vacías si ese día está cerrado.',
+      );
+    }
+
     // Las siete filas de una vez, en una transacción: si se guardaran una a
     // una y fallara la cuarta, el salón quedaría con media semana nueva y
     // media vieja, que es peor que no haber guardado nada.
     await sql.begin(async (tx) => {
       for (const dia of d.dias) {
-        const abre = dia.abre && dia.cierra ? dia.abre : null;
-        const cierra = dia.abre && dia.cierra ? dia.cierra : null;
+        // Llegados aquí o están las dos o no está ninguna, así que ya no hace
+        // falta el `abre && cierra ? … : null` que antes tapaba el descuido.
+        const { abre, cierra } = dia;
         await tx`
           insert into app.horario (dia, abre, cierra)
           values (${dia.dia}, ${abre}::time, ${cierra}::time)

@@ -41,7 +41,13 @@ async function manejarGet() {
       premios: number;
     }[]
   >`
-    select p.full_name, p.phone_e164, m.name as municipality, p.created_at,
+    -- La fecha de registro se convierte A HORA DE PUERTO RICO en la base, no
+    -- en JavaScript. Salía de un toISOString(), que es UTC: quien abrió su
+    -- cuenta un sábado a las 9 de la noche aparecía en la lista como del
+    -- domingo. app.gaming_date es la misma función con la que se decide de qué
+    -- día es una tirada, así que la lista y el sorteo cuentan los días igual.
+    select p.full_name, p.phone_e164, m.name as municipality,
+           app.gaming_date(p.created_at)::text as created_at,
            (select count(*)::int from app.spins s where s.player_id = p.id) as tiradas,
            (select count(*)::int from app.wins  w where w.player_id = p.id) as premios
       from app.players p
@@ -82,7 +88,7 @@ async function manejarGet() {
         escapar(f.full_name),
         escapar(formatPhone(f.phone_e164)),
         escapar(f.municipality),
-        escapar(new Date(f.created_at).toISOString().slice(0, 10)),
+        escapar(f.created_at),
         f.tiradas,
         f.premios,
       ].join(','),
