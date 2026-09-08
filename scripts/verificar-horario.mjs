@@ -19,7 +19,7 @@
  * Lógica pura: no toca la base ni levanta el servidor. Corre en cada build.
  */
 
-const { estadoDelSalon, reglaDe, franjaTexto, resumenSemana, diaAMedias } =
+const { estadoDelSalon, reglaDe, franjaTexto, resumenSemana, diaAMedias, programaDelDia } =
   await import('../src/lib/horario.ts');
 
 let fallos = 0;
@@ -147,6 +147,35 @@ igual(franjaTexto(null), 'Cerrado', 'y un día sin horario, "Cerrado"');
   igual(diaAMedias(soloCierra), 6, 'y falta la de apertura, igual');
 
   igual(diaAMedias([]), null, 'sin días que revisar, nada que objetar');
+}
+
+// --- El programa que cruza medianoche --------------------------------------
+{
+  // Música en vivo de 10:00 p.m. a 2:00 a.m., todos los días.
+  const musica = {
+    id: 'm', titulo: 'Música en vivo', detalle: null,
+    dias: [0, 1, 2, 3, 4, 5, 6], desde: '22:00', hasta: '02:00',
+    cortesia: false, icono: null,
+  };
+  // Y el café de la mañana, que sí termina dentro del mismo día.
+  const cafe = { ...musica, id: 'c', titulo: 'Café', desde: '07:00', hasta: '11:00' };
+
+  const aLasTres = programaDelDia([musica, cafe], enPR('2026-09-07', '15:00'));
+  const m = aLasTres.find((x) => x.id === 'm');
+  const c = aLasTres.find((x) => x.id === 'c');
+  comprobar(m.yaPaso === false,
+    'A LAS 3 DE LA TARDE, LA MÚSICA DE ESTA NOCHE NO "YA PASÓ": todavía no ha empezado');
+  comprobar(m.ahora === false, 'y tampoco está sonando');
+  comprobar(c.yaPaso === true, 'pero el café de la mañana sí pasó, y se dice');
+
+  const aMedianoche = programaDelDia([musica], enPR('2026-09-08', '00:30'));
+  comprobar(aMedianoche[0].ahora === true, 'a las 12:30 a.m. la música SÍ está sonando');
+
+  const aLasOnce = programaDelDia([musica], enPR('2026-09-07', '23:00'));
+  comprobar(aLasOnce[0].ahora === true, 'y a las 11 de la noche también');
+
+  const soloLunes = programaDelDia([{ ...musica, dias: [1] }], enPR('2026-09-08', '15:00'));
+  comprobar(soloLunes.length === 0, 'lo que no es de hoy no sale (el 8 es martes)');
 }
 
 console.log(`\n${total} comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);

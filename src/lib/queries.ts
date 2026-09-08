@@ -246,7 +246,8 @@ export type FilaEntrada = {
   centavosHoy: number | null;
   centavosPrevio: number | null;
   /**
-   * Día de la última lectura con monto de ESTA máquina, o null si nunca tuvo.
+   * Instante de la última lectura con monto de ESTA máquina, o null si nunca
+   * tuvo. Instante y no día: la ventana del tablero se mide en horas.
    *
    * Va a la pantalla para poder decirle al empleado por qué una máquina no está
    * en el tablero, con su fecha, en vez de dejarle adivinar.
@@ -254,7 +255,7 @@ export type FilaEntrada = {
   ultimaLecturaEn: string | null;
   /** El arte del juego, o null si nadie lo ha subido. Lo pone GestorLogos. */
   logo: string | null;
-  /** Día de la lectura más reciente de TODO el sistema: el ancla de la ventana. */
+  /** Instante de la lectura más reciente de TODO el sistema: el ancla de la ventana. */
   corte: string | null;
 };
 
@@ -301,8 +302,14 @@ export async function getMaquinasParaEntrada(): Promise<FilaEntrada[]> {
     select m.id, m.name, m.bank_number, m.image_path,
            hoy.amount_cents  as centavos_hoy,
            ayer.amount_cents as centavos_previo,
-           app.gaming_date(ultima.reading_at)::text as ultima_en,
-           app.gaming_date((select ultima from corte))::text as corte
+           -- LOS DOS VAN COMO INSTANTE, NO COMO DÍA DE CALENDARIO.
+           -- El tablero filtra por reading_at > corte - 3 días, que es
+           -- aritmética de instantes. Convertirlos aquí a día suelto hacía que
+           -- el panel y la página contestaran distinto en las horas de en
+           -- medio, y el panel acusaba de "Fuera del tablero" a máquinas que
+           -- sí estaban publicadas.
+           ultima.reading_at::text as ultima_en,
+           (select ultima from corte)::text as corte
       from app.machines m
       left join lateral (
         select r.amount_cents

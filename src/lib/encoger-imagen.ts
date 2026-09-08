@@ -107,6 +107,17 @@ export async function encogerImagen(archivo: File): Promise<ResultadoEncoger> {
     ctx.drawImage(mapa, 0, 0, w, h);
     mapa.close();
 
+    // SE MIRA LA TRANSPARENCIA VENGA DE DONDE VENGA, no solo si entró un PNG.
+    //
+    // WEBP y AVIF también llevan canal alfa, y los dos se aceptan al subir. Un
+    // logo de juego en WEBP con el fondo recortado —que es justo lo que se sube
+    // en la pestaña de logos— se pasaba a JPEG, y el JPEG no tiene alfa: lo
+    // transparente sale NEGRO. El logo aparecía como un cuadro negro en el
+    // tablero, sin ningún error por medio.
+    //
+    // Lo que lleva alfa sale en PNG, que lo entiende cualquier navegador. Si de
+    // paso no encoge, más abajo se sube la original y no se pierde nada.
+    //
     // Un PNG se guarda como PNG SOLO SI DE VERDAD USA LA TRANSPARENCIA.
     //
     // La regla de antes era "si entró PNG, sale PNG", por miedo a que un fondo
@@ -121,9 +132,7 @@ export async function encogerImagen(archivo: File): Promise<ResultadoEncoger> {
     // flyer baja de seis megas a menos de uno. Si lo hay, se queda en PNG y se
     // acepta que apenas encoja: perder el recorte de un logo es peor que pesar.
     const destino =
-      archivo.type === 'image/png' && tieneTransparencia(ctx, w, h)
-        ? 'image/png'
-        : 'image/jpeg';
+      tieneTransparencia(ctx, w, h) ? 'image/png' : 'image/jpeg';
     const blob = await new Promise<Blob | null>((res) =>
       lienzo.toBlob(res, destino, destino === 'image/jpeg' ? CALIDAD : undefined),
     );

@@ -184,12 +184,21 @@ export function programaDelDia(
   return programas
     .filter((p) => p.dias.includes(dow))
     .map((p) => {
+      const desde = aMinutos(p.desde);
       const hasta = aMinutos(p.hasta);
       const ahoraMismo = corriendo(p, min);
+      // LO QUE CRUZA MEDIANOCHE NUNCA "YA PASÓ" DURANTE EL DÍA.
+      //
+      // La música en vivo de 10:00 p.m. a 2:00 a.m. tiene la hora de fin más
+      // pequeña que la de inicio, así que a las tres de la tarde `min >= hasta`
+      // da verdadero y la fila salía apagada, como algo que ya se perdió —
+      // cuando en realidad empieza esta noche. Es exactamente al revés de lo
+      // que hay que decir, y en la franja que más gente trae.
+      const cruza = desde !== null && hasta !== null && hasta < desde;
       return {
         ...p,
         ahora: ahoraMismo,
-        yaPaso: !ahoraMismo && hasta !== null && min >= hasta,
+        yaPaso: !ahoraMismo && !cruza && hasta !== null && min >= hasta,
       };
     })
     .sort((a, b) => (aMinutos(a.desde) ?? 0) - (aMinutos(b.desde) ?? 0));

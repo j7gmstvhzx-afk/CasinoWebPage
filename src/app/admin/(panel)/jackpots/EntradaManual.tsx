@@ -136,11 +136,39 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
     setGuardando(true);
     setAviso(null);
 
+    // SOLO SE MANDA LO QUE CAMBIÓ, Y ES POR SEGURIDAD DE LOS DATOS.
+    //
+    // El servidor borra la lectura de hoy de TODAS las máquinas que le llegan
+    // —tiene que hacerlo para poder vaciar una cifra mal tecleada—, así que
+    // mandarlas las dieciocho cada vez convierte cualquier pestaña vieja en una
+    // bomba: se abre el panel, otro empleado escribe los montos, y al guardar la
+    // pestaña vieja —con sus casillas todavía en blanco— los borra sin decir
+    // nada. No hace falta ni que sean dos personas: basta con tener el panel
+    // abierto en dos pestañas.
+    //
+    // Mandando solo lo que el empleado tocó de verdad, una pestaña que nadie
+    // editó no manda nada y no puede borrar nada. Vaciar una casilla que tenía
+    // cifra SIGUE siendo un cambio, así que corregir un tecleo hacia abajo
+    // sigue funcionando, que es para lo que se puso el borrado.
+    const comoEstaba = (m: { id: string; centavosHoy: number | null }) =>
+      m.centavosHoy === null ? '' : (m.centavosHoy / 100).toFixed(2);
+
+    const cambiadas = maquinas.filter((m) => (valores[m.id] ?? '') !== comoEstaba(m));
+
     const cuerpo: Record<string, unknown> = {
-      montos: maquinas.map((m) => ({ id: m.id, centavos: aCentavos(valores[m.id] ?? '') })),
+      montos: cambiadas.map((m) => ({ id: m.id, centavos: aCentavos(valores[m.id] ?? '') })),
     };
 
-    if (mostrarNueva && nueva.nombre.trim() && nueva.banco.trim()) {
+    const hayNueva = mostrarNueva && Boolean(nueva.nombre.trim()) && Boolean(nueva.banco.trim());
+
+    // Guardar sin haber tocado nada no es un error, pero tampoco es un guardado:
+    // decirlo es más honesto que enseñar "0 premios publicados".
+    if (cambiadas.length === 0 && !hayNueva) {
+      setGuardando(false);
+      return setAviso({ tipo: 'ok', texto: 'No cambiaste ningún monto: no hay nada que guardar.' });
+    }
+
+    if (hayNueva) {
       cuerpo.nueva = {
         nombre: nueva.nombre.trim(),
         banco: Number.parseInt(nueva.banco, 10),
@@ -160,11 +188,23 @@ export function EntradaManual({ maquinas }: { maquinas: MaquinaFila[] }) {
 
     if (!r.ok) return setAviso({ tipo: 'mal', texto: r.error });
 
+    // Quitar un monto también es un guardado, y antes se anunciaba como
+    // "0 premios publicados en la página", que suena a que no se guardó nada.
+    const quitadas = cambiadas.filter((m) => aCentavos(valores[m.id] ?? '') === null).length;
+    const publicados = `${r.guardados} premio${r.guardados === 1 ? '' : 's'} publicado${
+      r.guardados === 1 ? '' : 's'
+    } en la página.`;
+    const retirados = `${quitadas} máquina${quitadas === 1 ? '' : 's'} dej${
+      quitadas === 1 ? 'a' : 'an'
+    } de salir en el tablero.`;
+
     setAviso({
       tipo: 'ok',
-      texto: `${r.guardados} premio${r.guardados === 1 ? '' : 's'} publicado${
-        r.guardados === 1 ? '' : 's'
-      } en la página.`,
+      texto: r.guardados > 0 && quitadas > 0
+        ? `${publicados} Y ${retirados.charAt(0).toLowerCase()}${retirados.slice(1)}`
+        : r.guardados > 0
+          ? publicados
+          : retirados,
     });
     setNueva({ nombre: '', banco: '', monto: '' });
     setMostrarNueva(false);

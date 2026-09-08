@@ -26,7 +26,10 @@
  *      miraba la báscula. Es el flyer de promoción típico.
  *   3. PNG CON transparencia     -> NO puede acabar en JPEG. Un logo recortado
  *      con el fondo pintado de negro es peor que una foto pesada.
- *   4. Foto que ya está bien     -> no se toca.
+ *   4. WEBP CON transparencia    -> lo mismo. WEBP también lleva canal alfa y
+ *      también se acepta al subir, y la regla solo miraba los PNG: un logo de
+ *      juego recortado salía como un cuadro NEGRO en el tablero.
+ *   5. Foto que ya está bien     -> no se toca.
  *
  * CÓMO SE USA
  *
@@ -133,10 +136,14 @@ async function subir({ w, h, tipo, transparencia = false, plano = false }) {
       }
       if (transparencia) x.clearRect(0, 0, Math.round(w / 4), Math.round(h / 4));
 
+      // Calidad máxima también en WEBP: con la de por defecto el archivo sale
+      // ya tan comprimido que cualquier conversión pesa más, y entonces el
+      // subidor devuelve el original y la prueba pasa por el motivo
+      // equivocado — sin llegar a ejercitar la decisión de formato.
       const blob = await new Promise((r) =>
-        c.toBlob(r, tipo, tipo === 'image/jpeg' ? 1 : undefined),
+        c.toBlob(r, tipo, tipo === 'image/png' ? undefined : 1),
       );
-      const nombre = tipo === 'image/png' ? 'prueba.png' : 'prueba.jpg';
+      const nombre = 'prueba.' + (tipo.split('/')[1] ?? 'jpg');
       const archivo = new File([blob], nombre, { type: tipo });
       window.__tamanoOriginal = archivo.size;
 
@@ -208,7 +215,21 @@ async function subir({ w, h, tipo, transparencia = false, plano = false }) {
   );
 }
 
-// --- 4. Foto que ya está bien: no se toca -------------------------------
+// --- 4. WEBP CON transparencia: la trampa que solo miraba los PNG ---------
+{
+  const r = await subir({ w: 1200, h: 1200, tipo: 'image/webp', transparencia: true });
+  // Lo que hay que garantizar no es un formato concreto, es que NO sea JPEG:
+  // el JPEG no tiene canal alfa y pinta de negro lo que estaba recortado. Si
+  // sale en PNG, bien; si el propio WEBP ya era lo más pequeño y se sube tal
+  // cual, también — el recorte sigue ahí. Las dos son respuestas correctas.
+  comprobar(
+    r.tipoEnviado !== 'image/jpeg',
+    'WEBP CON transparencia: NO acaba en JPEG, que le pintaría el fondo de negro',
+    `viajó como ${r.tipoEnviado}`,
+  );
+}
+
+// --- 5. Foto que ya está bien: no se toca -------------------------------
 {
   const r = await subir({ w: 800, h: 600, tipo: 'image/jpeg', plano: true });
   comprobar(

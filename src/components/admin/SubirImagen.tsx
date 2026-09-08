@@ -129,8 +129,12 @@ export function SubirImagen({
           >
             Escoger imagen
           </button>
+          {/* Decía "del tamaño que sea", y no es verdad del todo: el encogido
+              salta los GIF, y el servidor rechaza cualquier archivo que llegue
+              por encima de 8 MB. Prometer de más se paga con un error justo
+              después de escoger la foto, que es el peor momento. */}
           <p className="mt-2 text-xs text-tenue/70">
-            Del tamaño que sea: se ajusta sola
+            Se encoge sola al subirla. Los GIF no, y ninguna puede pasar de 8 MB.
           </p>
         </div>
       )}

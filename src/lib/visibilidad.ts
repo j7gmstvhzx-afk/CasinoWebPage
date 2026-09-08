@@ -234,9 +234,18 @@ export function estadoMaquinaJackpot(m: {
   }
   if (!m.corte) return EN_LA_PAGINA;
 
-  // El mismo `>` estricto que la consulta: un empate exacto queda fuera.
-  const limite = restarDias(m.corte, VENTANA_TABLERO_DIAS);
-  if (m.ultima <= limite) {
+  // LA MISMA CUENTA QUE LA CONSULTA, CON LOS MISMOS INSTANTES.
+  //
+  // Esto restaba días a una fecha suelta mientras `getJackpots` compara
+  // `reading_at > corte - 3 días` en timestamps. Con el corte de hoy a las 9 de
+  // la mañana y una lectura del día 5 a las 8 de la noche, la página la
+  // publicaba y el panel la marcaba "Fuera del tablero": el empleado veía una
+  // alarma falsa y volvía a teclear un monto que ya estaba en la página. Las
+  // dos ventanas tienen que ser la MISMA, no una parecida.
+  //
+  // El `>` es estricto en las dos: un empate exacto queda fuera.
+  const limite = new Date(m.corte).getTime() - VENTANA_TABLERO_DIAS * 86_400_000;
+  if (new Date(m.ultima).getTime() <= limite) {
     return noSale(
       'Fuera del tablero',
       `Su último monto es del ${longDate(m.ultima)} y el tablero solo publica los de los ` +
@@ -244,12 +253,6 @@ export function estadoMaquinaJackpot(m: {
     );
   }
   return EN_LA_PAGINA;
-}
-
-/** 'YYYY-MM-DD' menos N días. En UTC, para que no lo corra ningún huso. */
-function restarDias(fecha: string, dias: number): string {
-  const [a, m, d] = fecha.split('-').map(Number);
-  return new Date(Date.UTC(a, m - 1, d - dias)).toISOString().slice(0, 10);
 }
 
 // =============================================================================

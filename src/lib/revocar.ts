@@ -84,16 +84,30 @@ export const selloAdmin = () => selloDe('admin');
  * se quiere que pase cuando alguien cierra sesión por seguridad.
  */
 export async function revocarSesionesAdmin(): Promise<void> {
+  // LA HORA SALE DEL MISMO RELOJ QUE FIRMA LOS TOKENS, Y NO DE `now()`.
+  //
+  // El token lleva su hora de emisión puesta por Node, en Vercel. El sello se
+  // ponía con el `now()` de Postgres, en Supabase: dos servicios distintos, dos
+  // relojes distintos. Si el de Postgres va adelantado aunque sea unos
+  // segundos, el sello queda en el futuro respecto de Node y TODO token nuevo
+  // nace ya revocado — el empleado entra bien, la contraseña es correcta, y la
+  // pantalla lo devuelve a la puerta una y otra vez sin decirle nada, porque
+  // técnicamente no hay ningún error.
+  //
+  // Comparando dos horas del mismo reloj el desfase desaparece. No se relaja
+  // nada: sigue valiendo solo lo emitido después del cierre.
   await sql`
-    insert into app.session_epoch (scope, valid_from) values ('admin', now())
-    on conflict (scope) do update set valid_from = now()
+    insert into app.session_epoch (scope, valid_from) values ('admin', ${new Date()})
+    on conflict (scope) do update set valid_from = excluded.valid_from
   `;
 }
 
 /** Cierra todas las sesiones de UN jugador, en todos sus aparatos. */
 export async function revocarSesionesJugador(playerId: string): Promise<void> {
+  // Del reloj de Node, por lo mismo que el sello del panel: es el reloj que
+  // firma los tokens. Ver revocarSesionesAdmin.
   await sql`
-    update app.players set sessions_valid_from = now() where id = ${playerId}::uuid
+    update app.players set sessions_valid_from = ${new Date()} where id = ${playerId}::uuid
   `;
 }
 
