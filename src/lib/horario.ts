@@ -275,3 +275,29 @@ export function diaAMedias(
   const malo = dias.find((d) => Boolean(d.abre) !== Boolean(d.cierra));
   return malo ? malo.dia : null;
 }
+
+/**
+ * "todos los días" · "los viernes y sábados" · "los lunes, miércoles y viernes"
+ *
+ * Los días de una cosa que se repite cada semana, dichos como se dicen. Estaba
+ * escrito a medias dentro del panel —`dias.map(d => DIAS[d].slice(0,3)).join(', ')`,
+ * que da "lun, mié, vie"— y eso vale para una lista de administración, no para
+ * una página que lee un cliente.
+ *
+ * Van en el orden de la semana empezando por el lunes, aunque por dentro el
+ * índice 0 sea el domingo: es como se lee un cartel.
+ */
+export function diasTexto(dias: number[]): string {
+  const limpios = [...new Set(dias.filter((d) => d >= 0 && d <= 6))];
+  if (limpios.length === 0) return '';
+  if (limpios.length === 7) return 'todos los días';
+
+  const orden = [1, 2, 3, 4, 5, 6, 0];
+  const nombres = orden.filter((d) => limpios.includes(d)).map((d) => DIAS[d] + 's');
+  // "sábados" y "domingos" hacen el plural en -s como los demás; "lunes",
+  // "martes", "miércoles", "jueves" y "viernes" ya acaban en s y no cambian.
+  const arreglados = nombres.map((n) => n.replace(/ss$/, 's'));
+
+  if (arreglados.length === 1) return `los ${arreglados[0]}`;
+  return `los ${arreglados.slice(0, -1).join(', ')} y ${arreglados[arreglados.length - 1]}`;
+}

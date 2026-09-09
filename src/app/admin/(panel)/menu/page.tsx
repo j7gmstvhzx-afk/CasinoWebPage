@@ -42,9 +42,18 @@ export default async function PaginaAdminMenu() {
     <>
       <h1 className="font-display text-3xl font-bold">Comida y bebida</h1>
       <p className="mt-2 text-tenue">
-        Lo que pongas en las secciones <strong className="text-tinta">de cortesía</strong>{' '}
-        sale en la página en grande y sin precio: es lo que la casa invita
-        mientras se juega. Lo que marques como agotado desaparece al instante.
+        Aquí va el <strong className="text-tinta">menú del fin de semana</strong>, con
+        su foto y su precio. Lo que marques como agotado desaparece al instante.
+      </p>
+      {/* Había dos sitios para escribir lo mismo, y por eso esta pantalla se
+          quedaba vacía: la cortesía se carga en Horario, que es donde se pide
+          la hora. Decirlo aquí cuesta una línea y evita teclearlo dos veces. */}
+      <p className="mt-2 text-tenue">
+        La comida <strong className="text-tinta">de cortesía</strong> —el desayuno,
+        los sándwiches, lo que la casa invita mientras se juega— se escribe en{' '}
+        <strong className="text-tinta">Horario → Lo que hay cada semana</strong>, que es
+        donde va con su hora. De ahí sale sola en la portada y en esta página; no
+        hace falta escribirla dos veces.
       </p>
 
       <div className="mt-4">

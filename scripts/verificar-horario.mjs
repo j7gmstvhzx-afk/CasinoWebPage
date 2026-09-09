@@ -19,7 +19,7 @@
  * Lógica pura: no toca la base ni levanta el servidor. Corre en cada build.
  */
 
-const { estadoDelSalon, reglaDe, franjaTexto, resumenSemana, diaAMedias, programaDelDia } =
+const { estadoDelSalon, reglaDe, franjaTexto, resumenSemana, diaAMedias, programaDelDia, diasTexto } =
   await import('../src/lib/horario.ts');
 
 let fallos = 0;
@@ -177,6 +177,16 @@ igual(franjaTexto(null), 'Cerrado', 'y un día sin horario, "Cerrado"');
   const soloLunes = programaDelDia([{ ...musica, dias: [1] }], enPR('2026-09-08', '15:00'));
   comprobar(soloLunes.length === 0, 'lo que no es de hoy no sale (el 8 es martes)');
 }
+
+// --- Los días de lo que se repite cada semana ------------------------------
+igual(diasTexto([0, 1, 2, 3, 4, 5, 6]), 'todos los días', 'la semana entera se dice "todos los días"');
+igual(diasTexto([1]), 'los lunes', 'un solo día');
+igual(diasTexto([6, 0]), 'los sábados y domingos', 'dos días, con "y" y sin coma');
+igual(diasTexto([1, 3, 5]), 'los lunes, miércoles y viernes', 'tres, con comas y una "y" al final');
+igual(diasTexto([0, 5, 6]), 'los viernes, sábados y domingos',
+  'y en el orden del cartel: el domingo va al final, aunque por dentro sea el 0');
+igual(diasTexto([]), '', 'sin días no se inventa nada');
+igual(diasTexto([1, 1, 1]), 'los lunes', 'un día repetido se dice una vez');
 
 console.log(`\n${total} comprobaciones, ${fallos} ${fallos === 1 ? 'fallo' : 'fallos'}.`);
 process.exit(fallos === 0 ? 0 : 1);

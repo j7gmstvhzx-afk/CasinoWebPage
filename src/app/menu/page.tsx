@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { PageHero, SeccionVacia } from '@/components/site/PageHero';
 import { sql } from '@/lib/db';
-import { paraLaPagina } from '@/lib/queries';
+import { getPrograma, paraLaPagina } from '@/lib/queries';
+import { diasTexto, franjaTexto, type Programa } from '@/lib/horario';
 import { money } from '@/lib/format';
 import { urlPublica } from '@/lib/storage';
 import { FotoEncajada } from '@/components/site/FotoEncajada';
@@ -76,10 +77,32 @@ type Seccion = { nombre: string; cortesia: boolean; nota: string | null; platos:
  * de la casa, en grande y sin precios, y después lo que se paga. Es el gancho
  * más barato que tiene el salón —los casinos pequeños de EEUU anuncian tragos
  * a $5 para llenar entre semana; aquí son gratis— y no salía en ninguna parte.
+ *
+ * LA CORTESÍA SALE DEL PROGRAMA SEMANAL, NO DE UNA SEGUNDA LISTA
+ * -------------------------------------------------------------
+ * Se le dieron al dueño DOS sitios donde escribir lo mismo: el programa de
+ * Horario ("lo que hay cada semana") y una sección de cortesía en Comida. Usó
+ * el primero — que es el que además pide las horas — y cargó ahí sus desayunos,
+ * hot dogs, sándwiches, quesadillas y mantecados. Resultado en producción: la
+ * portada anunciaba la comida y esta pestaña salía vacía, con su "estamos
+ * preparando esta página".
+ *
+ * La culpa es del diseño, no de quien lo llenó: dos sitios para el mismo dato
+ * garantizan que uno se quede vacío. Así que esta página lee el programa. Se
+ * teclea una vez, con su horario, y sale en los dos lados.
+ *
+ * La sección de cortesía de `menu_sections` se sigue enseñando si tiene platos:
+ * no se tira nada de lo que ya haya cargado nadie.
  */
 export default async function PaginaMenu() {
-  const r = await paraLaPagina(getMenu, 'la carta', [] as Plato[]);
+  // En paralelo: son dos consultas independientes y encadenarlas sería sumar
+  // sus dos esperas para nada.
+  const [r, rPrograma] = await Promise.all([
+    paraLaPagina(getMenu, 'la carta', [] as Plato[]),
+    paraLaPagina(getPrograma, 'la cortesía', [] as Programa[]),
+  ]);
   const platos = r.datos;
+  const delPrograma = rPrograma.datos.filter((p) => p.cortesia);
 
   const secciones = platos.reduce<Seccion[]>((acc, p) => {
     const ultima = acc[acc.length - 1];
@@ -104,11 +127,13 @@ export default async function PaginaMenu() {
              build que no alcanzó la base; en cuanto alguien visite la página
              se rehace sola con el contenido de verdad. */
           <SeccionVacia mensaje="Estamos actualizando esta página. Vuelve en un momento." />
-        ) : secciones.length === 0 ? (
+        ) : secciones.length === 0 && delPrograma.length === 0 ? (
           <SeccionVacia mensaje="Estamos preparando esta página. Pregunta en el salón por la comida y la bebida de hoy." />
         ) : (
           <div className="grid gap-10">
-            {cortesia.length > 0 && <PorCuentaDeLaCasa secciones={cortesia} />}
+            {(cortesia.length > 0 || delPrograma.length > 0) && (
+              <PorCuentaDeLaCasa secciones={cortesia} delPrograma={delPrograma} />
+            )}
             {dePago.map((s) => (
               <SeccionDePago key={s.nombre} seccion={s} />
             ))}
@@ -127,7 +152,13 @@ export default async function PaginaMenu() {
  * Sin precios, porque no los tiene — poner "$0.00" convertiría un regalo en una
  * transacción.
  */
-function PorCuentaDeLaCasa({ secciones }: { secciones: Seccion[] }) {
+function PorCuentaDeLaCasa({
+  secciones,
+  delPrograma,
+}: {
+  secciones: Seccion[];
+  delPrograma: Programa[];
+}) {
   return (
     <section className="bloque-marca relative overflow-hidden rounded-3xl">
       <div
@@ -141,6 +172,29 @@ function PorCuentaDeLaCasa({ secciones }: { secciones: Seccion[] }) {
         <h2 className="mt-2 font-display text-3xl font-bold text-dorado-3 sm:text-4xl">
           Mientras juegas, no pagas
         </h2>
+
+        {delPrograma.length > 0 && (
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+            {delPrograma.map((p) => (
+              <li key={p.id} className="flex items-start gap-3">
+                {/* El emoji es decorativo: lo que dice ya está en el texto de
+                    al lado, y leerlo en alto sobra. */}
+                {p.icono && (
+                  <span aria-hidden="true" className="text-xl leading-none">{p.icono}</span>
+                )}
+                <span>
+                  <strong className="font-display text-lg font-bold text-white">{p.titulo}</strong>
+                  {p.detalle && <span className="block text-sm text-[#cfe0f5]">{p.detalle}</span>}
+                  {/* La hora es la mitad del dato: "desayuno gratis" sin saber
+                      hasta cuándo no mueve a nadie de su casa. */}
+                  <span className="mt-0.5 block text-sm text-[#8ce8f6]">
+                    {franjaTexto({ abre: p.desde, cierra: p.hasta })} · {diasTexto(p.dias)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <div className="mt-8 grid gap-8 sm:grid-cols-2">
           {secciones.map((s) => (
