@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PageHero } from '@/components/site/PageHero';
 import { SITE, PROMO, fullAddress } from '@/lib/site';
 import { AYUDA, AVISO_PROMOCIONAL } from '@/lib/juego-responsable';
+import { hoyEnPR } from '@/lib/hora-pr';
 
 export const metadata: Metadata = {
   title: 'Términos y Condiciones',
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
  */
 export default function PaginaTerminos() {
   const actualizado = '16 de agosto de 2026';
+  // El año, en hora de Puerto Rico. Con `new Date()` a secas, el 31 de
+  // diciembre a partir de las 8 de la noche el servidor ya está en enero y el
+  // aviso de copyright saltaría de año antes de tiempo.
+  const anio = hoyEnPR().slice(0, 4);
 
   return (
     <>
@@ -206,6 +211,43 @@ export default function PaginaTerminos() {
               promocional y nada más: no acepta apuestas, no vende créditos y no
               paga en función de lo que juegues. Si ves una página que dice ser
               este casino y te pide dinero para jugar en línea, no es nuestra.
+            </p>
+          </Bloque>
+          {/* Este bloque no es del sorteo: es del sitio entero.
+              Va aquí porque /terminos es la única página legal que hay, está
+              enlazada desde el pie de todas, y un aviso de propiedad que no se
+              puede señalar con un enlace no sirve de gran cosa el día que haga
+              falta enseñarlo. */}
+          <Bloque titulo="10. Propiedad y confidencialidad">
+            <p>
+              Esta página, su diseño, sus textos, sus imágenes, su programación
+              y la información que contiene son propiedad de{' '}
+              <strong className="text-tinta">{SITE.name}</strong>. © {anio}{' '}
+              {SITE.name}. Todos los derechos reservados.
+            </p>
+            <p>
+              Que la página sea de acceso libre no autoriza a nadie a copiarla,
+              reproducirla, distribuirla ni a usarla como base de otro negocio.
+              Tampoco se autoriza extraer, raspar ni recopilar de forma
+              automatizada su contenido o sus datos —incluidos los montos de
+              premios y el historial de ganadores— ni usarlos para entrenar
+              modelos de inteligencia artificial.
+            </p>
+            <p>
+              <strong className="text-tinta">Los datos de nuestros clientes son
+              confidenciales.</strong>{' '}
+              Nombre, teléfono, municipio y fecha de nacimiento se guardan para
+              administrar el sorteo y entregar los premios, no se venden ni se
+              ceden, y solo los ve el personal autorizado. El acceso no
+              autorizado a esos datos o a nuestros sistemas puede constituir un
+              delito bajo la Ley Núm. 111 de 7 de septiembre de 2005 de Puerto
+              Rico, además de una infracción de derechos de autor bajo la ley
+              federal.
+            </p>
+            <p>
+              &laquo;{SITE.name}&raquo;, su logotipo y su imagen son marcas del
+              casino. Si crees que alguien está usando nuestro nombre o nuestro
+              contenido sin permiso, avísanos en el {SITE.phoneDisplay}.
             </p>
           </Bloque>
         </div>

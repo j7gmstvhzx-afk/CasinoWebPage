@@ -1,3 +1,19 @@
+> ## ⚠️ PROPIEDAD DE CASINO ATLÁNTICO MANATÍ — CONFIDENCIAL
+>
+> © 2026 Casino Atlántico Manatí. Todos los derechos reservados.
+>
+> Este código, su base de datos y su documentación son **propiedad exclusiva
+> del casino** e **información confidencial**. No se concede ninguna licencia:
+> que este repositorio se pueda abrir no le da a nadie derecho a copiarlo,
+> reutilizarlo, distribuirlo, ni a extraer sus datos, ni a usarlo para entrenar
+> modelos de inteligencia artificial. La base de datos contiene **datos
+> personales de clientes** que no son de quien los mire.
+>
+> Condiciones completas y consecuencias del incumplimiento: [`LICENSE`](./LICENSE).
+>
+> ¿Quién puede tocarlo? Solo el personal autorizado por el casino. Si has
+> llegado aquí por error, cierra la página.
+
 # Casino Atlántico Manatí
 
 Sitio web del Casino Atlántico Manatí, con la promoción **"Gira y Gana $25"**.

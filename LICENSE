@@ -1,0 +1,98 @@
+Copyright (c) 2026 Casino Atlántico Manatí. Todos los derechos reservados.
+Copyright (c) 2026 Casino Atlántico Manatí. All rights reserved.
+
+════════════════════════════════════════════════════════════════════════════
+ESPAÑOL — SOFTWARE PROPIETARIO Y CONFIDENCIAL
+════════════════════════════════════════════════════════════════════════════
+
+Este programa de computadora, su código fuente, su base de datos, su diseño,
+sus textos, sus imágenes, su estructura y toda la documentación que lo
+acompaña son propiedad exclusiva de Casino Atlántico Manatí (el "Titular") y
+constituyen información CONFIDENCIAL y secreto de negocio del Titular.
+
+NO SE CONCEDE NINGUNA LICENCIA. Ni el hecho de que este repositorio pueda ser
+accesible, ni el hecho de que la página web esté publicada, otorgan a nadie
+derecho alguno sobre esta obra.
+
+Queda expresamente PROHIBIDO, sin autorización previa y por escrito del
+Titular:
+
+  1. Copiar, reproducir, descargar, almacenar o conservar este código, en
+     todo o en parte, por cualquier medio.
+  2. Modificarlo, adaptarlo, traducirlo o crear obras derivadas de él.
+  3. Distribuirlo, publicarlo, sublicenciarlo, venderlo, alquilarlo o
+     cederlo a terceros, con o sin ánimo de lucro.
+  4. Usarlo para operar otro negocio, ni como base, plantilla o referencia
+     para desarrollar un producto propio o ajeno.
+  5. Extraer, raspar (scraping), recopilar o reutilizar los datos de la
+     página web o de su base de datos, incluidos —sin limitarse a ellos— los
+     datos de clientes, los montos de premios y el historial de operaciones.
+  6. Usar esta obra o los datos contenidos en ella para entrenar, ajustar o
+     evaluar modelos de inteligencia artificial o aprendizaje automático.
+  7. Revelar a terceros la información confidencial contenida aquí, incluida
+     la arquitectura del sistema y las medidas de seguridad descritas en el
+     código y en el historial de cambios.
+
+DATOS DE CLIENTES. La base de datos de este sistema contiene datos personales
+de clientes (nombre, número de teléfono, municipio y fecha de nacimiento).
+Esos datos NO son propiedad de quien acceda a ellos: son datos personales
+confiados al Titular. Su acceso, uso o divulgación no autorizados pueden
+constituir, además de una infracción de estos términos, una violación de la
+legislación aplicable en materia de protección de datos y de la Ley Núm. 111
+de 7 de septiembre de 2005 de Puerto Rico, sobre acceso ilegal a sistemas de
+información.
+
+MARCAS. "Casino Atlántico Manatí", su logotipo y su imagen comercial son
+marcas del Titular. Esta licencia no concede ningún derecho sobre ellas.
+
+INCUMPLIMIENTO. El uso no autorizado de esta obra faculta al Titular para
+ejercer todas las acciones civiles y penales que le correspondan, incluidas
+las previstas en la Ley de Derechos de Autor de los Estados Unidos (17 U.S.C.)
+y en la legislación de Puerto Rico sobre secretos de negocio y competencia
+desleal, y para reclamar los daños, las ganancias obtenidas por el infractor y
+las costas y honorarios de abogado que procedan.
+
+SIN GARANTÍAS. El programa se ofrece "tal cual", sin garantía de ningún tipo.
+
+Contacto: Casino Atlántico Manatí · Expreso 22, Salida #48, Carr. #2,
+Manatí, PR 00674 · (787) 854-7373
+
+════════════════════════════════════════════════════════════════════════════
+ENGLISH — PROPRIETARY AND CONFIDENTIAL SOFTWARE
+════════════════════════════════════════════════════════════════════════════
+
+This software, its source code, database, design, text, images, structure and
+all accompanying documentation are the exclusive property of Casino Atlántico
+Manatí (the "Owner") and constitute CONFIDENTIAL information and trade secrets
+of the Owner.
+
+NO LICENSE IS GRANTED. Neither the accessibility of this repository nor the
+public availability of the website grants any person any right in this work.
+
+Without the Owner's prior written permission, it is expressly PROHIBITED to
+copy, reproduce, download, retain, modify, adapt, translate, create derivative
+works from, distribute, publish, sublicense, sell, rent or transfer this work
+in whole or in part; to use it to operate another business or as a basis,
+template or reference for any other product; to extract, scrape, harvest or
+reuse the data of the website or its database, including customer data, prize
+amounts and operating history; to use this work or its data to train, fine-tune
+or evaluate artificial intelligence or machine learning models; or to disclose
+the confidential information contained herein, including the system
+architecture and the security measures described in the code and in the commit
+history.
+
+CUSTOMER DATA. This system's database contains personal data of customers
+(name, telephone number, municipality and date of birth). Unauthorized access,
+use or disclosure of that data may constitute, in addition to a breach of these
+terms, a violation of applicable data protection law and of Puerto Rico Act
+No. 111 of September 7, 2005, on unlawful access to information systems.
+
+TRADEMARKS. "Casino Atlántico Manatí", its logo and trade dress are marks of
+the Owner. No rights in them are granted by this license.
+
+ENFORCEMENT. Unauthorized use entitles the Owner to pursue all available civil
+and criminal remedies, including those under the United States Copyright Act
+(17 U.S.C.) and Puerto Rico law on trade secrets and unfair competition, and to
+seek damages, the infringer's profits, and costs and attorneys' fees.
+
+NO WARRANTY. The software is provided "AS IS", without warranty of any kind.
