@@ -6,6 +6,9 @@ import { pedirJson } from '@/lib/fetch-json';
 import { money } from '@/lib/format';
 import { Estado } from '@/components/admin/EstadoPublico';
 import { estadoGanador } from '@/lib/visibilidad';
+import { hoyEnPR } from '@/lib/hora-pr';
+import { revisarFechaPremio } from '@/lib/fecha-premio';
+import { longDate } from '@/lib/format';
 
 export type GanadorAdmin = {
   id: string;
@@ -19,12 +22,22 @@ const CAMPO =
   'min-h-11 w-full rounded-lg border border-linea bg-superficie px-3 focus:border-cian focus:outline-none';
 
 /**
- * Añadir un ganador: dos campos y ya.
+ * Añadir un ganador: tres campos y ya.
  *
  * Esta pantalla pedía antes nombre, pueblo, máquina, monto, fecha, foto y un
- * permiso firmado. Ahora pide el pueblo y la cantidad. La fecha la pone el
- * servidor con el día de hoy en Puerto Rico, y el permiso ya no hace falta
- * porque no se publica ningún dato personal.
+ * permiso firmado. Ahora pide el pueblo, la cantidad y el día. El permiso ya no
+ * hace falta porque no se publica ningún dato personal.
+ *
+ * LA FECHA VOLVIÓ, Y CON MOTIVO
+ * -----------------------------
+ * Se quitó dando por hecho que un premio se apunta el mismo día que se paga, y
+ * el dueño lo corrigió con la pantalla delante: sus catorce premios de
+ * septiembre tenían la fecha del día en que los subió, no la del día en que
+ * cayeron. En el muro se ve —varios seguidos con la misma fecha— y descoloca el
+ * agrupado por semanas, que ordena por ese día.
+ *
+ * Viene puesta con la de hoy, así que quien apunte el premio en el momento no
+ * tiene que tocarla: sigue siendo teclear dos cosas y darle a Añadir.
  *
  * El formulario está pensado para el mostrador: se paga un premio, se teclean
  * dos cosas y sale en la página. Cuantos más campos, menos veces se hace.
@@ -38,10 +51,15 @@ export function GestorGanadores({
   cargaFallida?: boolean;
 }) {
   const router = useRouter();
+  const hoy = hoyEnPR();
   const [pueblo, setPueblo] = useState('');
   const [dolares, setDolares] = useState('');
+  const [ganoEn, setGanoEn] = useState(hoy);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
+  /** Id de la fila a la que se le está corrigiendo la fecha, y el valor nuevo. */
+  const [editando, setEditando] = useState<string | null>(null);
+  const [fechaNueva, setFechaNueva] = useState('');
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -50,13 +68,22 @@ export function GestorGanadores({
     const d = Number(dolares.replace(/[^0-9.]/g, ''));
     if (pueblo.trim().length < 2) return setAviso({ ok: false, texto: 'Escribe el pueblo.' });
     if (!Number.isFinite(d) || d <= 0) return setAviso({ ok: false, texto: 'Escribe la cantidad.' });
+    // La misma revisión que hace el servidor, aquí para no gastar un viaje: el
+    // 31 de febrero, un año de 2206 por un dedazo, una fecha que no ha llegado.
+    const fecha = revisarFechaPremio(ganoEn, hoy);
+    if (!fecha.ok) return setAviso({ ok: false, texto: fecha.mensaje });
 
     setGuardando(true);
     try {
       await pedirJson('/api/admin/ganadores', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pueblo: pueblo.trim(), dolares: d, publicado: true }),
+        body: JSON.stringify({
+          pueblo: pueblo.trim(),
+          dolares: d,
+          ganoEn: fecha.fecha,
+          publicado: true,
+        }),
       });
       // `router.refresh()` y no `window.location.reload()`.
       //
@@ -68,12 +95,17 @@ export function GestorGanadores({
       // el "Guardado" se queda en pantalla el tiempo suficiente para leerlo.
       setPueblo('');
       setDolares('');
+      // La fecha NO se limpia: apuntando los premios de un día se teclean
+      // varios seguidos, y volver a escribirla cada vez es el camino más corto
+      // a que alguien deje de cambiarla.
       setAviso({
         ok: true,
         // `money()` y no `toFixed(2)`: el resto del sitio escribe las cifras
         // con separador de miles, y "$1200.99" al lado de "$1,200.99" se lee
         // como dos formatos distintos para el mismo dinero.
-        texto: `Guardado. ${money(Math.round(d * 100))} de ${pueblo.trim()} ya sale en la página.`,
+        texto:
+          `Guardado. ${money(Math.round(d * 100))} de ${pueblo.trim()}, ` +
+          `del ${longDate(fecha.fecha)}, ya sale en la página.`,
       });
       setGuardando(false);
       router.refresh();
@@ -108,6 +140,37 @@ export function GestorGanadores({
     }
   }
 
+  /**
+   * Corregir el día de un premio ya guardado.
+   *
+   * Los catorce de septiembre que el dueño tenía en pantalla llevaban todos la
+   * fecha de la subida. Sin esto, la única forma de arreglarlos era borrarlos y
+   * volverlos a escribir uno por uno.
+   */
+  async function guardarFecha(g: GanadorAdmin) {
+    const fecha = revisarFechaPremio(fechaNueva, hoy);
+    if (!fecha.ok) return setAviso({ ok: false, texto: fecha.mensaje });
+    if (fecha.fecha === g.gano_on) {
+      setEditando(null);
+      return;
+    }
+    try {
+      await pedirJson('/api/admin/ganadores', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: g.id, ganoEn: fecha.fecha }),
+      });
+      setEditando(null);
+      setAviso({
+        ok: true,
+        texto: `El premio de ${g.pueblo} ahora es del ${longDate(fecha.fecha)}.`,
+      });
+      router.refresh();
+    } catch (err) {
+      setAviso({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo cambiar.' });
+    }
+  }
+
   async function borrar(g: GanadorAdmin) {
     if (!confirm(`¿Quitar ${money(Number(g.monto_cents))} de ${g.pueblo}?`)) return;
     try {
@@ -121,7 +184,7 @@ export function GestorGanadores({
 
   return (
     <div className="mt-8">
-      <form onSubmit={guardar} className="tarjeta grid gap-4 p-5 sm:grid-cols-[1fr_12rem_auto] sm:items-end sm:p-6">
+      <form onSubmit={guardar} className="tarjeta grid gap-4 p-5 sm:grid-cols-[1fr_10rem_11rem_auto] sm:items-end sm:p-6">
         <label className="block text-sm">
           <span className="font-medium">Pueblo</span>
           <input
@@ -140,6 +203,17 @@ export function GestorGanadores({
             onChange={(e) => setDolares(e.target.value)}
             placeholder="1200.00"
             className={`${CAMPO} mt-1.5 tabular text-right`}
+          />
+        </label>
+
+        <label className="block text-sm">
+          <span className="font-medium">¿Qué día cayó?</span>
+          <input
+            type="date"
+            value={ganoEn}
+            max={hoy}
+            onChange={(e) => setGanoEn(e.target.value)}
+            className={`${CAMPO} mt-1.5 tabular`}
           />
         </label>
 
@@ -180,9 +254,48 @@ export function GestorGanadores({
             >
               <span className="font-semibold tabular texto-dorado">{money(Number(g.monto_cents))}</span>
               <span className="font-medium">{g.pueblo}</span>
-              <span className="tabular text-tenue">{g.gano_on}</span>
+              {editando === g.id ? (
+                <input
+                  type="date"
+                  value={fechaNueva}
+                  max={hoy}
+                  autoFocus
+                  onChange={(e) => setFechaNueva(e.target.value)}
+                  className={`${CAMPO} tabular w-auto`}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditando(g.id);
+                    setFechaNueva(g.gano_on);
+                  }}
+                  title="Cambiar el día en que cayó este premio"
+                  className="tabular text-tenue underline decoration-dotted underline-offset-4 hover:text-cian"
+                >
+                  {g.gano_on}
+                </button>
+              )}
               <Estado estado={estadoGanador(g)} />
               <div className="ml-auto flex gap-2">
+                {editando === g.id && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void guardarFecha(g)}
+                      className="inline-flex min-h-11 items-center rounded-lg bg-cian px-3 font-semibold text-white"
+                    >
+                      Guardar fecha
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditando(null)}
+                      className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-tenue hover:text-tinta"
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => alternar(g)}

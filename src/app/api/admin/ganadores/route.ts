@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { sql } from '@/lib/db';
 import { esAdmin } from '@/lib/admin-auth';
 import { refrescarPublico } from '@/lib/revalidar';
-import { hoyEnPR } from '@/lib/hora-pr';
+import { revisarFechaPremio } from '@/lib/fecha-premio';
 import { conPlazo } from '@/lib/plazo-ruta';
 
 export const runtime = 'nodejs';
@@ -29,11 +29,17 @@ export const DELETE = conPlazo('borrar el ganador', manejarDelete);
  * la foto: un pueblo y una cifra no identifican a nadie, así que no hay permiso
  * que pedir. Lo que queda es lo que hace falta.
  *
- * LA FECHA NO SE PIDE
- * -------------------
- * Se pone sola con el día de HOY EN PUERTO RICO, no en UTC: a las 8 de la noche
- * de Manatí el servidor ya está en el día siguiente, y un premio pagado el
- * sábado por la noche aparecería fechado el domingo.
+ * LA FECHA SE PIDE, PERO NO ES OBLIGATORIA
+ * ----------------------------------------
+ * Se ponía sola con el día de hoy, dando por hecho que un premio se apunta el
+ * mismo día que se paga. El dueño lo corrigió: se apuntan cuando hay un rato,
+ * así que todos salían fechados el día de la subida — cinco seguidos con la
+ * misma fecha en el muro, y el agrupado por semanas descolocado, porque ordena
+ * por ese día.
+ *
+ * Si viene, manda la que se teclea. Si no viene, sigue siendo HOY EN PUERTO
+ * RICO y no en UTC: a las 8 de la noche de Manatí el servidor ya está en el día
+ * siguiente, y un premio pagado el sábado por la noche se fecharía el domingo.
  */
 const Cuerpo = z.object({
   id: z.string().uuid().optional(),
@@ -42,6 +48,9 @@ const Cuerpo = z.object({
   // sitio donde no se puede saltar.
   dolares: z.coerce.number().min(0).max(1_000_000),
   publicado: z.boolean().optional(),
+  // El día en que cayó el premio. La forma se comprueba aquí y el sentido en
+  // `revisarFechaPremio`, que es quien sabe qué día es hoy en Puerto Rico.
+  ganoEn: z.string().optional(),
 });
 
 function no(mensaje: string, status = 400) {
@@ -59,17 +68,21 @@ async function manejarPost(req: NextRequest) {
   // 120098 por el redondeo binario de los decimales.
   const centavos = Math.round(d.dolares * 100);
 
+  const fecha = revisarFechaPremio(d.ganoEn);
+  if (!fecha.ok) return no(fecha.mensaje);
+
   if (d.id) {
     await sql`
       update app.ganadores
          set pueblo = ${d.pueblo}, monto_cents = ${centavos},
+             gano_on = ${fecha.fecha}::date,
              publicado = ${d.publicado ?? true}
        where id = ${d.id}
     `;
   } else {
     await sql`
       insert into app.ganadores (pueblo, monto_cents, gano_on, publicado)
-      values (${d.pueblo}, ${centavos}, ${hoyEnPR()}::date, ${d.publicado ?? true})
+      values (${d.pueblo}, ${centavos}, ${fecha.fecha}::date, ${d.publicado ?? true})
     `;
   }
 
@@ -90,20 +103,47 @@ async function manejarPost(req: NextRequest) {
  *
  * Se manda solo el estado nuevo, no la fila entera: así el botón no puede
  * pisar sin querer el pueblo ni la cantidad.
+ *
+ * TAMBIÉN CORRIGE LA FECHA
+ * ------------------------
+ * Los premios que se subieron antes de que existiera el campo de fecha
+ * quedaron todos con el día de la subida. Sin poder corregirlos, la única
+ * salida era borrarlos y volverlos a escribir. Se manda una cosa o la otra, y
+ * lo que no venga no se toca.
  */
 async function manejarPatch(req: NextRequest) {
   if (!(await esAdmin())) return no('No autorizado.', 401);
 
   const cuerpo = await req.json().catch(() => ({}));
   const parsed = z
-    .object({ id: z.string().uuid(), publicado: z.boolean() })
+    .object({
+      id: z.string().uuid(),
+      publicado: z.boolean().optional(),
+      ganoEn: z.string().optional(),
+    })
     .safeParse(cuerpo);
   if (!parsed.success) return no('Petición inválida.');
 
+  const { id, publicado, ganoEn } = parsed.data;
+  if (publicado === undefined && ganoEn === undefined) {
+    return no('No hay nada que cambiar.');
+  }
+
+  // `undefined` aquí sería "poner NULL" para Postgres, así que la fecha se
+  // revisa solo cuando viene y, si no viene, se le vuelve a escribir la que ya
+  // tenía: `coalesce` con el valor de la columna deja la fila intacta.
+  let fecha: string | null = null;
+  if (ganoEn !== undefined) {
+    const r = revisarFechaPremio(ganoEn);
+    if (!r.ok) return no(r.mensaje);
+    fecha = r.fecha;
+  }
+
   const filas = await sql`
     update app.ganadores
-       set publicado = ${parsed.data.publicado}
-     where id = ${parsed.data.id}
+       set publicado = coalesce(${publicado ?? null}::boolean, publicado),
+           gano_on   = coalesce(${fecha}::date, gano_on)
+     where id = ${id}
     returning id
   `;
   if (filas.length === 0) return no('Ese premio ya no existe. Recarga la página.', 404);

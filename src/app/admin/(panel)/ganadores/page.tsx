@@ -40,7 +40,10 @@ export default async function PaginaGanadores() {
       <p className="mt-2 max-w-2xl text-sm text-tenue">
         El pueblo y la cantidad, nada más. Sin nombre ni foto no hay que pedirle
         permiso a nadie, y sigue diciendo lo que importa: que aquí se paga y que
-        le tocó a alguien de al lado. La fecha se pone sola.
+        le tocó a alguien de al lado. La fecha viene puesta con la de hoy, y se
+        cambia: si apuntas hoy un premio del sábado, ponle la del sábado. En la
+        lista de abajo también puedes corregir la de los que ya subiste — basta
+        con pulsar sobre la fecha.
       </p>
 
       <div className="mt-4">
